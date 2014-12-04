@@ -11,20 +11,20 @@ def read(*rnames):
 
 setup(
     name='mongopersist',
-    version='0.9.0.dev12',
-    author="Stephan Richter",
-    author_email="stephan.richter@gmail.com",
-    url='https://github.com/zopefoundation/mongopersist',
-    description="Mongo Persistence Backend",
+    version='0.1.0dev0',
+    author="Shoobx Team",
+    author_email="dev@shoobx.com",
+    url='https://github.com/Shoobx/pjpersist',
+    description="PostGresqL/JSONB Persistence Backend",
     long_description=(
-        read('src', 'mongopersist', 'README.txt')
+        read('src', 'pjpersist', 'README.txt')
         + '\n\n' +
         read('CHANGES.txt')
     ),
     license="ZPL 2.1",
-    keywords="mongo persistent ",
+    keywords="postgres jsonb persistent",
     classifiers=[
-        'Development Status :: 4 - Beta',
+        'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',
         'Programming Language :: Python',
         'Programming Language :: Python :: 2',
@@ -49,7 +49,7 @@ setup(
     install_requires=[
         'transaction >=1.1.0',
         'repoze.lru',
-        'pymongo',
+        'psycopg2',
         'setuptools',
         'zope.dottedname',
         'zope.interface',
@@ -60,6 +60,6 @@ setup(
     zip_safe=False,
     entry_points='''
     [console_scripts]
-    profile = mongopersist.performance:main
+    profile = pjpersist.performance:main
     ''',
 )

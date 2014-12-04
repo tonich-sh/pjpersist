@@ -1,7 +1,8 @@
 language: python
 python:
     - 2.7
-services: mongodb
+addons:
+  postgresql: "9.3"
 install:
     - virtualenv env
     - env/bin/pip install -U setuptools distribute

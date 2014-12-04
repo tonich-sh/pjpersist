@@ -1,12 +1,12 @@
-========================
-mongoDB Data Persistence
-========================
+=================================
+PostGreSQL/JSONB Data Persistence
+=================================
 
-This document outlines the general capabilities of the ``mongopersist``
-package. ``mongopersist`` is a mongoDB storage implementation for persistent
+This document outlines the general capabilities of the ``pjpersist``
+package. ``pjpersist`` is a mongoDB storage implementation for persistent
 Python objects. It is *not* a storage for the ZODB.
 
-The goal of ``mongopersist`` is to provide a data manager that serializes
+The goal of ``pjpersist`` is to provide a data manager that serializes
 objects to mongoDB at transaction boundaries. The mongo data manager is a
 persistent data manager, which handles events at transaction boundaries (see
 ``transaction.interfaces.IDataManager``) as well as events from the
@@ -18,8 +18,8 @@ when creating a new transaction:
 
   >>> import transaction
 
-Note: The ``conn`` object is a ``pymongo.connection.Connection`` instance. In
-this case our tests use the ``mongopersist_test`` database.
+Note: The ``conn`` object is a ``psycopg.Connection`` instance. In this case
+our tests use the ``pjpersist_test`` database.
 
 Let's now define a simple persistent object:
 
@@ -65,7 +65,7 @@ Custom Persistence Collections
 By default, persistent objects are stored in a collection having the Python
 path of the class:
 
-  >>> from mongopersist import serialize
+  >>> from pjpersist import serialize
   >>> person_cn = serialize.get_dotted_name(Person)
   >>> person_cn
   '__main__.Person'
@@ -137,7 +137,7 @@ But once we commit the transaction, everything is available:
   [{u'_id': ObjectId('4e7ddf12e138237403000000'),
     u'address': DBRef(u'address',
                       ObjectId('4e7ddf12e138237403000000'),
-                      u'mongopersist_test'),
+                      u'pjpersist_test'),
     u'birthday': None,
     u'friends': {},
     u'name': u'Stephan Richter',
@@ -183,7 +183,7 @@ Let's now commit the transaction and look at the mongoDB document again:
   [{u'_id': ObjectId('4e7ddf12e138237403000000'),
     u'address': DBRef(u'address',
                       ObjectId('4e7ddf12e138237403000000'),
-                      u'mongopersist_test'),
+                      u'pjpersist_test'),
     u'birthday': None,
     u'friends': {},
     u'name': u'Stephan Richter',
@@ -219,12 +219,12 @@ always maintained as lists, since BSON does not have two sequence types.
   {u'_id': ObjectId('4e7df744e138230a3e000000'),
    u'address': DBRef(u'address',
                      ObjectId('4e7df744e138230a3e000003'),
-                     u'mongopersist_test'),
+                     u'pjpersist_test'),
    u'birthday': {u'_py_factory': u'datetime.date',
                  u'_py_factory_args': [Binary('\x07\xbc\x01\x19', 0)]},
    u'friends': {u'roy': DBRef(u'__main__.Person',
                               ObjectId('4e7df745e138230a3e000004'),
-                              u'mongopersist_test')},
+                              u'pjpersist_test')},
    u'name': u'Stephan Richter',
    u'phone': {u'_py_type': u'__main__.Phone',
               u'area': u'978',
@@ -270,11 +270,11 @@ Let's have a look again:
   {u'_id': ObjectId('4e7df803e138230aeb000000'),
    u'address': DBRef(u'address',
                      ObjectId('4e7df803e138230aeb000003'),
-                     u'mongopersist_test'),
+                     u'pjpersist_test'),
    u'birthday': {u'_py_type': u'datetime.date', u'ordinal': 722839},
    u'friends': {u'roy': DBRef(u'__main__.Person',
                               ObjectId('4e7df803e138230aeb000004'),
-                              u'mongopersist_test')},
+                              u'pjpersist_test')},
    u'name': u'Stephan Richter',
    u'phone': {u'_py_type': u'__main__.Phone',
               u'area': u'978',
@@ -321,7 +321,7 @@ of another document:
   {u'_id': ObjectId('4e7dfac7e138230d3d000000'),
    u'address': DBRef(u'address',
                      ObjectId('4e7dfac7e138230d3d000003'),
-                     u'mongopersist_test'),
+                     u'pjpersist_test'),
    u'birthday': {u'_py_type': u'datetime.date', u'ordinal': 722839},
    u'car': {u'_py_persistent_type': u'__main__.Car',
             u'make': u'Ford',
@@ -329,7 +329,7 @@ of another document:
             u'year': u'2005'},
    u'friends': {u'roy': DBRef(u'__main__.Person',
                               ObjectId('4e7dfac7e138230d3d000004'),
-                              u'mongopersist_test')},
+                              u'pjpersist_test')},
    u'name': u'Stephan Richter',
    u'phone': {u'_py_type': u'__main__.Phone',
               u'area': u'978',
@@ -406,7 +406,7 @@ objects, such as lists and dictionaries? Answer: We keep track of which
 persistent object they belong to and provide persistent implementations.
 
   >>> type(dm.root['stephan'].friends)
-   <class 'mongopersist.serialize.PersistentDict'>
+   <class 'pjpersist.serialize.PersistentDict'>
 
   >>> dm.root['stephan'].friends[u'roger'] = Person(u'Roger')
   >>> transaction.commit()
@@ -416,7 +416,7 @@ persistent object they belong to and provide persistent implementations.
 The same is true for lists:
 
   >>> type(dm.root['stephan'].visited)
-   <class 'mongopersist.serialize.PersistentList'>
+   <class 'pjpersist.serialize.PersistentList'>
 
   >>> dm.root['stephan'].visited.append('France')
   >>> transaction.commit()
@@ -493,7 +493,7 @@ There are many approaches that can be taken. The following implementation
 defines an attribute in the document as the mapping key and names a
 collection:
 
-  >>> from mongopersist import mapping
+  >>> from pjpersist import mapping
   >>> class People(mapping.MongoCollectionMapping):
   ...     __mongo_collection__ = person_cn
   ...     __mongo_mapping_key__ = 'short_name'
@@ -534,7 +534,7 @@ implemented using a serial number on the document.
 Let's reset the database and create a data manager with enabled conflict
 detection:
 
-  >>> from mongopersist import conflict, datamanager
+  >>> from pjpersist import conflict, datamanager
   >>> conn.drop_database(DBNAME)
   >>> dm2 = datamanager.MongoDataManager(
   ...     conn,
@@ -602,7 +602,7 @@ Now our changing transaction tries to commit:
   ConflictError: database conflict error
       (oid DBRef(u'__main__.Person',
                  ObjectId('4e7ddf12e138237403000000'),
-                 u'mongopersist_test'),
+                 u'pjpersist_test'),
        class Person,
        orig serial 2, cur serial 3, new serial 3)
 

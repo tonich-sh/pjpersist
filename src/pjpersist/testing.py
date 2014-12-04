@@ -15,7 +15,7 @@
 from __future__ import absolute_import
 import atexit
 import doctest
-import pymongo
+import psycopg2
 import re
 import transaction
 from zope.testing import cleanup, module, renormalizing
@@ -39,43 +39,35 @@ OPTIONFLAGS = (doctest.NORMALIZE_WHITESPACE|
                #|doctest.REPORT_NDIFF
                )
 
-DBNAME = 'mongopersist_test'
+DBNAME = 'pjpersist_test'
 
 
-def getConnection():
-    return pymongo.Connection('localhost', 27017, tz_aware=False,
-                              fsync=False, j=False)
+def getConnection(database=None):
+    if database is None:
+        return psycopg2.connect(host='localhost', port=5432)
+    return psycopg2.connect(database=database, host='localhost', port=5432)
 
-
-def cleanDB(conn, dbname):
-    db = conn[dbname]
-    for cname in db.collection_names():
-        try:
-            db.drop_collection(cname)
-        except:
-            pass
-
+def createDB():
+    dropDB()
+    with getConnection().cursor() as cur:
+        cur.execute('CREATE DATABASE %s', (DBNAME,))
 
 def dropDB():
-    getConnection().drop_database(DBNAME)
-
+    with getConnection().cursor() as cur:
+        cur.execute('DROP DATABASE %s', (DBNAME,))
 
 def setUp(test):
     module.setUp(test)
-    test.globs['conn'] = getConnection()
-    test.globs['DBNAME'] = DBNAME
-    cleanDB(test.globs['conn'], test.globs['DBNAME'])
+    test.globs['conn'] = getConnection(DBNAME)
+    createDB()
     test.globs['commit'] = transaction.commit
-    test.globs['dm'] = datamanager.MongoDataManager(
-        test.globs['conn'],
-        default_database=test.globs['DBNAME'],
-        root_database=test.globs['DBNAME'])
+    test.globs['dm'] = datamanager.PJDataManager(test.globs['conn'])
 
 
 def tearDown(test):
     module.tearDown(test)
     transaction.abort()
-    cleanDB(test.globs['conn'], test.globs['DBNAME'])
+    dropDB()
     test.globs['conn'].disconnect()
     resetCaches()
 

@@ -1,17 +1,17 @@
-mongopersist
-============
+pjpersist
+=========
 
-A python mongoDB Persistence Backend.
+A Python PostGreSQL/JSONB Persistence Backend.
 
 Providing transparent persistence of python objects.
 
-This document outlines the general capabilities of the ``mongopersist``
-package. ``mongopersist`` is a mongoDB storage implementation for persistent
-Python objects. It is *NOT* a storage for the ZODB.
+This document outlines the general capabilities of the ``pjpersist``
+package. ``pjpersist`` is a PostGreSQL/JSONB storage implementation for
+persistent Python objects. It is *NOT* a storage for the ZODB.
 
-The goal of ``mongopersist`` is to provide a data manager that serializes
-objects to mongoDB at transaction boundaries. The mongo data manager is a
-persistent data manager, which handles events at transaction boundaries (see
+The goal of ``pjpersist`` is to provide a data manager that serializes objects
+to PostGreSQL using JSONB at transaction boundaries. The PJ data manager is
+a persistent data manager, which handles events at transaction boundaries (see
 ``transaction.interfaces.IDataManager``) as well as events from the
 persistency framework (see ``persistent.interfaces.IPersistentDataManager``).
 
@@ -40,14 +40,13 @@ Let's now define a simple persistent object:
   ...     def __str__(self):
   ...         return self.name
 
-Let's create a new person and store it in mongoDB:
+Let's create a new person and store it in PostGreSQL:
 
   >>> stephan = Person(u'Stephan')
   >>> dm.root['stephan'] = stephan
 
 By default, persistent objects are stored in a collection having the Python
-path of the class.
-Let's see what got stored in mongoDB:
+path of the class. Let's see what got stored in PostGreSQL:
 
   >>> dumpCollection('__main__.Person')
   [{u'_id': ObjectId('51c0571eb25d2b2de8325726'),
@@ -73,7 +72,7 @@ Let's now add an address for Stephan. Addresses are also persistent objects:
 
   >>> stephan.address = Address('Maynard', '01754')
 
-We need to commit the transaction, to push the data to mongoDB:
+We need to commit the transaction, to push the data to PostGreSQL:
 
   >>> transaction.commit()
 
@@ -83,11 +82,11 @@ We need to commit the transaction, to push the data to mongoDB:
     u'zip': u'01754'}]
 
 As you can see, even the reference to the Address object looks nice and uses
-the standard mongoDB reference construct.
+the standard PostGreSQL reference construct.
 
   >>> dumpCollection('__main__.Person')
   [{u'_id': ObjectId('51c05819b25d2b2ea58a4e55'),
-    u'address': DBRef(u'address', ObjectId('51c05819b25d2b2ea58a4e58'), u'mongopersist_test'),
+    u'address': DBRef(u'address', ObjectId('51c05819b25d2b2ea58a4e58'), u'pjpersist_test'),
     u'birthday': None,
     u'friends': {},
     u'name': u'Stephan',
@@ -114,7 +113,7 @@ Well, let's create a phone number object for that:
 
   >>> dumpCollection('__main__.Person')
   [{u'_id': ObjectId('51c059beb25d2b3157bf5adf'),
-    u'address': DBRef(u'address', ObjectId('51c059beb25d2b3157bf5ae2'), u'mongopersist_test'),
+    u'address': DBRef(u'address', ObjectId('51c059beb25d2b3157bf5ae2'), u'pjpersist_test'),
     u'birthday': None,
     u'friends': {},
     u'name': u'Stephan',
@@ -132,15 +131,15 @@ Let's now set various attributes:
   >>> stephan.visited = (u'Germany', u'USA')
   >>> stephan.birthday = datetime.date(1980, 1, 25)
 
-Push the data to mongoDB, and dump the results:
+Push the data to PostGreSQL, and dump the results:
 
   >>> transaction.commit()
   >>> dumpCollection('__main__.Person')
   [{u'_id': ObjectId('4e7ddf12e138237403000000'),
-    u'address': DBRef(u'address', ObjectId('4e7ddf12e138237403000000'), u'mongopersist_test'),
+    u'address': DBRef(u'address', ObjectId('4e7ddf12e138237403000000'), u'pjpersist_test'),
     u'birthday': {u'_py_factory': u'datetime.date',
                   u'_py_factory_args': [Binary('\x07\xbc\x01\x19', 0)]},
-    u'friends': {u'roy': DBRef(u'__main__.Person', ObjectId('4e7ddf12e138237403000000'), u'mongopersist_test')},
+    u'friends': {u'roy': DBRef(u'__main__.Person', ObjectId('4e7ddf12e138237403000000'), u'pjpersist_test')},
     u'name': u'Stephan',
     u'phone': {u'_py_type': u'__main__.Phone',
                u'area': u'978',
@@ -182,10 +181,10 @@ Of course all properties can be retrieved as python objects:
   [u'Germany', u'USA']
 
 
-See src/mongopersist/README.txt and the other txt files in the package
+See src/pjpersist/README.txt and the other txt files in the package
 for more details.
 
 Travis: |buildstatus|_
 
-.. |buildstatus| image:: https://api.travis-ci.org/zopefoundation/mongopersist.png?branch=master
-.. _buildstatus: https://travis-ci.org/zopefoundation/mongopersist
+.. |buildstatus| image:: https://api.travis-ci.org/Shoobx/pjpersist.png?branch=master
+.. _buildstatus: https://travis-ci.org/Shoobx/pjpersist

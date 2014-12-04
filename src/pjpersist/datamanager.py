@@ -1,6 +1,7 @@
 ##############################################################################
 #
 # Copyright (c) 2011 Zope Foundation and Contributors.
+# Copyright (c) 2014 Shoobx, Inc.
 # All Rights Reserved.
 #
 # This software is subject to the provisions of the Zope Public License,
@@ -11,7 +12,7 @@
 # FOR A PARTICULAR PURPOSE.
 #
 ##############################################################################
-"""Mongo Persistent Data Manager"""
+"""PG/JSONB Persistent Data Manager"""
 from __future__ import absolute_import
 import UserDict
 import bson
@@ -21,149 +22,148 @@ import sys
 import zope.interface
 
 from zope.exceptions import exceptionformatter
-from mongopersist import conflict, interfaces, serialize
+from pjpersist import conflict, interfaces, serialize
 
-MONGO_ACCESS_LOGGING = False
-COLLECTION_LOG = logging.getLogger('mongopersist.collection')
-
-LOG = logging.getLogger(__name__)
-
-
-def process_spec(collection, spec):
-    try:
-        adapter = interfaces.IMongoSpecProcessor(None)
-    except TypeError:
-        # by default nothing is registered, handle that case
-        return spec
-
-    return adapter.process(collection, spec)
-
-
-class FlushDecorator(object):
-
-    def __init__(self, datamanager, function):
-        self.datamanager = datamanager
-        self.function = function
-
-    def __call__(self, *args, **kwargs):
-        self.datamanager.flush()
-        return self.function(*args, **kwargs)
-
-
-class ProcessSpecDecorator(object):
-
-    def __init__(self, collection, function):
-        self.collection = collection
-        self.function = function
-
-    def __call__(self, *args, **kwargs):
-        if args:
-            args = (process_spec(self.collection, args[0]),) + args[1:]
-        # find()
-        if 'spec' in kwargs:
-            kwargs['spec'] = process_spec(self.collection, kwargs['spec'])
-        # find_one()
-        elif 'spec_or_id' in kwargs:
-            kwargs['spec_or_id'] = process_spec(
-                self.collection, kwargs['spec_or_id'])
-        # find_and_modify()
-        elif 'query' in kwargs:
-            kwargs['query'] = process_spec(self.collection, kwargs['query'])
-        return self.function(*args, **kwargs)
-
-
-class LoggingDecorator(object):
-
-    # these are here to be easily patched
-    ADD_TB = True
-    TB_LIMIT = 10  # 10 should be sufficient to figure
-
-    def __init__(self, collection, function):
-        self.collection = collection
-        self.function = function
-
-    def __call__(self, *args, **kwargs):
-        if self.ADD_TB:
-            try:
-                raise ValueError('boom')
-            except:
-                # we need here exceptionformatter, otherwise __traceback_info__
-                # is not added
-                tb = ''.join(exceptionformatter.extract_stack(
-                    sys.exc_info()[2].tb_frame.f_back, limit=self.TB_LIMIT))
-        else:
-            tb = '  <omitted>'
-
-        txn = transaction.get()
-        txn = '%i - %s' % (id(txn), txn.description),
-
-        COLLECTION_LOG.debug(
-            "collection: %s.%s %s,\n TXN:%s,\n args:%r,\n kwargs:%r, \n tb:\n%s",
-            self.collection.database.name, self.collection.name,
-            self.function.__name__, txn, args, kwargs, tb)
-
-        return self.function(*args, **kwargs)
-
-
-class CollectionWrapper(object):
-
-    LOGGED_METHODS = ['insert', 'update', 'remove', 'save',
-                      'find_and_modify', 'find_one', 'find', 'count']
-    QUERY_METHODS = ['group', 'map_reduce', 'inline_map_reduce', 'find_one',
-                     'find', 'find_and_modify', 'aggregate', 'distinct', 'count']
-    PROCESS_SPEC_METHODS = ['find_and_modify', 'find_one', 'find']
-
-    def __init__(self, collection, datamanager):
-        self.__dict__['collection'] = collection
-        self.__dict__['_datamanager'] = datamanager
-
-    def find_objects(self, *args, **kw):
-        docs = self.find(*args, **kw)
-        coll = self.collection.name
-        dbname = self.collection.database.name
-        for doc in docs:
-            dbref = bson.dbref.DBRef(coll, doc['_id'], dbname)
-            self._datamanager._latest_states[dbref] = doc
-            yield self._datamanager.load(dbref)
-
-    def find_one_object(self, *args, **kw):
-        doc = self.find_one(*args, **kw)
-        coll = self.collection.name
-        dbname = self.collection.database.name
-        dbref = bson.dbref.DBRef(coll, doc['_id'], dbname)
-        self._datamanager._latest_states[dbref] = doc
-        return self._datamanager.load(dbref)
-
-    def __getattr__(self, name):
-        attr = getattr(self.collection, name)
-        if MONGO_ACCESS_LOGGING and name in self.LOGGED_METHODS:
-            attr = LoggingDecorator(self.collection, attr)
-        if name in self.QUERY_METHODS:
-            attr = FlushDecorator(self._datamanager, attr)
-        if name in self.PROCESS_SPEC_METHODS:
-            attr = ProcessSpecDecorator(self.collection, attr)
-        return attr
-
-    def __setattr__(self, name, value):
-        setattr(self.collection, name, value)
-
-    def __delattr__(self, name):
-        delattr(self.collection, name)
+#PJ_ACCESS_LOGGING = False
+#COLLECTION_LOG = logging.getLogger('pjpersist.collection')
+#
+#LOG = logging.getLogger(__name__)
+#
+#
+#class FlushDecorator(object):
+#
+#    def __init__(self, datamanager, function):
+#        self.datamanager = datamanager
+#        self.function = function
+#
+#    def __call__(self, *args, **kwargs):
+#        self.datamanager.flush()
+#        return self.function(*args, **kwargs)
+#
+#
+#class ProcessSpecDecorator(object):
+#
+#    def __init__(self, collection, function):
+#        self.collection = collection
+#        self.function = function
+#
+#    def __call__(self, *args, **kwargs):
+#        if args:
+#            args = (process_spec(self.collection, args[0]),) + args[1:]
+#        # find()
+#        if 'spec' in kwargs:
+#            kwargs['spec'] = process_spec(self.collection, kwargs['spec'])
+#        # find_one()
+#        elif 'spec_or_id' in kwargs:
+#            kwargs['spec_or_id'] = process_spec(
+#                self.collection, kwargs['spec_or_id'])
+#        # find_and_modify()
+#        elif 'query' in kwargs:
+#            kwargs['query'] = process_spec(self.collection, kwargs['query'])
+#        return self.function(*args, **kwargs)
+#
+#
+#class LoggingDecorator(object):
+#
+#    # these are here to be easily patched
+#    ADD_TB = True
+#    TB_LIMIT = 10  # 10 should be sufficient to figure
+#
+#    def __init__(self, collection, function):
+#        self.collection = collection
+#        self.function = function
+#
+#    def __call__(self, *args, **kwargs):
+#        if self.ADD_TB:
+#            try:
+#                raise ValueError('boom')
+#            except:
+#                # we need here exceptionformatter, otherwise __traceback_info__
+#                # is not added
+#                tb = ''.join(exceptionformatter.extract_stack(
+#                    sys.exc_info()[2].tb_frame.f_back, limit=self.TB_LIMIT))
+#        else:
+#            tb = '  <omitted>'
+#
+#        txn = transaction.get()
+#        txn = '%i - %s' % (id(txn), txn.description),
+#
+#        COLLECTION_LOG.debug(
+#            "collection: %s.%s %s,\n TXN:%s,\n args:%r,\n kwargs:%r, \n tb:\n%s",
+#            self.collection.database.name, self.collection.name,
+#            self.function.__name__, txn, args, kwargs, tb)
+#
+#        return self.function(*args, **kwargs)
+#
+#
+#class CollectionWrapper(object):
+#
+#    LOGGED_METHODS = ['insert', 'update', 'remove', 'save',
+#                      'find_and_modify', 'find_one', 'find', 'count']
+#    QUERY_METHODS = ['group', 'map_reduce', 'inline_map_reduce', 'find_one',
+#                     'find', 'find_and_modify', 'aggregate', 'distinct', 'count']
+#    PROCESS_SPEC_METHODS = ['find_and_modify', 'find_one', 'find']
+#
+#    def __init__(self, collection, datamanager):
+#        self.__dict__['collection'] = collection
+#        self.__dict__['_datamanager'] = datamanager
+#
+#    def find_objects(self, *args, **kw):
+#        docs = self.find(*args, **kw)
+#        coll = self.collection.name
+#        dbname = self.collection.database.name
+#        for doc in docs:
+#            dbref = bson.dbref.DBRef(coll, doc['_id'], dbname)
+#            self._datamanager._latest_states[dbref] = doc
+#            yield self._datamanager.load(dbref)
+#
+#    def find_one_object(self, *args, **kw):
+#        doc = self.find_one(*args, **kw)
+#        coll = self.collection.name
+#        dbname = self.collection.database.name
+#        dbref = bson.dbref.DBRef(coll, doc['_id'], dbname)
+#        self._datamanager._latest_states[dbref] = doc
+#        return self._datamanager.load(dbref)
+#
+#    def __getattr__(self, name):
+#        attr = getattr(self.collection, name)
+#        if PJ_ACCESS_LOGGING and name in self.LOGGED_METHODS:
+#            attr = LoggingDecorator(self.collection, attr)
+#        if name in self.QUERY_METHODS:
+#            attr = FlushDecorator(self._datamanager, attr)
+#        if name in self.PROCESS_SPEC_METHODS:
+#            attr = ProcessSpecDecorator(self.collection, attr)
+#        return attr
+#
+#    def __setattr__(self, name, value):
+#        setattr(self.collection, name, value)
+#
+#    def __delattr__(self, name):
+#        delattr(self.collection, name)
 
 
 class Root(UserDict.DictMixin):
 
-    database = 'mongopersist'
-    collection = 'persistence_root'
+    table = 'persistence_root'
 
-    def __init__(self, jar, database=None, collection=None):
+    def __init__(self, jar, table=None):
         self._jar = jar
-        if database is not None:
-            self.database = database
-        if collection is not None:
-            self.collection = collection
-        db = self._jar._conn[self.database]
-        self._collection_inst = CollectionWrapper(db[self.collection], jar)
+        if table is not None:
+            self.table = table
+        self._init_table()
+
+    def _init_table(self):
+        with self._jar._conn.cursor() as cur:
+            cur.execute(
+                "SELECT * FROM information_schema.tables where table_name=%s",
+                (self.table,))
+            if cur.rowcount:
+                return
+            cur.execute('''
+                CREATE TABLE %s (
+                    uid SERIAL PRIMARY KEY,
+                    data JSONB)
+                ''', (self.table,))
 
     def __getitem__(self, key):
         doc = self._collection_inst.find_one({'name': key})
@@ -189,17 +189,14 @@ class Root(UserDict.DictMixin):
         return [doc['name'] for doc in self._collection_inst.find()]
 
 
-class MongoDataManager(object):
-    zope.interface.implements(interfaces.IMongoDataManager)
+class PJDataManager(object):
+    zope.interface.implements(interfaces.IPJDataManager)
 
-    default_database = 'mongopersist'
-    name_map_collection = 'persistence_name_map'
+    default_database = 'pjpersist'
+    name_map_table = 'persistence_name_map'
     conflict_handler = None
 
-    def __init__(self, conn, default_database=None,
-                 root_database=None, root_collection=None,
-                 name_map_collection=None,
-                 conflict_handler_factory=conflict.NoCheckConflictHandler):
+    def __init__(self, conn, root_table=None, name_map_table=None):
         self._conn = conn
         self._reader = serialize.ObjectReader(self)
         self._writer = serialize.ObjectWriter(self)
@@ -221,17 +218,12 @@ class MongoDataManager(object):
         self._needs_to_join = True
         self._object_cache = {}
         self.annotations = {}
-        if self.conflict_handler is None:
-            self.conflict_handler = conflict_handler_factory(self)
         if default_database is not None:
             self.default_database = default_database
         if name_map_collection is not None:
             self.name_map_collection = name_map_collection
         self.transaction_manager = transaction.manager
         self.root = Root(self, root_database, root_collection)
-
-    def _get_collection(self, db_name, coll_name):
-        return self._conn[db_name][coll_name]
 
     def _get_collection_from_object(self, obj):
         db_name, coll_name = self._writer.get_collection_name(obj)
@@ -258,11 +250,11 @@ class MongoDataManager(object):
         seen = []
         # Make sure we write the object representing a document in a
         # collection and not a sub-object.
-        while getattr(obj, '_p_mongo_sub_object', False):
+        while getattr(obj, '_p_pj_sub_object', False):
             if id(obj) in seen:
                 raise interfaces.CircularReferenceError(obj)
             seen.append(id(obj))
-            obj = obj._p_mongo_doc_object
+            obj = obj._p_pj_doc_object
         return obj
 
     def get_collection(self, db_name, coll_name):
@@ -313,15 +305,16 @@ class MongoDataManager(object):
         # have the state in case we abort the transaction later.
         if obj._p_changed is None:
             self.setstate(obj)
-        # Now we remove the object from Mongo.
-        coll = self.get_collection_from_object(obj)
-        coll.remove({'_id': obj._p_oid.id})
+        # Now we remove the object from PostGreSQL.
+        table = self.get_table_from_object(obj)
+        with self._conn.cursor() as cur:
+            cur.execute('DELETE FROM %s WHERE uid = %s', table, obj._p_oid)
         if hash(obj._p_oid) in self._object_cache:
             del self._object_cache[hash(obj._p_oid)]
 
         # Edge case: The object was just added in this transaction.
         if id(obj) in self._inserted_objects:
-            # but it still had to be removed from mongo, because insert
+            # but it still had to be removed from PostGreSQL, because insert
             # inserted it just before
             del self._inserted_objects[id(obj)]
 
@@ -336,7 +329,7 @@ class MongoDataManager(object):
         # added again with some different state.
 
     def setstate(self, obj, doc=None):
-        # When reading a state from Mongo, we also need to join the
+        # When reading a state from PostGreSQL, we also need to join the
         # transaction, because we keep an active object cache that gets stale
         # after the transaction is complete and must be cleaned.
         if self._needs_to_join:
@@ -375,48 +368,13 @@ class MongoDataManager(object):
             self.conflict_handler.on_modified(obj)
 
     def abort(self, transaction):
-        # Aborting the transaction requires three steps:
-        # 1. Remove any inserted objects.
-        for obj in self._inserted_objects.values():
-            coll = self.get_collection_from_object(obj)
-            coll.remove({'_id': obj._p_oid.id})
-        # 2. Re-insert any removed objects.
-        for obj in self._removed_objects.values():
-            db_ref = obj._p_oid
-            if db_ref in self._original_states:
-                coll = self.get_collection_from_object(obj)
-                coll.insert(self._original_states[db_ref])
-                del self._original_states[db_ref]
-            else:
-                LOG.warn('Original state not found while aborting: '
-                         '%r (removed) (%s)', obj, db_ref.id if db_ref else '')
-        # 3. Reset any changed states.
-        for obj in self._modified_objects.values():
-            db_ref = obj._p_oid
-            __traceback_info__ = (obj, db_ref)
-            state = self._original_states.get(db_ref)
-            if state is None:
-                # This should not happen in a fully running environment, but
-                # the tests abort transactions often without having loaded
-                # objects through proper channels.
-                LOG.warn(
-                    'Original state not found while aborting: %r (%s)',
-                    obj, db_ref.id if db_ref else '')
-                continue
-            if self.conflict_handler.has_conflicts([obj]):
-                # If we have a conflict, we are not going to reset to the
-                # original state. (This is a policy that should be made
-                # pluggable.)
-                LOG.info(
-                    'Conflict detected while aborting: %r (%s)',
-                    obj, db_ref.id if db_ref else '')
-                continue
-            coll = self.get_collection(db_ref.database, db_ref.collection)
-            coll.update({'_id': db_ref.id}, state, True)
+        self._conn.rollback()
         self.reset()
 
     def commit(self, transaction):
-        self.conflict_handler.check_conflicts(self._registered_objects.values())
+        self._flush_objects()
+        self._conn.commit()
+        self.reset()
 
     def tpc_begin(self, transaction):
         pass
@@ -425,11 +383,10 @@ class MongoDataManager(object):
         pass
 
     def tpc_finish(self, transaction):
-        self._flush_objects()
-        self.reset()
+        self.commit(transaction)
 
     def tpc_abort(self, transaction):
         self.abort(transaction)
 
     def sortKey(self):
-        return ('MongoDataManager', 0)
+        return ('PJDataManager', 0)

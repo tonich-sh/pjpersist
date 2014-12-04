@@ -1,6 +1,7 @@
 ##############################################################################
 #
 # Copyright (c) 2011 Zope Foundation and Contributors.
+# Copyright (c) 2014 Shoobx, Inc.
 # All Rights Reserved.
 #
 # This software is subject to the provisions of the Zope Public License,
@@ -11,7 +12,7 @@
 # FOR A PARTICULAR PURPOSE.
 #
 ##############################################################################
-"""Mongo Persistence Interfaces"""
+"""PG/JSONB Persistence Interfaces"""
 from __future__ import absolute_import
 import datetime
 import decimal
@@ -20,11 +21,9 @@ import transaction.interfaces
 import types
 import zope.interface
 import zope.schema
-from bson import objectid, dbref
 
-MONGO_NATIVE_TYPES = (
-    bool, int, long, float, unicode, datetime.datetime, types.NoneType,
-    objectid.ObjectId, dbref.DBRef)
+PJ_NATIVE_TYPES = (
+    bool, int, long, float, unicode, datetime.datetime, types.NoneType)
 REFERENCE_SAFE_TYPES = (
     datetime.date, datetime.time, decimal.Decimal)
 
@@ -260,15 +259,15 @@ class IMongoConnectionPool(zope.interface.Interface):
         required=True)
 
 
-class IMongoDataManagerProvider(zope.interface.Interface):
-    """Utility to get a mongo data manager.
+class IPJDataManagerProvider(zope.interface.Interface):
+    """Utility to get a PJ data manager.
 
     Implementations of this utility ususally maintain connection information
     and ensure that there is one consistent datamanager per thread.
     """
 
-    def get():
-        """Return a mongo data manager."""
+    def get(database):
+        """Return a PJ data manager for the given database."""
 
 
 class IMongoSpecProcessor(zope.interface.Interface):
