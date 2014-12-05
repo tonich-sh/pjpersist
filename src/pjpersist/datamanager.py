@@ -40,9 +40,10 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
     ADD_TB = True
     TB_LIMIT = 10  # 10 should be sufficient to figure
 
-    def __init__(self, datamanager, *args, **kwargs):
+    def __init__(self, datamanager, flush, *args, **kwargs):
         super(PJPersistCursor, self).__init__(*args, **kwargs)
         self.datamanager = datamanager
+        self.flush = flush
 
     def log_query(self, sql, args):
         if self.ADD_TB:
@@ -67,7 +68,7 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
         if not isinstance(sql, basestring):
             sql = sql.__sqlrepr__('postgres')
         # Flush the data manager before any select.
-        if sql.strip().split()[0].lower() == 'select':
+        if self.flush and sql.strip().split()[0].lower() == 'select':
             self.datamanager.flush()
         # Very useful logging of every SQL command with tracebakc to code.
         if PJ_ACCESS_LOGGING:
@@ -90,7 +91,7 @@ class Root(UserDict.DictMixin):
         self._init_table()
 
     def _init_table(self):
-        with self._jar.getCursor() as cur:
+        with self._jar.getCursor(False) as cur:
             cur.execute(
                 "SELECT * FROM information_schema.tables where table_name=%s",
                 (self.table,))
@@ -104,7 +105,7 @@ class Root(UserDict.DictMixin):
                 ''' %self.table)
 
     def __getitem__(self, key):
-        with self._jar.getCursor() as cur:
+        with self._jar.getCursor(False) as cur:
             tbl = getattr(sb.table, self.table)
             cur.execute(
                 sb.Select(sb.Field(self.table, 'dbref'), tbl.name == key))
@@ -118,7 +119,7 @@ class Root(UserDict.DictMixin):
         dbref = self._jar.insert(value)
         if self.get(key) is not None:
             del self[key]
-        with self._jar.getCursor() as cur:
+        with self._jar.getCursor(False) as cur:
             cur.execute(
                 'INSERT INTO %s (name, dbref) VALUES (%%s, %%s)' %self.table,
                 (key, list(dbref.as_tuple()))
@@ -126,12 +127,12 @@ class Root(UserDict.DictMixin):
 
     def __delitem__(self, key):
         self._jar.remove(self[key])
-        with self._jar.getCursor() as cur:
+        with self._jar.getCursor(False) as cur:
             tbl = getattr(sb.table, self.table)
             cur.execute(sb.Delete(self.table, tbl.name == key))
 
     def keys(self):
-        with self._jar.getCursor() as cur:
+        with self._jar.getCursor(False) as cur:
             cur.execute(sb.Select(sb.Field(tbl, 'name')))
             return [doc['name'] for doc in cur.fetchall()]
 
@@ -170,9 +171,9 @@ class PJDataManager(object):
         self.transaction_manager = transaction.manager
         self.root = Root(self, root_table)
 
-    def getCursor(self):
+    def getCursor(self, flush=True):
         def factory(*args, **kwargs):
-            return PJPersistCursor(self, *args, **kwargs)
+            return PJPersistCursor(self, flush, *args, **kwargs)
         return self._conn.cursor(cursor_factory=factory)
 
     def _init_name_map_table(self):
@@ -243,18 +244,27 @@ class PJDataManager(object):
                 )
         return id
 
+    def _update_doc(self, database, table, doc, id):
+        # Insert the document into the table.
+        with self.getCursor() as cur:
+                cur.execute(
+                "UPDATE " + table + " SET data=%s WHERE id = %s",
+                (psycopg2.extras.Json(doc), id)
+                )
+        return id
+
     def _get_doc(self, database, table, id):
-        self._create_doc_table(datebase, table)
+        self._create_doc_table(database, table)
         tbl = getattr(sb.table, table)
         with self.getCursor() as cur:
             cur.execute(sb.Select(sb.Field(table, '*'), tbl.id == id))
-            return cur.fetchone()
+            return cur.fetchone()['data']
 
     def _get_doc_by_dbref(self, dbref):
         return self._get_doc(dbref.database, dbref.table, dbref.id)
 
     def _get_doc_py_type(self, database, table, id):
-        self._create_doc_table(datebase, table)
+        self._create_doc_table(database, table)
         tbl = getattr(sb.table, table)
         with self.getCursor() as cur:
             cur.execute(

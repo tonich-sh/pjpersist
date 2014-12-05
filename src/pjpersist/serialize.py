@@ -27,7 +27,6 @@ from zope.dottedname.resolve import resolve
 
 from pjpersist import interfaces
 
-IGNORE_IDENTICAL_DOCUMENTS = True
 ALWAYS_READ_FULL_DOC = True
 
 SERIALIZERS = []
@@ -40,7 +39,11 @@ PATH_RESOLVE_CACHE = {}
 def get_dotted_name(obj):
     name = obj.__module__ + '.' + obj.__name__
     # Make the name safe.
-    return name.replace('.', '_dot_')
+    name = name.replace('.', '_dot_')
+    # XXX: Circumventing a bug in sqlobject.sqlbuilder that prohibits names to
+    # start with _.
+    name = 'u'+name if name.startswith('_') else name
+    return name
 
 class PersistentDict(persistent.dict.PersistentDict):
     _p_pj_sub_object = True
@@ -332,14 +335,8 @@ class ObjectWriter(object):
             # session, gets the same instance.
             self._jar._object_cache[hash(obj._p_oid)] = obj
         else:
-            # We only want to store a new version of the document, if it is
-            # different. We have to delegate that task to the conflict
-            # handler, since it might know about meta-fields that need to be
-            # ignored.
-            orig_doc = self._jar._latest_states.get(obj._p_oid)
-            if (not IGNORE_IDENTICAL_DOCUMENTS):
-                self._jar._insert_doc(db_name, table_name, doc, obj._p_oid.id)
-                stored = True
+            self._jar._update_doc(db_name, table_name, doc, obj._p_oid.id)
+            stored = True
 
         if stored:
             # Make sure that the doc is added to the latest states.
@@ -358,6 +355,7 @@ class ObjectReader(object):
 
     def simple_resolve(self, path):
         path = path.replace('_dot_', '.')
+        path = path[1:] if path.startswith('u_') else path
         # We try to look up the klass from a cache. The important part here is
         # that we also cache lookup failures as None, since they actually
         # happen more frequently than a hit due to an optimization in the

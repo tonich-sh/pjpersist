@@ -20,15 +20,16 @@ import re
 import transaction
 from zope.testing import cleanup, module, renormalizing
 
-from pjpersist import datamanager, serialize
+from pjpersist import datamanager, serialize, serializers
 
 checker = renormalizing.RENormalizing([
-    (re.compile(r'datetime.datetime(.*)'),
+    # Date/Time objects
+    (re.compile(r'datetime.datetime\(.*\)'),
      'datetime.datetime(2011, 10, 1, 9, 45)'),
-    (re.compile(r"ObjectId\('[0-9a-f]{24}'\)"),
-     "ObjectId('4e7ddf12e138237403000000')"),
-    (re.compile(r"u'[0-9a-f]{24}'"),
-     "u'4e7ddf12e138237403000000'"),
+    # UUIDs
+    (re.compile(r"'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'"),
+     "'00000000-0000-0000-0000-000000000000'"),
+    # Object repr output.
     (re.compile(r"object at 0x[0-9a-f]*>"),
      "object at 0x001122>"),
     ])
@@ -70,6 +71,9 @@ def dropDB():
 
 def setUp(test):
     module.setUp(test)
+    serialize.SERIALIZERS = [serializers.DateTimeSerializer(),
+                             serializers.DateSerializer(),
+                             serializers.TimeSerializer()]
     createDB()
     test.globs['conn'] = getConnection(DBNAME)
     test.globs['commit'] = transaction.commit
@@ -82,6 +86,7 @@ def tearDown(test):
     test.globs['conn'].close()
     dropDB()
     resetCaches()
+    serialize.SERIALIZERS = []
 
 
 def resetCaches():

@@ -35,6 +35,17 @@ def setUp(test):
         exceptionformatter.DEBUG_EXCEPTION_FORMATTER
     exceptionformatter.DEBUG_EXCEPTION_FORMATTER = 0
 
+    def dumpTable(table):
+        with test.globs['dm'].getCursor() as cur:
+            cur.execute('SELECT * FROM ' + table)
+            pprint([dict(e) for e in cur.fetchall()])
+    test.globs['dumpTable'] = dumpTable
+
+    def fetchone(table, clause=None):
+        with test.globs['dm'].getCursor(False) as cur:
+            cur.execute('SELECT * FROM ' + table)
+            return cur.fetchone()
+    test.globs['fetchone'] = fetchone
 
 def tearDown(test):
     testing.tearDown(test)
@@ -45,14 +56,8 @@ def tearDown(test):
 def setUpRST(test):
     # add more stuff to globals to have less cruft around in README.rst
     setUp(test)
-
-    # db = test.globs['conn'][test.globs['DBNAME']]
-    # def dumpCollection(coll):
-    #     pprint(list(db[coll].find()))
-
     test.globs['datetime'] = datetime
     test.globs['pprint'] = pprint
-    #test.globs['dumpCollection'] = dumpCollection
     test.globs['ReprMixin'] = ReprMixin
 
 

@@ -36,7 +36,7 @@ Let's now define a simple persistent object:
   ...         self.visited = visited
   ...         self.phone = phone
   ...         self.birthday = birthday
-  ...         self.today = datetime.datetime.now()
+  ...         self.today = datetime.date(2014, 5, 14)
   ...
   ...     def __str__(self):
   ...         return self.name
@@ -68,35 +68,38 @@ Python path of the class:
   >>> from pjpersist import serialize
   >>> person_cn = serialize.get_dotted_name(Person)
   >>> person_cn
-  '__main___dot_Person'
+  'u__main___dot_Person'
 
-  >>> import pprint
-  >>> cur = dm.getCursor()
-  >>> cur.execute('SELECT * FROM ' + person_cn)
-  >>> pprint.pprint(cur.fetchall())
-  [{u'_id': ObjectId('4e7ddf12e138237403000000'),
-    u'address': None,
-    u'birthday': None,
-    u'friends': {},
-    u'name': u'Stephan',
-    u'phone': None,
-    u'today': datetime.datetime(2011, 10, 1, 9, 45),
-    u'visited': []}]
+  >>> dumpTable(person_cn)
+  [{'data': {u'address': None,
+             u'birthday': None,
+             u'friends': {},
+             u'name': u'Stephan',
+             u'phone': None,
+             u'today': {u'_py_type': u'datetime.date', u'ordinal': 735367},
+             u'visited': []},
+    'id': '5d657d28-2f41-4fee-8b0e-19f279e72365'}]
+
 
 As you can see, the stored document for the person looks very mongoDB. But oh
 no, I forgot to specify the full name for Stephan. Let's do that:
 
   >>> dm.root['stephan'].name = u'Stephan Richter'
+  >>> dm.root['stephan']._p_changed
+  True
 
 This time, the data is not automatically saved:
 
-  >>> conn[DBNAME][person_cn].find_one()['name']
+  >>> fetchone(person_cn)['data']['name']
   u'Stephan'
 
 So we have to commit the transaction first:
 
+  >>> dm.root['stephan']._p_changed
+  True
   >>> transaction.commit()
-  >>> conn[DBNAME][person_cn].find_one()['name']
+  >>> dm.root['stephan']._p_changed
+  >>> fetchone(person_cn)['data']['name']
   u'Stephan Richter'
 
 Let's now add an address for Stephan. Addresses are also persistent objects:
