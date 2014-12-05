@@ -352,7 +352,7 @@ class PJDataManager(object):
         # Now we remove the object from PostGreSQL.
         table = self.get_table_from_object(obj)
         with self.getCursor() as cur:
-            cur.execute('DELETE FROM %s WHERE uid = %s', table, obj._p_oid.id)
+            cur.execute('DELETE FROM %s WHERE id = %s', table, obj._p_oid.id)
         if hash(obj._p_oid) in self._object_cache:
             del self._object_cache[hash(obj._p_oid)]
 
