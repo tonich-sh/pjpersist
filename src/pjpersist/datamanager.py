@@ -261,7 +261,8 @@ class PJDataManager(object):
         tbl = getattr(sb.table, table)
         with self.getCursor() as cur:
             cur.execute(sb.Select(sb.Field(table, '*'), tbl.id == id))
-            return cur.fetchone()['data']
+            res = cur.fetchone()
+            return res['data'] if res is not None else None
 
     def _get_doc_by_dbref(self, dbref):
         return self._get_doc(dbref.database, dbref.table, dbref.id)
@@ -273,7 +274,8 @@ class PJDataManager(object):
             cur.execute(
                 sb.Select(sb.Field(table, interfaces.PY_TYPE_ATTR_NAME),
                           tbl.id == id))
-            return cur.fetchone()[interfaces.PY_TYPE_ATTR_NAME]
+            res = cur.fetchone()
+            return res[interfaces.PY_TYPE_ATTR_NAME] if res is not None else None
 
     def _get_table_from_object(self, obj):
         return self._writer.get_table_name(obj)
