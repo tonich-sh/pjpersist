@@ -335,7 +335,7 @@ class PJDataManager(object):
             self.transaction_manager.get().join(self)
             self._needs_to_join = False
         if obj._p_oid is not None:
-            raise ValueError('Object has already an OID.', obj)
+            raise ValueError('Object._p_oid is already set.', obj)
         res = self._writer.store(obj, id=oid)
         obj._p_changed = False
         self._object_cache[hash(obj._p_oid)] = obj
@@ -344,7 +344,7 @@ class PJDataManager(object):
 
     def remove(self, obj):
         if obj._p_oid is None:
-            raise ValueError('Object does not have OID.', obj)
+            raise ValueError('Object._p_oid is None.', obj)
         # If the object is still in the ghost state, let's load it, so that we
         # have the state in case we abort the transaction later.
         if obj._p_changed is None:
