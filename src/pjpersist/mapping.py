@@ -43,7 +43,7 @@ class PJTableMapping(UserDict.DictMixin, object):
                 self.__pj_table__,
                 id,
                 self.__pj_database__ or self._pj_jar.database)
-        return self._pj_jar._reader.get_ghost(dbref)
+        return self._pj_jar.load(dbref)
 
     def __setitem__(self, key, value):
         # Even though setting the attribute should register the object with
