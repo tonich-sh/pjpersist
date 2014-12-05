@@ -36,7 +36,7 @@ AVAILABLE_NAME_MAPPINGS = set()
 PATH_RESOLVE_CACHE = {}
 
 
-def get_dotted_name(obj, escape=True):
+def get_dotted_name(obj, escape=False):
     name = obj.__module__ + '.' + obj.__name__
     if not escape:
         return name
@@ -86,13 +86,13 @@ class DBRef(object):
         self.table = table
         self.id = id
         self.database = database
-        self.hash = hash(str(self.database)+self.table+self.id)
+        self.hash = hash(str(self.database)+str(self.table)+str(self.id))
 
     def __hash__(self):
         return self.hash
 
     def __repr__(self):
-        return '<DBRef db=%s table=%s id=%s>' %(self.as_tuple())
+        return 'DBRef(%r, %r, %r)' %(self.table, self.id, self.database)
     def as_tuple(self):
         return self.database, self.table, self.id
 
@@ -136,7 +136,7 @@ class ObjectWriter(object):
         try:
             table_name = getattr(obj, interfaces.TABLE_ATTR_NAME)
         except AttributeError:
-            return db_name, get_dotted_name(obj.__class__)
+            return db_name, get_dotted_name(obj.__class__, True)
         # If the object writer is run without a datamager, there is no need to
         # try to dump the table info into the database.
         if self._jar is None:
@@ -144,7 +144,7 @@ class ObjectWriter(object):
         # Make sure that the table_name to class path mapping is available.
         # Let's make sure we do the lookup only once, since the info will
         # never change.
-        path = get_dotted_name(obj.__class__)
+        path = get_dotted_name(obj.__class__, True)
         map = {'table': table_name, 'database': db_name, 'path': path}
         map_hash = (db_name, table_name, path)
         if map_hash in AVAILABLE_NAME_MAPPINGS:
@@ -207,11 +207,12 @@ class ObjectWriter(object):
                args == (obj.__class__, object, None):
             # This is the simple case, which means we can produce a nicer
             # JSONB output.
-            state = {'_py_type': get_dotted_name(args[0], escape=False)}
+            state = {'_py_type': get_dotted_name(args[0])}
         elif factory == copy_reg.__newobj__ and args == (obj.__class__,):
             # Another simple case for persistent objects that do not want
             # their own document.
-            state = {interfaces.PY_TYPE_ATTR_NAME: get_dotted_name(args[0])}
+            state = {
+                interfaces.PY_TYPE_ATTR_NAME: get_dotted_name(args[0])}
         else:
             state = {'_py_factory': get_dotted_name(factory),
                      '_py_factory_args': self.get_state(args, obj, seen)}
@@ -320,6 +321,12 @@ class ObjectWriter(object):
     def store(self, obj, ref_only=False, id=None):
         __traceback_info__ = (obj, ref_only)
 
+        # If it is the first time that this type of object is stored, getting
+        # the table name has the side affect of telling the class whether it
+        # has to store its Python type as well. So, do not remove, even if the
+        # data is not used right away,
+        db_name, table_name = self.get_table_name(obj)
+
         if ref_only:
             # We only want to get OID quickly. Trying to reduce the full state
             # might cause infinite recursion loop. (Example: 2 new objects
@@ -335,7 +342,6 @@ class ObjectWriter(object):
         if getattr(obj, interfaces.STORE_TYPE_ATTR_NAME, False):
             doc[interfaces.PY_TYPE_ATTR_NAME] = get_dotted_name(obj.__class__)
 
-        db_name, table_name = self.get_table_name(obj)
         stored = False
         if obj._p_oid is None:
             doc_id = self._jar._insert_doc(db_name, table_name, doc, id)
@@ -411,9 +417,9 @@ class ObjectReader(object):
                 pytype = self._jar._get_doc_py_type(
                     dbref.database, dbref.table, dbref.id)
                 obj_doc = {interfaces.PY_TYPE_ATTR_NAME: pytype}
-            #if obj_doc is None:
-            #    # There is no document for this reference in the database.
-            #    raise ImportError(dbref)
+            if obj_doc is None:
+                # There is no document for this reference in the database.
+                raise ImportError(dbref)
             if interfaces.PY_TYPE_ATTR_NAME in obj_doc:
                 klass = self.simple_resolve(
                     obj_doc[interfaces.PY_TYPE_ATTR_NAME])
