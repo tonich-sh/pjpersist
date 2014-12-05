@@ -106,7 +106,7 @@ class Root(UserDict.DictMixin):
 
     def __getitem__(self, key):
         with self._jar.getCursor(False) as cur:
-            tbl = getattr(sb.table, self.table)
+            tbl = sb.Table(self.table)
             cur.execute(
                 sb.Select(sb.Field(self.table, 'dbref'), tbl.name == key))
             if not cur.rowcount:
@@ -128,12 +128,12 @@ class Root(UserDict.DictMixin):
     def __delitem__(self, key):
         self._jar.remove(self[key])
         with self._jar.getCursor(False) as cur:
-            tbl = getattr(sb.table, self.table)
+            tbl = sb.Table(self.table)
             cur.execute(sb.Delete(self.table, tbl.name == key))
 
     def keys(self):
         with self._jar.getCursor(False) as cur:
-            tbl = getattr(sb.table, self.table)
+            tbl = sb.Table(self.table)
             cur.execute(sb.Select(sb.Field(self.table, 'name')))
             return [doc['name'] for doc in cur.fetchall()]
 
@@ -193,7 +193,7 @@ class PJDataManager(object):
                 ''' % self.name_map_table)
 
     def _get_name_map_entry(self, database, table, path=None):
-        name_map = getattr(sb.table, self.name_map_table)
+        name_map = sb.Table(self.name_map_table)
         clause = (name_map.database == database) & (name_map.tbl == table)
         if path is not None:
             clause &= (name_map.path == path)
@@ -258,7 +258,7 @@ class PJDataManager(object):
 
     def _get_doc(self, database, table, id):
         self._create_doc_table(database, table)
-        tbl = getattr(sb.table, table)
+        tbl = sb.Table(table)
         with self.getCursor() as cur:
             cur.execute(sb.Select(sb.Field(table, '*'), tbl.id == id))
             res = cur.fetchone()
@@ -269,7 +269,7 @@ class PJDataManager(object):
 
     def _get_doc_py_type(self, database, table, id):
         self._create_doc_table(database, table)
-        tbl = getattr(sb.table, table)
+        tbl = sb.Table(table)
         with self.getCursor() as cur:
             cur.execute(
                 sb.Select(sb.Field(table, interfaces.PY_TYPE_ATTR_NAME),
