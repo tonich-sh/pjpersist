@@ -11,11 +11,10 @@
 # FOR A PARTICULAR PURPOSE.
 #
 ##############################################################################
-"""Mongo  Tests"""
+"""PJ Data Manager Tests"""
 import doctest
 import persistent
 import transaction
-#from bson import dbref, objectid
 from pprint import pprint
 
 from pjpersist import interfaces, serialize, testing, datamanager
@@ -31,7 +30,7 @@ class Foo(persistent.Persistent):
         return '<%s %s>' %(self.__class__.__name__, self.name)
 
 class Super(persistent.Persistent):
-    _p_mongo_collection = 'Super'
+    _p_pj_table = 'Super'
 
     def __init__(self, name=None):
         self.name = name
@@ -45,7 +44,7 @@ class Sub(Super):
 
 
 class Bar(persistent.Persistent):
-    _p_mongo_sub_object = True
+    _p_pj_sub_object = True
 
     def __init__(self, name=None):
         super(Bar, self).__init__()
@@ -68,11 +67,11 @@ def doctest_Root():
     r"""Root: General Test
 
     This class represents the root(s) of the object tree. All roots are stored
-    in a specified collection. Since the rooted object needs to immediately
+    in a specified table. Since the rooted object needs to immediately
     provide a data manager (jar), the operations on the DB root are not art of
     the transaction mechanism.
 
-      >>> root = datamanager.Root(dm, DBNAME, 'proot')
+      >>> root = datamanager.Root(dm, 'proot')
 
     Initially the root is empty:
 
@@ -84,7 +83,7 @@ def doctest_Root():
       >>> foo = Foo()
       >>> root['foo'] = foo
       >>> root.keys()
-      [u'foo']
+      ['foo']
       >>> root['foo'] == foo
       True
 
@@ -93,7 +92,7 @@ def doctest_Root():
       >>> foo2 = Foo()
       >>> root['foo'] = foo2
       >>> root.keys()
-      [u'foo']
+      ['foo']
       >>> root['foo'] == foo
       False
 
@@ -104,110 +103,44 @@ def doctest_Root():
       []
     """
 
-def doctest_MongoDataManager_get_collection():
-    r"""MongoDataManager: get_collection(db_name, coll_name)
+def doctest_PJDataManager_get_table_from_object():
+    r"""PJDataManager: _get_table_from_object(obj)
 
-    Get the collection given the DB and collection name.
-
-      >>> foo = Foo('1')
-      >>> foo_ref = dm.insert(foo)
-      >>> dm.reset()
-
-      >>> coll = dm.get_collection(
-      ...     DBNAME, 'pjpersist.tests.test_datamanager.Foo')
-
-    We are returning a collection wrapper instead, so that we can flush the
-    data before any method involving a query.
-
-      >>> coll
-      <pjpersist.datamanager.CollectionWrapper object at 0x19e47d0>
-      >>> coll.collection
-      Collection(Database(Connection('localhost', 27017), u'pjpersist_test'),
-                 u'pjpersist.tests.test_datamanager.Foo')
-
-    Let's now make a query:
-
-      >>> tuple(coll.find())
-      ({u'_id': ObjectId('4f5c1bf537a08e2ea6000000'), u'name': u'1'},)
-    """
-
-def doctest_MongoDataManager_get_collection_from_object():
-    r"""MongoDataManager: get_collection_from_object(obj)
-
-    Get the collection for an object.
+    Get the table for an object.
 
       >>> foo = Foo('1')
       >>> foo_ref = dm.insert(foo)
       >>> dm.reset()
 
-      >>> coll = dm.get_collection_from_object(foo)
+      >>> dbname, table = dm._get_table_from_object(foo)
 
-    We are returning a collection wrapper instead, so that we can flush the
-    data before any method involving a query.
+    We are returning the database and table name pair.
 
-      >>> coll
-      <pjpersist.datamanager.CollectionWrapper object at 0x19e47d0>
-
-      >>> coll.collection
-      Collection(Database(Connection('localhost', 27017), u'pjpersist_test'),
-                 u'pjpersist.tests.test_datamanager.Foo')
-
-    Let's make sure that modifying attributes is done on the original
-    collection:
-
-      >>> coll.foo = 1
-      >>> coll.collection.foo
-      1
-      >>> coll.foo
-      1
-      >>> del coll.foo
-
-    Let's now try the real functionality behind the wrapper. So we are in a
-    transaction and modify an object:
-
-      >>> foo_new = dm.load(foo_ref)
-      >>> foo_new.name = '2'
-
-    If we do not use the wrapper, the change is not visible:
-
-      >>> tuple(dm._get_collection_from_object(foo_new).find())
-      ({u'_id': ObjectId('4f5c1bf537a08e2ea6000000'), u'name': u'1'},)
-
-    But if we use the wrapper, the change gets flushed first:
-
-      >>> tuple(dm.get_collection_from_object(foo_new).find())
-      ({u'_id': ObjectId('4f5c1bf537a08e2ea6000000'), u'name': u'2'},)
-
-    Of course, aborting the transaction gets us back to the original state:
-
-      >>> dm.abort(transaction.get())
-      >>> tuple(dm._get_collection_from_object(foo_new).find())
-      ({u'_id': ObjectId('4f5c1bf537a08e2ea6000000'), u'name': u'1'},)
+      >>> dbname, table
+      ('pjpersist_test', 'pjpersist_dot_tests_dot_test_datamanager_dot_Foo')
     """
 
-def doctest_MongoDataManager_object_dump_load_reset():
-    r"""MongoDataManager: dump(), load(), reset()
+def doctest_PJDataManager_object_dump_load_reset():
+    r"""PJDataManager: dump(), load(), reset()
 
-    The Mongo Data Manager is a persistent data manager that manages object
-    states in a Mongo database accross Python transactions.
+    The PJ Data Manager is a persistent data manager that manages object
+    states in a PostGreSQL database accross Python transactions.
 
     There are several arguments to create the data manager, but only the
-    pymongo connection is required:
+    psycopg2 connection is required:
 
-      >>> dm = datamanager.MongoDataManager(
+      >>> dm = datamanager.PJDataManager(
       ...     conn,
-      ...     default_database = DBNAME,
-      ...     root_database = DBNAME,
-      ...     root_collection = 'proot',
-      ...     name_map_collection = 'coll_pypath_map')
+      ...     root_table = 'proot',
+      ...     name_map_table = 'coll_pypath_map')
 
     There are two convenience methods that let you serialize and de-serialize
     objects explicitly:
 
       >>> foo = Foo()
       >>> dm.dump(foo)
-      DBRef('pjpersist.tests.test_datamanager.Foo',
-            ObjectId('4eb2eb7437a08e0156000000'),
+      DBRef('pjpersist_dot_tests_dot_test_datamanager_dot_Foo',
+            u'00000000-0000-0000-0000-000000000000',
             'pjpersist_test')
 
     When the object is modified, ``dump()`` will remove it from the list of
@@ -239,143 +172,29 @@ def doctest_MongoDataManager_object_dump_load_reset():
       >>> foo._p_oid = foo2._p_oid
     """
 
-def doctest_MongoDataManager_dump_only_on_real_change():
-    r"""MongoDataManager: dump(): dump on real change only.
 
-    The data manager only writes data when we actually have a difference in
-    state.
-
-    We have to use a serial conflict handler, otherwise it is hard to check
-    whether data was written.
-
-      >>> dm.conflict_handler = conflict.SimpleSerialConflictHandler(dm)
-
-    Let's now add an object:
-
-      >>> foo = Foo('foo')
-      >>> foo_ref = dm.insert(foo)
-      >>> dm.tpc_finish(None)
-
-      >>> coll = dm._get_collection_from_object(foo)
-      >>> coll.find_one({})
-      {u'_id': ObjectId('...'), u'_py_serial': 1, u'name': u'foo'}
-
-    So the original state is in. Let's now modify an object:
-
-      >>> foo = dm.load(foo_ref)
-      >>> foo.name = 'Foo'
-      >>> foo._p_changed
-      True
-      >>> dm.tpc_finish(None)
-
-      >>> coll.find_one({})
-      {u'_id': ObjectId('...'), u'_py_serial': 2, u'name': u'Foo'}
-
-    If we now modify the object again, but write the same value, the state
-    should not be written to Mongo.
-
-      >>> foo = dm.load(foo_ref)
-      >>> foo.name = 'Foo'
-      >>> foo._p_changed
-      True
-      >>> dm.tpc_finish(None)
-
-      >>> coll.find_one({})
-      {u'_id': ObjectId('...'), u'_py_serial': 2, u'name': u'Foo'}
-
-    Let's make sure everything also works when we flush the transaction in the
-    middle.
-
-      >>> foo = dm.load(foo_ref)
-      >>> foo.name = 'fuh'
-      >>> dm.flush()
-      >>> coll.find_one({})
-      {u'_id': ObjectId('...'), u'_py_serial': 3, u'name': u'fuh'}
-
-      >>> foo._p_changed
-      False
-      >>> foo.name = 'fuh'
-      >>> foo._p_changed
-      True
-
-      >>> dm.tpc_finish(None)
-      >>> coll.find_one({})
-      {u'_id': ObjectId('...'), u'_py_serial': 3, u'name': u'fuh'}
-    """
-
-def doctest_MongoDataManager_dump_only_on_real_change_no_py_serial():
-    r"""MongoDataManager: dump(): dump on real change only.
-
-    Quirk: some objects might not have _py_serial in their state
-
-    The data manager only writes data when we actually have a difference in
-    state.
-
-    We have to use a serial conflict handler, otherwise it is hard to check
-    whether data was written.
-
-      >>> dm.conflict_handler = conflict.SimpleSerialConflictHandler(dm)
-
-    Let's now add an object:
-
-      >>> foo = Foo('foo')
-      >>> foo_ref = dm.insert(foo)
-      >>> dm.tpc_finish(None)
-
-      >>> coll = dm._get_collection_from_object(foo)
-      >>> state = coll.find_one({})
-      >>> state
-      {u'_id': ObjectId('...'), u'_py_serial': 1, u'name': u'foo'}
-
-      >>> del state['_py_serial']
-      >>> coll.save(state)
-      ObjectId('...')
-
-      >>> coll.find_one({})
-      {u'_id': ObjectId('...'), u'name': u'foo'}
-
-    So the original state is in. Let's now modify an object:
-
-      >>> foo = dm.load(foo_ref)
-      >>> foo.name = 'Foo'
-      >>> foo._p_changed
-      True
-      >>> dm.tpc_finish(None)
-
-    _py_serial gets added silently, without an exception
-
-      >>> coll.find_one({})
-      {u'_id': ObjectId('...'), u'_py_serial': 1, u'name': u'Foo'}
-
-    """
-
-
-def doctest_MOngoDataManager_insertWithExplicitId():
+def doctest_PJDataManager_insertWithExplicitId():
     """
     Objects can be inserted by specifying new object id explicitly.
 
       >>> foo = Foo('foo')
-      >>> foo_ref = dm.insert(foo, "foo")
+      >>> foo_ref = dm.insert(foo, "00000000-0000-0000-0000-000000000001")
       >>> dm.tpc_finish(None)
 
     Now, Foo object should be have the provided id
 
       >>> foo._p_oid.id
-      'foo'
+      '00000000-0000-0000-0000-000000000001'
 
   """
 
 
-def doctest_MongoDataManager_flush():
-    r"""MongoDataManager: flush()
+def doctest_PJDataManager_flush():
+    r"""PJDataManager: flush()
 
-    This method writes all registered objects to Mongo. It can be used at any
-    time during the transaction when a dump is necessary, but is also used at
-    the end of the transaction to dump all remaining objects.
-
-    We also want to test the effects of conflict detection:
-
-      >>> dm.conflict_handler = conflict.SimpleSerialConflictHandler(dm)
+    This method writes all registered objects to PsotGreSQL. It can be used at
+    any time during the transaction when a dump is necessary, but is also used
+    at the end of the transaction to dump all remaining objects.
 
     Let's now add an object to the database and reset the manager like it is
     done at the end of a transaction:
@@ -393,8 +212,6 @@ def doctest_MongoDataManager_flush():
 
       >>> dm._registered_objects.values()
       [<Foo Foo>]
-      >>> foo_new._p_serial
-      '\x00\x00\x00\x00\x00\x00\x00\x01'
 
     Let's now flush the registered objects:
 
@@ -409,11 +226,6 @@ def doctest_MongoDataManager_flush():
         >>> id(dm.load(foo._p_oid)) == id(foo_new)
         True
 
-    * The ``_p_serial`` is increased by one.
-
-        >>> foo_new._p_serial
-        '\x00\x00\x00\x00\x00\x00\x00\x02'
-
     * The object is removed from the registered objects and the ``_p_changed``
       flag is set to ``False``.
 
@@ -421,25 +233,10 @@ def doctest_MongoDataManager_flush():
         {}
         >>> foo_new._p_changed
         False
-
-    * Before flushing, potential conflicts must be detected as it is done before
-      committing a transaction.
-
-        >>> foo_new._p_serial = '\x00\x00\x00\x00\x00\x00\x00\x01'
-        >>> foo_new.name = 'Foo'
-        >>> dm.flush()
-        Traceback (most recent call last):
-        ...
-        ConflictError: database conflict error
-            (oid DBRef('pjpersist.tests.test_datamanager.Foo',
-                       ObjectId('4e7ddf12e138237403000000'),
-                       'pjpersist_test'),
-             class Foo,
-             orig serial 1, cur serial 2, new serial 2)
     """
 
-def doctest_MongoDataManager_insert():
-    r"""MongoDataManager: insert(obj)
+def doctest_PJDataManager_insert():
+    r"""PJDataManager: insert(obj)
 
     This method inserts an object into the database.
 
@@ -456,7 +253,7 @@ def doctest_MongoDataManager_insert():
       >>> dm._inserted_objects.values()
       [<Foo foo>]
 
-    Let's make sure it is really in Mongo:
+    Let's make sure it is really in PostGreSQL:
 
       >>> dm.reset()
       >>> foo_new = dm.load(foo_ref)
@@ -468,7 +265,7 @@ def doctest_MongoDataManager_insert():
       >>> dm.insert(foo_new)
       Traceback (most recent call last):
       ...
-      ValueError: ('Object has already an OID.', <Foo foo>)
+      ValueError: ('Object._p_oid is already set.', <Foo foo>)
 
     Finally, registering a new object will not trigger an insert, but only
     schedule the object for writing. This is done, since sometimes objects are
@@ -483,32 +280,17 @@ def doctest_MongoDataManager_insert():
 
     But storing works as expected (flush is implicit before find):
 
-      >>> tuple(dm.get_collection_from_object(foo2).find())
-      ({u'_id': ObjectId('4f5c443837a08e37bf000000'), u'name': u'foo'},
-       {u'_id': ObjectId('4f5c443837a08e37bf000001'), u'name': u'Foo 2'})
-    """
-
-def doctest_MongoDataManager_insert_conflict_detection():
-    r"""MongoDataManager: insert(obj): Conflict Detection.
-
-    This test ensures that if the datamanager has conflict detection turned
-    on, all the needed helper fields are written.
-
-      >>> dm.conflict_handler = conflict.SimpleSerialConflictHandler(dm)
-      >>> foo = Foo('foo')
-      >>> foo_ref = dm.insert(foo)
-
-    Let's check that all the fields are there:
-
-      >>> coll = dm.get_collection_from_object(foo)
-      >>> coll.find_one({})
-      {u'_id': ObjectId('4f74837237a08e186f000000'), u'_py_serial': 1,
-       u'name': u'foo'}
+      >>> dm.flush()
+      >>> dumpTable(dm._get_table_from_object(foo2)[1])
+      [{'data': {u'name': u'foo'},
+        'id': 'd9c7ccfb-aa8e-42b8-a33e-f7c8636dbfec'},
+       {'data': {u'name': u'Foo 2'},
+        'id': 'c975b0f0-3385-4572-bdfb-5445858a8470'}]
     """
 
 
-def doctest_MongoDataManager_remove():
-    r"""MongoDataManager: remove(obj)
+def doctest_PJDataManager_remove():
+    r"""PJDataManager: remove(obj)
 
     This method removes an object from the database.
 
@@ -521,10 +303,10 @@ def doctest_MongoDataManager_remove():
       >>> foo_new = dm.load(foo_ref)
       >>> dm.remove(foo_new)
 
-    The object is removed from the collection immediately:
+    The object is removed from the table immediately:
 
-      >>> tuple(dm._get_collection_from_object(foo).find())
-      ()
+      >>> dumpTable(dm._get_table_from_object(foo)[1])
+      []
 
     Also, the object is added to the list of removed objects:
 
@@ -535,7 +317,7 @@ def doctest_MongoDataManager_remove():
 
       >>> dm.remove(Foo('Foo 2'))
       Traceback (most recent call last):
-      ValueError: ('Object does not have OID.', <Foo Foo 2>)
+      ValueError: ('Object._p_oid is None.', <Foo Foo 2>)
 
     There is an edge case, if the object is inserted and removed in the same
     transaction:
@@ -545,9 +327,9 @@ def doctest_MongoDataManager_remove():
       >>> foo3_ref = dm.insert(foo3)
       >>> dm.remove(foo3)
 
-    In this case, the object is removed from Mongo and from the inserted object
-    list, but it is still added to removed object list, just in case we know if
-    it was removed.
+    In this case, the object is removed from PostGreSQL and from the inserted
+    object list, but it is still added to removed object list, just in case we
+    know if it was removed.
 
       >>> dm._inserted_objects
       {}
@@ -557,8 +339,8 @@ def doctest_MongoDataManager_remove():
     """
 
 
-def doctest_MongoDataManager_insert_remove():
-    r"""MongoDataManager: insert and remove in the same transaction
+def doctest_PJDataManager_insert_remove():
+    r"""PJDataManager: insert and remove in the same transaction
 
     Let's insert an object:
 
@@ -574,15 +356,15 @@ def doctest_MongoDataManager_insert_remove():
       >>> dm._removed_objects.values()
       [<Foo foo>]
 
-      >>> tuple(dm._get_collection_from_object(foo).find())
-      ()
+      >>> dumpTable(dm._get_table_from_object(foo)[1])
+      []
 
       >>> dm.reset()
 
     """
 
-def doctest_MongoDataManager_insert_remove_modify():
-    r"""MongoDataManager: insert and remove in the same transaction
+def doctest_PJDataManager_insert_remove_modify():
+    r"""PJDataManager: insert and remove in the same transaction
 
     Let's insert an object:
 
@@ -604,15 +386,15 @@ def doctest_MongoDataManager_insert_remove_modify():
       >>> dm._registered_objects.values()
       []
 
-      >>> tuple(dm._get_collection_from_object(foo).find())
-      ()
+      >>> dumpTable(dm._get_table_from_object(foo)[1])
+      []
 
       >>> dm.reset()
 
     """
 
-def doctest_MongoDataManager_remove_modify_flush():
-    r"""MongoDataManager: An object is modified after removal.
+def doctest_PJDataManager_remove_modify_flush():
+    r"""PJDataManager: An object is modified after removal.
 
     Let's insert an object:
 
@@ -637,15 +419,14 @@ def doctest_MongoDataManager_remove_modify_flush():
     restore the object.
 
       >>> dm._flush_objects()
-      >>> tuple(dm._get_collection_from_object(foo).find())
-      ()
-
+      >>> dumpTable(dm._get_table_from_object(foo)[1])
+      []
       >>> dm.reset()
 
     """
 
-def doctest_MongoDataManager_remove_flush_modify():
-    r"""MongoDataManager: An object is removed, DM flushed, object modified
+def doctest_PJDataManager_remove_flush_modify():
+    r"""PJDataManager: An object is removed, DM flushed, object modified
 
     Let's insert an object:
 
@@ -664,8 +445,8 @@ def doctest_MongoDataManager_remove_flush_modify():
     restore the object.
 
       >>> dm._flush_objects()
-      >>> tuple(dm._get_collection_from_object(foo).find())
-      ()
+      >>> dumpTable(dm._get_table_from_object(foo)[1])
+      []
 
     Within the same transaction we modify the object. But the object should
     not appear in the registered objects list.
@@ -674,16 +455,16 @@ def doctest_MongoDataManager_remove_flush_modify():
       >>> dm._registered_objects
       {}
 
-      >>> tuple(dm._get_collection_from_object(foo).find())
-      ()
+      >>> dumpTable(dm._get_table_from_object(foo)[1])
+      []
 
       >>> dm.reset()
 
     """
 
 
-def doctest_MongoDataManager_setstate():
-    r"""MongoDataManager: setstate()
+def doctest_PJDataManager_setstate():
+    r"""PJDataManager: setstate()
 
     This method loads and sets the state of an object and joins the
     transaction.
@@ -705,8 +486,8 @@ def doctest_MongoDataManager_setstate():
       False
     """
 
-def doctest_MongoDataManager_oldstate():
-    r"""MongoDataManager: oldstate()
+def doctest_PJDataManager_oldstate():
+    r"""PJDataManager: oldstate()
 
     Loads the state of an object for a given transaction. Since we are not
     supporting history, this always raises a key error as documented.
@@ -718,8 +499,8 @@ def doctest_MongoDataManager_oldstate():
       KeyError: '0'
     """
 
-def doctest_MongoDataManager_register():
-    r"""MongoDataManager: register()
+def doctest_PJDataManager_register():
+    r"""PJDataManager: register()
 
     Registers an object to be stored.
 
@@ -743,8 +524,8 @@ def doctest_MongoDataManager_register():
       1
     """
 
-def doctest_MongoDataManager_abort():
-    r"""MongoDataManager: abort()
+def doctest_PJDataManager_abort():
+    r"""PJDataManager: abort()
 
     Aborts a transaction, which clears all object and transaction registrations:
 
@@ -767,12 +548,12 @@ def doctest_MongoDataManager_abort():
       >>> dm.reset()
       >>> foo_ref = dm.insert(Foo('one'))
       >>> foo2_ref = dm.insert(Foo('two'))
-      >>> dm.reset()
+      >>> dm.commit(None)
 
-      >>> coll = dm._get_collection_from_object(Foo())
-      >>> tuple(coll.find({}))
-      ({u'_id': ObjectId('4f5c114f37a08e2cac000000'), u'name': u'one'},
-       {u'_id': ObjectId('4f5c114f37a08e2cac000001'), u'name': u'two'})
+      >>> dbanme, table = dm._get_table_from_object(Foo())
+      >>> dumpTable(table)
+      [{'data': {u'name': u'one'}, 'id': '00000000-0000-0000-0000-000000000000'},
+       {'data': {u'name': u'two'}, 'id': '00000000-0000-0000-0000-000000000000'}]
 
     Now, in a second transaction we modify the state of objects in all three
     ways:
@@ -790,144 +571,25 @@ def doctest_MongoDataManager_abort():
       >>> foo3_ref = dm.insert(Foo('three'))
 
       >>> dm.flush()
-      >>> tuple(coll.find({}))
-      ({u'_id': ObjectId('4f5c114f37a08e2cac000000'), u'name': u'1'},
-       {u'_id': ObjectId('4f5c114f37a08e2cac000002'), u'name': u'three'})
+      >>> dumpTable(table)
+      [{'data': {u'name': u'1'},
+        'id': '13a75cb5-f404-42f6-870c-0b84d78b7dd8'},
+       {'data': {u'name': u'three'},
+        'id': 'c40e1dbb-cff2-4e7e-99b7-185fc9a98579'}]
+
 
     Let's now abort the transaction and everything should be back to what it
     was before:
 
       >>> dm.abort(transaction.get())
-      >>> tuple(coll.find({}))
-      ({u'_id': ObjectId('4f5c114f37a08e2cac000000'), u'name': u'one'},
-       {u'_id': ObjectId('4f5c114f37a08e2cac000001'), u'name': u'two'})
-    """
-
-def doctest_MongoDataManager_abort_modified_only():
-    r"""MongoDataManager: abort(): Only reset changed objects.
-
-    We want to make sure that we only reset modified objects, not all objects
-    that have been loaded. The ratio from reads to writes is very high, so
-    unexpected behavior with other transactions is decreased by that ratio.
-
-    First let's create an initial state:
-
-      >>> dm.reset()
-      >>> foo1_ref = dm.insert(Foo('one'))
-      >>> foo2_ref = dm.insert(Foo('two'))
-      >>> foo3_ref = dm.insert(Foo('three'))
-      >>> dm.reset()
-
-      >>> coll = dm._get_collection_from_object(Foo())
-      >>> tuple(coll.find({}))
-      ({u'_id': ObjectId('4f5c114f37a08e2cac000000'), u'name': u'one'},
-       {u'_id': ObjectId('4f5c114f37a08e2cac000001'), u'name': u'two'},
-       {u'_id': ObjectId('4f5c114f37a08e2cac000002'), u'name': u'three'})
-
-    1. Transaction A loads all objects:
-
-        >>> foo1_A = dm.load(foo1_ref)
-        >>> foo1_A.name
-        u'one'
-        >>> foo2_A = dm.load(foo2_ref)
-        >>> foo2_A.name
-        u'two'
-        >>> foo3_A = dm.load(foo3_ref)
-        >>> foo3_A.name
-        u'three'
-
-        >>> sorted([ref.id for ref in dm._original_states.keys()])
-        [ObjectId('4f746d0b37a08e1013000000'),
-         ObjectId('4f746d0b37a08e1013000001'),
-         ObjectId('4f746d0b37a08e1013000002')]
-
-    2. Transaction B comes along and modifies Foo 3's data and commits:
-
-        >>> dm_B = datamanager.MongoDataManager(
-        ...     conn, default_database=DBNAME, root_database=DBNAME)
-
-        >>> foo3_B = dm_B.load(foo3_ref)
-        >>> foo3_B.name = '3'
-        >>> dm_B.tpc_finish(None)
-
-        >>> tuple(coll.find({}))
-        ({u'_id': ObjectId('4f5c114f37a08e2cac000000'), u'name': u'one'},
-         {u'_id': ObjectId('4f5c114f37a08e2cac000001'), u'name': u'two'},
-         {u'_id': ObjectId('4f5c114f37a08e2cac000002'), u'name': u'3'})
-
-    3. Transaction A modifies Foo 1 and the data is flushed:
-
-        >>> foo1_A.name = '1'
-        >>> dm.flush()
-
-        >>> tuple(coll.find({}))
-        ({u'_id': ObjectId('4f5c114f37a08e2cac000000'), u'name': u'1'},
-         {u'_id': ObjectId('4f5c114f37a08e2cac000001'), u'name': u'two'},
-         {u'_id': ObjectId('4f5c114f37a08e2cac000002'), u'name': u'3'})
-
-    4. If transcation A is later aborted, only objects modified within the
-       transaction get reset to their original state (and not all loaded ones:
-
-       >>> dm.abort(None)
-
-        >>> tuple(coll.find({}))
-        ({u'_id': ObjectId('4f5c114f37a08e2cac000000'), u'name': u'one'},
-         {u'_id': ObjectId('4f5c114f37a08e2cac000001'), u'name': u'two'},
-         {u'_id': ObjectId('4f5c114f37a08e2cac000002'), u'name': u'3'})
-    """
-
-def doctest_MongoDataManager_abort_conflict_detection():
-    r"""MongoDataManager: abort(): Conflict detections while aborting.
-
-    When a transaction is aborting, we are usually resetting the state of the
-    modified objects. What happens, however, when the document was updated
-    since the last flush?
-
-    The implemented policy now does not reset the state in this case.
-
-    First let's create an initial state:
-
-      >>> dm.conflict_handler = conflict.SimpleSerialConflictHandler(dm)
-      >>> dm.reset()
-      >>> foo_ref = dm.insert(Foo('one'))
-      >>> dm.reset()
-      >>> coll = dm._get_collection_from_object(Foo())
-
-    1. Transaction A loads the object and modifies it:
-
-       >>> foo_A = dm.load(foo_ref)
-       >>> foo_A.name = u'1'
-       >>> coll.find_one({})
-       {u'_id': ObjectId('4e7ddf12e138237403000000'),
-        u'_py_serial': 1, u'name': u'one'}
-
-    2. Transaction B comes along and modifies the object as well and commits:
-
-       >>> dm_B = datamanager.MongoDataManager(
-       ...     conn,
-       ...     default_database=DBNAME, root_database=DBNAME,
-       ...     conflict_handler_factory=conflict.SimpleSerialConflictHandler)
-
-       >>> foo_B = dm_B.load(foo_ref)
-       >>> foo_B.name = 'Eins'
-       >>> dm_B.tpc_finish(None)
-       >>> coll.find_one({})
-       {u'_id': ObjectId('4e7ddf12e138237403000000'), u'_py_serial': 2,
-        u'name': u'Eins'}
-
-    3. If transcation A is later aborted, it does not reset the state, since
-       it changed:
-
-       >>> dm.abort(None)
-       >>> coll.find_one({})
-       {u'_id': ObjectId('4e7ddf12e138237403000000'), u'_py_serial': 2,
-        u'name': u'Eins'}
-
+      >>> dumpTable(table)
+      [{'data': {u'name': u'one'}, 'id': '00000000-0000-0000-0000-000000000000'},
+       {'data': {u'name': u'two'}, 'id': '00000000-0000-0000-0000-000000000000'}]
     """
 
 
-def doctest_MongoDataManager_abort_subobjects():
-    r"""MongoDataManager: abort(): Correct restoring of complex objects
+def doctest_PJDataManager_abort_subobjects():
+    r"""PJDataManager: abort(): Correct restoring of complex objects
 
     Object, that contain subobjects should be restored to the state, exactly
     matching one before initial loading.
@@ -936,14 +598,16 @@ def doctest_MongoDataManager_abort_subobjects():
 
       >>> dm.reset()
       >>> foo1_ref = dm.insert(ComplexFoo())
-      >>> dm.reset()
+      >>> dm.commit(None)
 
-      >>> coll = dm._get_collection_from_object(ComplexFoo())
-      >>> tuple(coll.find({}))
-      ({u'item': {u'bar': 6,
-                  u'_py_type': u'pjpersist.tests.test_datamanager.FooItem'},
-        u'_id': ObjectId('51b9987786a4bd2bfa5ad62c'),
-        u'name': u'complex'},)
+      >>> dbname, table = dm._get_table_from_object(ComplexFoo())
+      >>> dumpTable(table)
+      [{'data':
+        {u'item':
+          {u'_py_type': u'pjpersist.tests.test_datamanager.FooItem',
+           u'bar': 6},
+           u'name': u'complex'},
+        'id': '00000000-0000-0000-0000-000000000000'}]
 
     2. Modify the item and flush it to database
 
@@ -951,89 +615,57 @@ def doctest_MongoDataManager_abort_subobjects():
       >>> foo1.name = 'modified'
       >>> dm.flush()
 
-      >>> tuple(coll.find({}))
-      ({u'item': {u'bar': 6,
-                  u'_py_type': u'pjpersist.tests.test_datamanager.FooItem'},
-        u'_id': ObjectId('51b9987786a4bd2bfa5ad62c'),
-        u'name': u'modified'},)
+      >>> dumpTable(table)
+      [{'data':
+        {u'item':
+          {u'_py_type': u'pjpersist.tests.test_datamanager.FooItem',
+           u'bar': 6},
+           u'name': u'modified'},
+       'id': '00000000-0000-0000-0000-000000000000'}]
 
     3. Abort the current transaction and expect original state is restored
 
       >>> dm.abort(transaction.get())
-      >>> tuple(coll.find({}))
-      ({u'item': {u'bar': 6,
-                  u'_py_type': u'pjpersist.tests.test_datamanager.FooItem'},
-        u'_id': ObjectId('51b9987786a4bd2bfa5ad62c'),
-        u'name': u'complex'},)
-
-
+      >>> dumpTable(table)
+      [{'data':
+        {u'item':
+          {u'_py_type': u'pjpersist.tests.test_datamanager.FooItem',
+           u'bar': 6},
+           u'name': u'complex'},
+        'id': '00000000-0000-0000-0000-000000000000'}]
     """
 
+def doctest_PJDataManager_tpc_begin():
+    r"""PJDataManager: tpc_begin()
 
-def doctest_MongoDataManager_abort_persistent_subobjects():
-    """MongoDataManager: Abort subobjects that are persistent
-
-    Make sure that multiple changes to the sub-object are registered, even if
-    they are flushed inbetween. (Note that flushing happens often due to
-    querying.)
-
-      >>> foo = Foo('foo')
-      >>> dm.root['foo'] = foo
-      >>> foo.bar = Bar('bar')
-
-      >>> dm.tpc_finish(None)
-
-    Let's now modify bar and flush before aborting.
-
-      >>> foo = dm.root['foo']
-      >>> foo.bar.name = 'bar-modified'
-      >>> dm.flush()
-
-      >>> dm.abort(transaction.get())
-
-    The state was reset:
-
-      >>> dm.root['foo'].bar.name
-      u'bar'
-
-    """
-
-
-def doctest_MongoDataManager_tpc_begin():
-    r"""MongoDataManager: tpc_begin()
-
-    This is a non-op for the mongo data manager.
+    This is a non-op for the PJ data manager.
 
       >>> dm.tpc_begin(transaction.get())
     """
 
-def doctest_MongoDataManager_tpc_vote():
-    r"""MongoDataManager: tpc_vote()
+def doctest_PJDataManager_tpc_vote():
+    r"""PJDataManager: tpc_vote()
 
-    This is a non-op for the mongo data manager.
+    This is a non-op for the PJ data manager.
 
       >>> dm.tpc_vote(transaction.get())
     """
 
-def doctest_MongoDataManager_tpc_finish():
-    r"""MongoDataManager: tpc_finish()
+def doctest_PJDataManager_tpc_finish():
+    r"""PJDataManager: tpc_finish()
 
-    This method finishes the two-phase commit. So let's store a simple object:
+    This method finishes the two-phase commit. In our simple implementation,
+    ``tpc_finish()`` is the same as ``commit()``. So let's store a simple object:
 
       >>> foo = Foo()
-      >>> dm.conflict_handler = conflict.SimpleSerialConflictHandler(dm)
       >>> dm._registered_objects = {id(foo): foo}
       >>> dm.tpc_finish(transaction.get())
-      >>> foo._p_serial
-      '\x00\x00\x00\x00\x00\x00\x00\x01'
 
-    Note that objects cannot be stored twice in the same transation:
+    Note that objects cannot be stored twice in the same transaction:
 
       >>> dm.reset()
       >>> dm._registered_objects = {id(foo): foo, id(foo): foo}
       >>> dm.tpc_finish(transaction.get())
-      >>> foo._p_serial
-      '\x00\x00\x00\x00\x00\x00\x00\x02'
 
     Also, when a persistent sub-object is stored that does not want its own
     document, then its parent is stored instead, still avoiding dual storage.
@@ -1041,32 +673,10 @@ def doctest_MongoDataManager_tpc_finish():
       >>> dm.reset()
       >>> foo2 = dm.load(foo._p_oid)
       >>> foo2.bar = Bar()
-
-      >>> dm.tpc_finish(transaction.get())
-      >>> foo2._p_serial
-      '\x00\x00\x00\x00\x00\x00\x00\x03'
-
-      >>> dm.reset()
-      >>> foo3 = dm.load(foo._p_oid)
-      >>> foo3.name = 'changed'
-      >>> dm._registered_objects = {id(foo3.bar): foo3.bar, id(foo3): foo3}
-      >>> dm.tpc_finish(transaction.get())
-      >>> foo3._p_serial
-      '\x00\x00\x00\x00\x00\x00\x00\x04'
-
-    When there is no change in the objects, serial is not incremented:
-
-      >>> dm.reset()
-      >>> foo4 = dm.load(foo._p_oid)
-      >>> dm._registered_objects = {id(foo4.bar): foo4.bar, id(foo4): foo4}
-      >>> dm.tpc_finish(transaction.get())
-      >>> foo3._p_serial
-      '\x00\x00\x00\x00\x00\x00\x00\x04'
-
     """
 
-def doctest_MongoDataManager_tpc_abort():
-    r"""MongoDataManager: tpc_abort()
+def doctest_PJDataManager_tpc_abort():
+    r"""PJDataManager: tpc_abort()
 
     Aborts a two-phase commit. This is simply the same as the regular abort.
 
@@ -1082,21 +692,21 @@ def doctest_MongoDataManager_tpc_abort():
       0
     """
 
-def doctest_MongoDataManager_sortKey():
-    r"""MongoDataManager: sortKey()
+def doctest_PJDataManager_sortKey():
+    r"""PJDataManager: sortKey()
 
     The data manager's sort key is trivial.
 
       >>> dm.sortKey()
-      ('MongoDataManager', 0)
+      ('PJDataManager', 0)
     """
 
 
-def doctest_MongoDataManager_sub_objects():
-    r"""MongoDataManager: Properly handling initialization of sub-objects.
+def doctest_PJDataManager_sub_objects():
+    r"""PJDataManager: Properly handling initialization of sub-objects.
 
-    When `_p_mongo_sub_object` objects are loaded from Mongo, their `_p_jar`
-    and more importantly their `_p_mongo_doc_object` attributes are
+    When `_p_pj_sub_object` objects are loaded from PostGreSQL, their `_p_jar`
+    and more importantly their `_p_pj_doc_object` attributes are
     set.
 
     However, when a sub-object is initially added, those attributes are
@@ -1111,7 +721,7 @@ def doctest_MongoDataManager_sub_objects():
 
       >>> foo.list = serialize.PersistentList()
       >>> foo.list._p_jar
-      >>> getattr(foo.list, '_p_mongo_doc_object', 'Missing')
+      >>> getattr(foo.list, '_p_pj_doc_object', 'Missing')
       'Missing'
 
     Of course, the parent object has changed, since an attribute has been set
@@ -1136,7 +746,7 @@ def doctest_MongoDataManager_sub_objects():
 
       >>> foo.list._p_jar is dm
       True
-      >>> foo.list._p_mongo_doc_object is foo
+      >>> foo.list._p_pj_doc_object is foo
       True
 
     Let's now ensure that changing the sub-object will have the proper effect:
@@ -1155,33 +765,37 @@ def doctest_MongoDataManager_sub_objects():
     """
 
 
-def doctest_MongoDataManager_complex_sub_objects():
-    """MongoDataManager: Never store objects marked as _p_mongo_sub_object
+def doctest_PJDataManager_complex_sub_objects():
+    """PJDataManager: Never store objects marked as _p_pj_sub_object
 
     Let's construct comlpex object with several levels of containment.
-    _p_mongo_doc_object will point to an object, that is subobject itself.
+    _p_pj_doc_object will point to an object, that is subobject itself.
 
       >>> foo = Foo('one')
       >>> sup = Super('super')
       >>> bar = Bar('bar')
 
-      >>> bar._p_mongo_sub_object = True
-      >>> bar._p_mongo_doc_object = sup
+      >>> bar._p_pj_sub_object = True
+      >>> bar._p_pj_doc_object = sup
       >>> sup.bar = bar
 
-      >>> sup._p_mongo_sub_object = True
-      >>> sup._p_mongo_doc_object = foo
+      >>> sup._p_pj_sub_object = True
+      >>> sup._p_pj_doc_object = foo
       >>> foo.sup = sup
 
       >>> dm.root['one'] = foo
       >>> dm.tpc_finish(None)
 
-      >>> sorted(conn[DBNAME].collection_names())
-      [u'pjpersist.tests.test_datamanager.Foo',
-       u'persistence_root',
-       u'system.indexes']
+      >>> cur = dm._conn.cursor()
+      >>> cur.execute('SELECT tablename from pg_tables;')
+      >>> sorted(e[0] for e in cur.fetchall()
+      ...        if not e[0].startswith('pg_') and not e[0].startswith('sql_'))
+      ['persistence_name_map',
+       'persistence_root',
+       'pjpersist_dot_tests_dot_test_datamanager_dot_foo']
 
     Now, save foo first, and then add subobjects
+
       >>> foo = Foo('two')
       >>> dm.root['two'] = foo
       >>> dm.tpc_finish(None)
@@ -1189,31 +803,39 @@ def doctest_MongoDataManager_complex_sub_objects():
       >>> sup = Super('second super')
       >>> bar = Bar('second bar')
 
-      >>> bar._p_mongo_sub_object = True
-      >>> bar._p_mongo_doc_object = sup
+      >>> bar._p_pj_sub_object = True
+      >>> bar._p_pj_doc_object = sup
       >>> sup.bar = bar
 
-      >>> sup._p_mongo_sub_object = True
-      >>> sup._p_mongo_doc_object = foo
+      >>> sup._p_pj_sub_object = True
+      >>> sup._p_pj_doc_object = foo
       >>> foo.sup = sup
       >>> dm.tpc_finish(None)
 
-      >>> sorted(conn[DBNAME].collection_names())
-      [u'pjpersist.tests.test_datamanager.Foo',
-       u'persistence_root',
-       u'system.indexes']
+      >>> cur.execute('SELECT tablename from pg_tables;')
+      >>> sorted(e[0] for e in cur.fetchall()
+      ...        if not e[0].startswith('pg_') and not e[0].startswith('sql_'))
+      ['persistence_name_map',
+       'persistence_root',
+       'pjpersist_dot_tests_dot_test_datamanager_dot_foo']
 
       >>> dm.root['two'].sup.bar
       <Bar second bar>
 
-      >>> pprint(list(conn[DBNAME]['pjpersist.tests.test_datamanager.Foo'].
-      ...     find({'name': 'one'})))
-      [{u'_id': ObjectId('...'),
-        u'name': u'one',
-        u'sup': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Super',
-                 u'bar': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Bar',
-                          u'name': u'bar'},
-                 u'name': u'super'}}]
+      >>> cur = dm.getCursor()
+      >>> cur.execute(
+      ... '''SELECT * FROM pjpersist_dot_tests_dot_test_datamanager_dot_foo
+      ...    WHERE data @> '{"name": "one"}' ''')
+      >>> pprint([dict(e) for e in cur.fetchall()])
+      [{'data':
+          {u'name': u'one',
+           u'sup': {u'_py_persistent_type':
+                              u'pjpersist.tests.test_datamanager.Super',
+                    u'bar': {u'_py_persistent_type':
+                                     u'pjpersist.tests.test_datamanager.Bar',
+                             u'name': u'bar'},
+                    u'name': u'super'}},
+      'id': '496ba7eb-7387-44b8-ae9d-a4ae92636fb1'}]
 
     Now, make changes to the subobjects and then commit
 
@@ -1225,45 +847,49 @@ def doctest_MongoDataManager_complex_sub_objects():
       >>> foo = dm.root['one']
       >>> foo.sup
       <Super new super>
-      >>> foo.sup._p_mongo_sub_object
+      >>> foo.sup._p_pj_sub_object
       True
-      >>> foo.sup._p_mongo_doc_object
+      >>> foo.sup._p_pj_doc_object
       <Foo one>
 
       >>> foo.sup.bar
       <Bar new bar>
 
-      >>> foo.sup.bar._p_mongo_sub_object
+      >>> foo.sup.bar._p_pj_sub_object
       True
-      >>> foo.sup.bar._p_mongo_doc_object
+      >>> foo.sup.bar._p_pj_doc_object
       <Foo one>
 
-      >>> sorted(conn[DBNAME].collection_names())
-      [u'pjpersist.tests.test_datamanager.Foo',
-       u'persistence_root',
-       u'system.indexes']
+      >>> cur.execute('SELECT tablename from pg_tables;')
+      >>> sorted(e[0] for e in cur.fetchall()
+      ...        if not e[0].startswith('pg_') and not e[0].startswith('sql_'))
+      ['persistence_name_map',
+       'persistence_root',
+       'pjpersist_dot_tests_dot_test_datamanager_dot_foo']
 
-    Even if _p_mongo_doc_object is pointed to subobject, subobject does not get
-    saved to its own collection:
+    Even if _p_pj_doc_object is pointed to subobject, subobject does not get
+    saved to its own table:
 
-      >>> foo.sup.bar._p_mongo_doc_object = foo.sup
+      >>> foo.sup.bar._p_pj_doc_object = foo.sup
       >>> foo.sup.bar.name = 'newer bar'
       >>> foo.sup.name = 'newer sup'
       >>> dm.tpc_finish(None)
 
-      >>> sorted(conn[DBNAME].collection_names())
-      [u'pjpersist.tests.test_datamanager.Foo',
-       u'persistence_root',
-       u'system.indexes']
+      >>> cur.execute('SELECT tablename from pg_tables;')
+      >>> sorted(e[0] for e in cur.fetchall()
+      ...        if not e[0].startswith('pg_') and not e[0].startswith('sql_'))
+      ['persistence_name_map',
+       'persistence_root',
+       'pjpersist_dot_tests_dot_test_datamanager_dot_foo']
     """
 
 
-def doctest_MongoDataManager_collection_sharing():
-    r"""MongoDataManager: Properly share collections with sub-classes
+def doctest_PJDataManager_table_sharing():
+    r"""PJDataManager: Properly share tables with sub-classes
 
-    When objects do not specify a collection, then a collection based on the
+    When objects do not specify a table, then a table based on the
     class path is created for them. In that case, when a sub-class is created,
-    the same collection should be used. However, during de-serialization, it
+    the same table should be used. However, during de-serialization, it
     is important that we select the correct class to use.
 
       >>> dm.root['app'] = Root()
@@ -1294,18 +920,17 @@ def doctest_MongoDataManager_collection_sharing():
 
     Make sure that after a restart, the objects can still be stored.
 
-      >>> serialize.COLLECTIONS_WITH_TYPE = set()
+      >>> serialize.TABLES_WITH_TYPE = set()
       >>> serialize.AVAILABLE_NAME_MAPPINGS = set()
       >>> serialize.PATH_RESOLVE_CACHE = {}
-      >>> del Sub._p_mongo_store_type
+      >>> del Sub._p_pj_store_type
 
-      >>> dm2 = datamanager.MongoDataManager(
-      ...     conn, default_database = DBNAME, root_database = DBNAME)
+      >>> dm2 = datamanager.PJDataManager(conn)
 
       >>> dm2.root['app'].four = Sub('four')
       >>> dm2.tpc_finish(None)
 
-      >>> serialize.COLLECTIONS_WITH_TYPE = set()
+      >>> serialize.TABLES_WITH_TYPE = set()
       >>> serialize.AVAILABLE_NAME_MAPPINGS = set()
       >>> serialize.PATH_RESOLVE_CACHE = {}
 
@@ -1314,8 +939,8 @@ def doctest_MongoDataManager_collection_sharing():
     """
 
 
-def doctest_MongoDataManager_no_compare():
-    r"""MongoDataManager: No object methods are called during register/dump.
+def doctest_PJDataManager_no_compare():
+    r"""PJDataManager: No object methods are called during register/dump.
 
     Using object comparison within the data manager canhave undesired side
     effects. For example, `__cmp__()` could make use of other model objects
@@ -1353,8 +978,8 @@ def doctest_MongoDataManager_no_compare():
     """
 
 
-def doctest_MongoDataManager_long():
-    r"""MongoDataManager: Test behavior of long integers.
+def doctest_PJDataManager_long():
+    r"""PJDataManager: Test behavior of long integers.
 
       >>> dm.root['app'] = Root()
       >>> dm.root['app'].x = 1L
@@ -1363,7 +988,7 @@ def doctest_MongoDataManager_long():
     Let's see how it is deserialzied?
 
       >>> dm.root['app'].x
-      1L
+      1
 
     Let's now create a really long integer:
 
@@ -1371,20 +996,20 @@ def doctest_MongoDataManager_long():
       >>> dm.tpc_finish(None)
 
       >>> dm.root['app'].x
-      4611686018427387904L
+      4611686018427387904
 
     And now an overly long one.
 
-      >>> dm.root['app'].x = 12345678901234567890L
+      >>> dm.root['app'].x = 1234567890123456789012345678901234567890
       >>> dm.tpc_finish(None)
-      Traceback (most recent call last):
-      ...
-      OverflowError: MongoDB can only handle up to 8-byte ints
+
+      >>> dm.root['app'].x
+      1234567890123456789012345678901234567890L
     """
 
 
-def doctest_MongoDataManager_modify_sub_delete_doc():
-    """MongoDataManager: Deletion is not cancelled if sub-object is modified.
+def doctest_PJDataManager_modify_sub_delete_doc():
+    """PJDataManager: Deletion is not cancelled if sub-object is modified.
 
     It must be ensured that the deletion of an object is not cancelled when a
     sub-document object is modified (since it is registered with the data
@@ -1395,8 +1020,12 @@ def doctest_MongoDataManager_modify_sub_delete_doc():
       >>> foo.bar = Bar('bar')
 
       >>> dm.tpc_finish(None)
-      >>> conn[DBNAME]['pjpersist.tests.test_datamanager.Foo'].find().count()
-      1
+      >>> cur = dm.getCursor()
+      >>> cur.execute(
+      ...     '''SELECT count(*)
+      ...        FROM pjpersist_dot_tests_dot_test_datamanager_dot_Foo''')
+      >>> cur.fetchone()[0]
+      1L
 
     Let's now modify bar and delete foo.
 
@@ -1405,12 +1034,15 @@ def doctest_MongoDataManager_modify_sub_delete_doc():
       >>> dm.remove(foo)
 
       >>> dm.tpc_finish(None)
-      >>> conn[DBNAME]['pjpersist.tests.test_datamanager.Foo'].find().count()
-      0
+      >>> cur.execute(
+      ...     '''SELECT count(*)
+      ...        FROM pjpersist_dot_tests_dot_test_datamanager_dot_Foo''')
+      >>> cur.fetchone()[0]
+      0L
     """
 
-def doctest_MongoDataManager_sub_doc_multi_flush():
-    """MongoDataManager: Sub-document object multi-flush
+def doctest_PJDataManager_sub_doc_multi_flush():
+    """PJDataManager: Sub-document object multi-flush
 
     Make sure that multiple changes to the sub-object are registered, even if
     they are flushed inbetween. (Note that flushing happens often due to
@@ -1434,188 +1066,6 @@ def doctest_MongoDataManager_sub_doc_multi_flush():
       u'bar-newer'
     """
 
-
-def doctest_process_spec():
-    r"""process_spec(): General test
-
-    A simple helper function that returns the spec itself if no
-    ``IMongoSpecProcessor`` adapter is registered. If a processor is found it
-    is applied. The spec processor can be used for:
-
-    * Additional logging.
-
-    * Modifying the spec, for example providing additional parameters.
-
-    Let's now call the function:
-
-      >>> from zope.testing.cleanup import CleanUp as PlacelessSetup
-      >>> PlacelessSetup().setUp()
-
-      >>> datamanager.process_spec('a_collection', {'life': 42})
-      {'life': 42}
-
-    Now let's register an adapter
-
-      >>> class Processor(object):
-      ...     def __init__(self, context):
-      ...         pass
-      ...     def process(self, collection, spec):
-      ...         print 'passed in:', collection, spec
-      ...         return {'life': 24}
-
-      >>> import zope.interface
-      >>> from zope.component import provideAdapter
-      >>> provideAdapter(
-      ...     Processor,
-      ...     (zope.interface.Interface,), interfaces.IMongoSpecProcessor)
-
-    And see what happens on calling ``process_spec()``:
-
-      >>> datamanager.process_spec('a_collection', {'life': 42})
-      passed in: a_collection {'life': 42}
-      {'life': 24}
-
-    We get the processed spec in return.
-
-      >>> PlacelessSetup().tearDown()
-
-    """
-
-def doctest_FlushDecorator_basic():
-    r"""class FlushDecorator: basic functionality
-
-    The FlushDecorator class can be used to ensure that data is flushed before
-    a given function is called. Let's create an object and modify it:
-
-      >>> foo = Foo('foo')
-      >>> foo_ref = dm.dump(foo)
-      >>> dm.reset()
-      >>> foo_new = dm.load(foo._p_oid)
-      >>> foo_new.name = 'Foo'
-
-    The database is not immediately updated:
-
-      >>> coll = conn[DBNAME]['pjpersist.tests.test_datamanager.Foo']
-      >>> list(coll.find())
-      [{u'_id': ObjectId('4e7ddf12e138237403000000'), u'name': u'foo'}]
-
-
-    But when I use the decorator, all outstanding changes are updated at
-    first:
-
-      >>> flush_find = datamanager.FlushDecorator(dm, coll.find)
-      >>> list(flush_find())
-      [{u'_id': ObjectId('4e7ddf12e138237403000000'), u'name': u'Foo'}]
-
-    """
-
-def doctest_ProcessSpecDecorator_basic():
-    r"""class ProcessSpecDecorator: basic
-
-    The ``ProcessSpecDecorator`` decorator processes the spec before passing
-    it to the function. Currently the following collection methods are
-    supported: ``find_one()``, ``find()``, ``find_and_modify``.
-
-    Now let's register an adapter
-
-      >>> from zope.testing.cleanup import CleanUp as PlacelessSetup
-      >>> PlacelessSetup().setUp()
-
-      >>> class Processor(object):
-      ...     def __init__(self, context):
-      ...         pass
-      ...     def process(self, collection, spec):
-      ...         print 'passed in:', spec
-      ...         return spec
-
-      >>> import zope.interface
-      >>> from zope.component import provideAdapter
-      >>> provideAdapter(
-      ...     Processor,
-      ...     (zope.interface.Interface,), interfaces.IMongoSpecProcessor)
-
-    Let's now create the decorator:
-
-      >>> coll = conn[DBNAME]['pjpersist.tests.test_datamanager.Foo']
-      >>> process_find = datamanager.ProcessSpecDecorator(coll, coll.find)
-      >>> list(process_find({'life': 42}))
-      passed in: {'life': 42}
-      []
-
-    Keyword arguments are also supported:
-
-      >>> process_find = datamanager.ProcessSpecDecorator(coll, coll.find)
-      >>> list(process_find(spec={'life': 42}))
-      passed in: {'life': 42}
-      []
-
-      >>> process_find_one = datamanager.ProcessSpecDecorator(
-      ...     coll, coll.find_one)
-      >>> process_find_one(spec_or_id={'life': 42})
-      passed in: {'life': 42}
-
-      >>> process_find_one = datamanager.ProcessSpecDecorator(
-      ...     coll, coll.find_one)
-      >>> process_find_one(query={'life': 42})
-      passed in: {'life': 42}
-
-    We get the processed spec in return.
-
-      >>> PlacelessSetup().tearDown()
-    """
-
-
-def doctest_LoggingDecorator_basic():
-    r"""class LoggingDecorator: basic
-
-    The ``LoggingDecorator`` decorator will log the name, arguments ans even
-    current stack of a function call. Let's stub the logger:
-
-      >>> orig_log_debug = datamanager.COLLECTION_LOG.debug
-      >>> def fake_debug(msg, *args):
-      ...     print msg % args
-      >>> datamanager.COLLECTION_LOG.debug = fake_debug
-
-    Let's create the decorator:
-
-      >>> coll = conn[DBNAME]['pjpersist.tests.test_datamanager.Foo']
-      >>> logging_find = datamanager.LoggingDecorator(coll, coll.find)
-      >>> list(logging_find({'life': 42}))
-      collection: pjpersist_test.pjpersist.tests.test_datamanager.Foo find,
-       TXN:('... - ',),
-       args:({'life': 42},),
-       kwargs:{},
-       tb:
-          ...
-          list(logging_find({'life': 42}))
-      <BLANKLINE>
-      []
-
-    Keyword arguments are also supported:
-
-      >>> list(logging_find(spec={'life': 42}))
-      collection: pjpersist_test.pjpersist.tests.test_datamanager.Foo find,
-       TXN:('... - ',),
-       args:(),
-       kwargs:{'spec': {'life': 42}},
-       tb:
-          ...
-          list(logging_find(spec={'life': 42}))
-      <BLANKLINE>
-      []
-
-    Tracebacks can also be turned off:
-
-      >>> logging_find.ADD_TB = False
-      >>> list(logging_find({'life': 42}))
-      collection: pjpersist_test.pjpersist.tests.test_datamanager.Foo find,
-       TXN:('... - ',),
-       args:({'life': 42},),
-       kwargs:{},
-       tb:
-        <omitted>
-      []
-    """
 
 def test_suite():
     return doctest.DocTestSuite(
