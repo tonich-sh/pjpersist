@@ -39,10 +39,7 @@ class PJTableMapping(UserDict.DictMixin, object):
             if not cur.rowcount:
                 raise KeyError(key)
             id = cur.fetchone()['id']
-            dbref = serialize.DBRef(
-                self.__pj_table__,
-                id,
-                self.__pj_database__ or self._pj_jar.database)
+            dbref = serialize.DBRef(self.__pj_table__, id, self._pj_jar.database)
         return self._pj_jar.load(dbref)
 
     def __setitem__(self, key, value):
