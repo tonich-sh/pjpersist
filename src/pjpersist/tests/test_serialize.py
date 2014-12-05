@@ -11,19 +11,17 @@
 # FOR A PARTICULAR PURPOSE.
 #
 ##############################################################################
-"""Mongo Persistence Serializeation Tests"""
+"""PostGreSQL/JSONB Persistence Serialization Tests"""
 import datetime
 import doctest
 import persistent
 import pprint
 import copy_reg
 
-#from bson import binary, dbref, objectid
-
 from pjpersist import interfaces, serialize, testing
 
 class Top(persistent.Persistent):
-    _p_mongo_collection = 'Top'
+    _p_pj_table = 'Top'
 
 def create_top(name):
     top = Top()
@@ -34,21 +32,21 @@ class Top2(Top):
     pass
 
 class Tier2(persistent.Persistent):
-    _p_mongo_sub_object = True
+    _p_pj_sub_object = True
 
 class Foo(persistent.Persistent):
-    _p_mongo_collection = 'Foo'
+    _p_pj_table = 'Foo'
 
 class Bar(persistent.Persistent):
-    _p_mongo_database = 'foo'
-    _p_mongo_collection = 'Bar'
+    _p_pj_database = 'foo'
+    _p_pj_table = 'Bar'
 
 class Anything(persistent.Persistent):
     pass
 
 class StoreType(persistent.Persistent):
-    _p_mongo_collection = 'storetype'
-    _p_mongo_store_type = True
+    _p_pj_table = 'storetype'
+    _p_pj_store_type = True
 
 class StoreType2(StoreType):
     pass
@@ -75,9 +73,9 @@ def doctest_ObjectSerializer():
     better serialization for particular objects. For example, the result of
     reducing a datetime.date object is a short, optimized binary string. This
     representation might be optimal for pickles, but is really aweful for
-    Mongo, since it does not allow querying for dates. An object serializer
-    can be used to use a better representation, such as the date ordinal
-    number.
+    PostGreSQL, since it does not allow querying for dates. An object
+    serializer can be used to use a better representation, such as the date
+    ordinal number.
 
       >>> os = serialize.ObjectSerializer()
 
@@ -104,64 +102,60 @@ def doctest_ObjectSerializer():
       NotImplementedError
     """
 
-def doctest_ObjectWriter_get_collection_name():
-    """ObjectWriter: get_collection_name()
+def doctest_ObjectWriter_get_table_name():
+    """ObjectWriter: get_table_name()
 
-    This method determines the collection name and database for a given
-    object. It can either be specified via '_p_mongo_collection' or is
-    determined from the class path. When the collection name is specified, the
-    mapping from collection name to class path is stored.
-
-      >>> print tuple(conn[DBNAME][dm.name_map_collection].find())
-      ()
+    This method determines the table name and database for a given
+    object. It can either be specified via '_p_pj_table' or is
+    determined from the class path. When the table name is specified, the
+    mapping from table name to class path is stored.
 
       >>> writer = serialize.ObjectWriter(dm)
-      >>> writer.get_collection_name(Anything())
-      ('pjpersist_test', 'pjpersist.tests.test_serialize.Anything')
+      >>> writer.get_table_name(Anything())
+      ('pjpersist_test', 'pjpersist_dot_tests_dot_test_serialize_dot_Anything')
 
       >>> top = Top()
-      >>> writer.get_collection_name(top)
+      >>> writer.get_table_name(top)
       ('pjpersist_test', 'Top')
+      >>> dm.commit(None)
 
-      >>> print tuple(conn[DBNAME][dm.name_map_collection].find())
-      ({u'path': u'pjpersist.tests.test_serialize.Top',
-        u'doc_has_type': False,
-        u'_id': ObjectId('4eb19f9937a08e27b7000000'),
-        u'collection': u'Top',
-        u'database': u'pjpersist_test'},)
+      >>> dumpTable(dm.name_map_table)
+      [{'database': 'pjpersist_test',
+        'doc_has_type': False,
+        'path': 'pjpersist_dot_tests_dot_test_serialize_dot_Top',
+        'tbl': 'Top'}]
 
-      >>> getattr(top, '_p_mongo_store_type', None)
+      >>> getattr(top, '_p_pj_store_type', None)
 
     When classes use inheritance, it often happens that all sub-objects share
-    the same collection. However, only one can have an entry in our mapping
+    the same table. However, only one can have an entry in our mapping
     table to avoid non-unique answers. Thus we require all sub-types after the
     first one to store their typing providing a hint for deseriealization:
 
       >>> top2 = Top2()
-      >>> writer.get_collection_name(top2)
+      >>> writer.get_table_name(top2)
       ('pjpersist_test', 'Top')
+      >>> dm.commit(None)
 
-      >>> pprint.pprint(tuple(conn[DBNAME][dm.name_map_collection].find()))
-      ({u'_id': ObjectId('4eb1b5ab37a08e2f06000000'),
-        u'collection': u'Top',
-        u'database': u'pjpersist_test',
-        u'doc_has_type': False,
-        u'path': u'pjpersist.tests.test_serialize.Top'},
-       {u'_id': ObjectId('4eb1b5ab37a08e2f06000001'),
-        u'collection': u'Top',
-        u'database': u'pjpersist_test',
-        u'doc_has_type': True,
-        u'path': u'pjpersist.tests.test_serialize.Top2'})
+      >>> dumpTable(dm.name_map_table)
+      [{'database': 'pjpersist_test',
+        'doc_has_type': False,
+        'path': 'pjpersist_dot_tests_dot_test_serialize_dot_Top',
+        'tbl': 'Top'},
+       {'database': 'pjpersist_test',
+        'doc_has_type': True,
+        'path': 'pjpersist_dot_tests_dot_test_serialize_dot_Top2',
+        'tbl': 'Top'}]
 
-      >>> getattr(top2, '_p_mongo_store_type', None)
+      >>> getattr(top2, '_p_pj_store_type', None)
       True
 
     Since the serializer also supports serializing any object without the
-    intend of storing it in MongoDB, we have to be abel to look up the
-    collection name of a persistent object without a jar being around.
+    intend of storing it in PostGreSQL, we have to be abel to look up the
+    table name of a persistent object without a jar being around.
 
       >>> writer = serialize.ObjectWriter(None)
-      >>> writer.get_collection_name(Bar())
+      >>> writer.get_table_name(Bar())
       ('foo', 'Bar')
 
     """
@@ -201,11 +195,17 @@ def doctest_ObjectWriter_get_non_persistent_state():
       >>> writer.get_non_persistent_state(top, [])
       {'_py_persistent_type': 'pjpersist.tests.test_serialize.Top'}
 
-    And then there are the really weird cases:
+    And then there are the really weird cases, which is the reason we usually
+    have serializers for them:
+
+      >>> orig_serializers = serialize.SERIALIZERS
+      >>> serialize.SERIALIZERS = []
 
       >>> writer.get_non_persistent_state(datetime.date(2011, 11, 1), [])
       {'_py_factory': 'datetime.date',
-       '_py_factory_args': [Binary('\x07\xdb\x0b\x01', 0)]}
+       '_py_factory_args': [{'data': 'B9sLAQ==\n', '_py_type': 'BINARY'}]}
+
+      >>> serialize.SERIALIZERS = orig_serializers
 
     Circular object references cause an error:
 
@@ -249,7 +249,7 @@ def doctest_ObjectWriter_get_non_persistent_state_circluar_references():
        of other simple types, so that they do not contain other complex
        objects in their serialization output.
 
-       A default example is ``datetime.date``, which is not a Mongo-native
+       A default example is ``datetime.date``, which is not a PostGreSQL-native
        type, but only references simple integers and serializes into a binary
        string.
 
@@ -258,7 +258,7 @@ def doctest_ObjectWriter_get_non_persistent_state_circluar_references():
          >>> seen = []
          >>> writer.get_non_persistent_state(d, seen)
          {'_py_factory': 'datetime.date',
-          '_py_factory_args': [Binary('\x07\xdd\n\x10', 0)]}
+          '_py_factory_args': [{'data': 'B90KEA==\n', '_py_type': 'BINARY'}]}
          >>> seen
          []
 
@@ -281,34 +281,39 @@ def doctest_ObjectWriter_get_persistent_state():
     r"""ObjectWriter: get_persistent_state()
 
     This method produces a proper reduced state for a persistent object, which
-    is basically a Mongo DBRef.
+    is basically a DBRef.
 
       >>> writer = serialize.ObjectWriter(dm)
 
       >>> foo = Foo()
       >>> foo._p_oid
-      >>> list(conn[DBNAME]['Foo'].find())
-      []
 
-      >>> writer.get_persistent_state(foo, [])
-      DBRef('Foo', ObjectId('4eb1a87f37a08e29ff000002'), 'pjpersist_test')
+      >>> pprint.pprint(writer.get_persistent_state(foo, []))
+      {'_py_type': 'DBREF',
+       'database': 'pjpersist_test',
+       'id': u'0e9a10a7-e2ec-4e78-9ec4-f3567daa5d7b',
+       'table': 'Foo'}
 
+      >>> dm.commit(None)
       >>> foo._p_oid
-      DBRef('Foo', ObjectId('4eb1a87f37a08e29ff000002'), 'pjpersist_test')
-      >>> pprint.pprint(list(conn[DBNAME]['Foo'].find()))
-      [{u'_id': ObjectId('4eb1a96c37a08e2a7b000002')}]
+      DBRef('Foo', u'00000000-0000-0000-0000-000000000000', 'pjpersist_test')
+      >>> dumpTable('Foo')
+      [{'data': {}, 'id': '00000000-0000-0000-0000-000000000000'}]
 
     The next time the object simply returns its reference:
 
-      >>> writer.get_persistent_state(foo, [])
-      DBRef('Foo', ObjectId('4eb1a87f37a08e29ff000002'), 'pjpersist_test')
-      >>> pprint.pprint(list(conn[DBNAME]['Foo'].find()))
-      [{u'_id': ObjectId('4eb1a96c37a08e2a7b000002')}]
+      >>> pprint.pprint(writer.get_persistent_state(foo, []))
+      {'_py_type': 'DBREF',
+       'database': 'pjpersist_test',
+       'id': u'0e9a10a7-e2ec-4e78-9ec4-f3567daa5d7b',
+       'table': 'Foo'}
+      >>> dumpTable('Foo')
+      [{'data': {}, 'id': 'e514c0df-3855-4f9c-90fd-a3146c07fb8a'}]
     """
 
 
-def doctest_ObjectWriter_get_state_MONGO_NATIVE_TYPES():
-    """ObjectWriter: get_state(): Mongo-native Types
+def doctest_ObjectWriter_get_state_PJ_NATIVE_TYPES():
+    """ObjectWriter: get_state(): PJ-native Types
 
       >>> writer = serialize.ObjectWriter(None)
       >>> writer.get_state(1)
@@ -319,14 +324,8 @@ def doctest_ObjectWriter_get_state_MONGO_NATIVE_TYPES():
       1.0
       >>> writer.get_state(u'Test')
       u'Test'
-      >>> writer.get_state(datetime.datetime(2011, 11, 1, 12, 0, 0))
-      datetime.datetime(2011, 11, 1, 12, 0, 0)
       >>> print writer.get_state(None)
       None
-      >>> writer.get_state(objectid.ObjectId('4e7ddf12e138237403000000'))
-      ObjectId('4e7ddf12e138237403000000')
-      >>> writer.get_state(dbref.DBRef('4e7ddf12e138237403000000', 'test'))
-      DBRef('4e7ddf12e138237403000000', 'test')
     """
 
 def doctest_ObjectWriter_get_state_constant():
@@ -354,7 +353,7 @@ def doctest_ObjectWriter_get_state_types():
 def doctest_ObjectWriter_get_state_sequences():
     """ObjectWriter: get_state(): sequences (tuple, list, PersistentList)
 
-    We convert any sequence into a simple list, since Mongo supports that
+    We convert any sequence into a simple list, since JSONB supports that
     type natively. But also reduce any sub-objects.
 
       >>> class Number(object):
@@ -371,7 +370,7 @@ def doctest_ObjectWriter_get_state_sequences():
 def doctest_ObjectWriter_get_state_mappings():
     """ObjectWriter: get_state(): mappings (dict, PersistentDict)
 
-    We convert any mapping into a simple dict, since Mongo supports that
+    We convert any mapping into a simple dict, since JSONB supports that
     type natively. But also reduce any sub-objects.
 
       >>> class Number(object):
@@ -382,17 +381,11 @@ def doctest_ObjectWriter_get_state_mappings():
       >>> writer.get_state({'1': 1, '2': '2', '3': Number(3)})
       {'1': 1, '3': {'num': 3, '_py_type': '__main__.Number'}, '2': '2'}
 
-    Unfortunately, Mongo only supports text keys. So whenever we have non-text
+    Unfortunately, JSONB only supports text keys. So whenever we have non-text
     keys, we need to create a less natural, but consistent structure:
 
       >>> writer.get_state({1: 'one', 2: 'two', 3: 'three'})
       {'dict_data': [(1, 'one'), (2, 'two'), (3, 'three')]}
-
-    There's also a restriction on dict keys
-
-      >>> writer.get_state({'key.with.dots': 1, 'key$with$dollars': 2})
-      {'dict_data': [('key.with.dots', 1), ('key$with$dollars', 2)]}
-
     """
 
 def doctest_ObjectWriter_get_state_Persistent():
@@ -402,13 +395,16 @@ def doctest_ObjectWriter_get_state_Persistent():
 
       >>> top = Top()
       >>> writer.get_state(top)
-      DBRef('Top', ObjectId('4eb1aede37a08e2c8d000004'), 'pjpersist_test')
+      {'id': u'00000000-0000-0000-0000-000000000000',
+       'table': 'Top',
+       '_py_type': 'DBREF',
+       'database': 'pjpersist_test'}
 
     But a persistent object can declare that it does not want a separate
     document:
 
       >>> top2 = Top()
-      >>> top2._p_mongo_sub_object = True
+      >>> top2._p_pj_sub_object = True
       >>> writer.get_state(top2, top)
       {'_py_persistent_type': 'pjpersist.tests.test_serialize.Top'}
     """
@@ -429,7 +425,7 @@ def doctest_ObjectWriter_get_state_sub_doc_object_with_no_pobj():
 
       >>> t2._p_jar is None
       True
-      >>> t2._p_mongo_doc_object is None
+      >>> t2._p_pj_doc_object is None
       True
 
     Let's now pass in a `pobj` without a jar:
@@ -440,7 +436,7 @@ def doctest_ObjectWriter_get_state_sub_doc_object_with_no_pobj():
 
       >>> t2._p_jar is None
       True
-      >>> t2._p_mongo_doc_object is top
+      >>> t2._p_pj_doc_object is top
       True
     """
 
@@ -458,7 +454,7 @@ def doctest_ObjectWriter_get_full_state():
 
       >>> any_ref = dm.insert(any)
       >>> writer.get_full_state(any)
-      {'_id': ObjectId('4f79368e37a08e1c91000000'), 'name': 'anything'}
+      {'name': 'anything'}
 
     Now an object that stores its type:
 
@@ -470,8 +466,7 @@ def doctest_ObjectWriter_get_full_state():
 
       >>> st_ref = dm.insert(st)
       >>> pprint.pprint(writer.get_full_state(st))
-      {'_id': ObjectId('4f79372637a08e1cdf000001'),
-       '_py_persistent_type': 'pjpersist.tests.test_serialize.StoreType',
+      {'_py_persistent_type': 'pjpersist.tests.test_serialize.StoreType',
        'name': 'storetype'}
     """
 
@@ -482,56 +477,38 @@ def doctest_ObjectWriter_store():
 
     Simply store an object:
 
-      >>> pprint.pprint(list(conn[DBNAME]['Top'].find()))
-      []
-
       >>> top = Top()
       >>> writer.store(top)
-      DBRef('Top', ObjectId('4eb1b16537a08e2d1a000001'), 'pjpersist_test')
-      >>> pprint.pprint(list(conn[DBNAME]['Top'].find()))
-      [{u'_id': ObjectId('4eb1b17937a08e2d29000001')}]
+      DBRef('Top', u'00000000-0000-0000-0000-000000000000', 'pjpersist_test')
+      >>> dm.commit(None)
+      >>> dumpTable('Top')
+      [{'data': {}, 'id': '00000000-0000-0000-0000-000000000000'}]
 
     Now that we have an object, storing an object simply means updating the
     existing document:
 
       >>> top.name = 'top'
       >>> writer.store(top)
-      DBRef('Top', ObjectId('4eb1b16537a08e2d1a000001'), 'pjpersist_test')
-      >>> pprint.pprint(list(conn[DBNAME]['Top'].find()))
-      [{u'_id': ObjectId('4eb1b17937a08e2d29000001'), u'name': u'top'}]
-
+      DBRef('Top', u'00000000-0000-0000-0000-000000000000', 'pjpersist_test')
+      >>> dm.commit(None)
+      >>> dumpTable('Top')
+      [{'data': {u'name': u'top'},
+        'id': '8e6fee43-bd3a-47b7-8fed-e36fd32ad717'}]
     """
 
-def doctest_ObjectWriter_store_with_mongo_store_type():
-    """ObjectWriter: store(): _p_mongo_store_type = True
+def doctest_ObjectWriter_store_with_pj_store_type():
+    """ObjectWriter: store(): _p_pj_store_type = True
 
       >>> writer = serialize.ObjectWriter(dm)
 
       >>> top = Top()
-      >>> top._p_mongo_store_type = True
+      >>> top._p_pj_store_type = True
       >>> writer.store(top)
-      DBRef('Top', ObjectId('4eb1b16537a08e2d1a000001'), 'pjpersist_test')
-      >>> pprint.pprint(list(conn[DBNAME]['Top'].find()))
-      [{u'_id': ObjectId('4eb1b27437a08e2d7d000003'),
-        u'_py_persistent_type': u'pjpersist.tests.test_serialize.Top'}]
-    """
-
-def doctest_ObjectWriter_store_with_conflict_detection():
-    """ObjectWriter: store(): conflict detection
-
-    The writer supports the data manager's conflict detection by storing a
-    serial number, which is effectively the version of the object. The data
-    manager can then use the serial to detect whether a competing transaction
-    has written to the document.
-
-      >>> dm.conflict_handler = conflict.SimpleSerialConflictHandler(dm)
-      >>> writer = serialize.ObjectWriter(dm)
-
-      >>> top = Top()
-      >>> writer.store(top)
-      DBRef('Top', ObjectId('4eb1b16537a08e2d1a000001'), 'pjpersist_test')
-      >>> pprint.pprint(list(conn[DBNAME]['Top'].find()))
-      [{u'_id': ObjectId('4eb1b31137a08e2d9d000003'), u'_py_serial': 1}]
+      DBRef('Top', u'00000000-0000-0000-0000-000000000000', 'pjpersist_test')
+      >>> dm.commit(None)
+      >>> dumpTable('Top')
+      [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_serialize.Top'},
+        'id': '00000000-0000-0000-0000-000000000000'}]
     """
 
 def doctest_ObjectWriter_store_with_new_object_references():
@@ -547,11 +524,14 @@ def doctest_ObjectWriter_store_with_new_object_references():
       >>> top.foo = Foo()
       >>> top.foo.top = top
       >>> writer.store(top)
-      DBRef('Top', ObjectId('4eb1b16537a08e2d1a000001'), 'pjpersist_test')
-      >>> pprint.pprint(list(conn[DBNAME]['Top'].find()))
-      [{u'_id': ObjectId('4eb1b3d337a08e2de7000009'),
-        u'foo': DBRef(u'Foo', ObjectId('4eb1b3d337a08e2de7000008'),
-                      u'pjpersist_test')}]
+      DBRef('Top', u'00000000-0000-0000-0000-000000000000', 'pjpersist_test')
+      >>> dm.commit(None)
+      >>> dumpTable('Top')
+      [{'data': {u'foo': {u'_py_type': u'DBREF',
+                          u'database': u'pjpersist_test',
+                          u'id': u'00000000-0000-0000-0000-000000000000',
+                          u'table': u'Foo'}},
+        'id': '00000000-0000-0000-0000-000000000000'}]
     """
 
 def doctest_ObjectReader_simple_resolve():
@@ -577,11 +557,10 @@ def doctest_ObjectReader_simple_resolve():
       ImportError: path.to.bad
 
       >>> pprint.pprint(serialize.PATH_RESOLVE_CACHE)
-      {'pjpersist.tests.test_serialize.Top':
-          <class 'pjpersist.tests.test_serialize.Top'>,
-       'path.to.bad': None}
+      {'path.to.bad': None,
+       'pjpersist.tests.test_serialize.Top': <class 'pjpersist...Top'>}
 
-    Resolving the path the second time uses the cache:
+     Resolving the path the second time uses the cache:
 
       >>> reader.simple_resolve('pjpersist.tests.test_serialize.Top')
       <class 'pjpersist.tests.test_serialize.Top'>
@@ -595,11 +574,11 @@ def doctest_ObjectReader_simple_resolve():
 def doctest_ObjectReader_resolve_simple():
     """ObjectReader: resolve(): simple
 
-    This methods resolves a collection name to its class. The collection name
+    This methods resolves a table name to its class. The table name
     can be either any arbitrary string or a Python path.
 
       >>> reader = serialize.ObjectReader(dm)
-      >>> ref = dbref.DBRef('pjpersist.tests.test_serialize.Top',
+      >>> ref = serialize.DBRef('pjpersist.tests.test_serialize.Top',
       ...                   '4eb1b3d337a08e2de7000100')
       >>> reader.resolve(ref)
       <class 'pjpersist.tests.test_serialize.Top'>
@@ -608,7 +587,7 @@ def doctest_ObjectReader_resolve_simple():
 def doctest_ObjectReader_resolve_quick_when_type_in_doc():
     """ObjectReader: resolve(): Quick lookup when type in document.
 
-    This methods resolves a collection name to its class. The collection name
+    This methods resolves a table name to its class. The table name
     can be either any arbitrary string or a Python path.
 
       >>> st = StoreType()
@@ -626,9 +605,9 @@ def doctest_ObjectReader_resolve_quick_when_type_in_doc():
       <class 'pjpersist.tests.test_serialize.StoreType2'>
       >>> dm.reset()
 
-    The collection is now stored as one where objects save their type:
+    The table is now stored as one where objects save their type:
 
-      >>> serialize.COLLECTIONS_WITH_TYPE
+      >>> serialize.TABLES_WITH_TYPE
       set([('pjpersist_test', 'storetype')])
 
     So here comes the trick. When fast-loading objects, the documents are made
@@ -637,7 +616,7 @@ def doctest_ObjectReader_resolve_quick_when_type_in_doc():
     database:
 
       >>> writer = serialize.ObjectWriter(dm)
-      >>> coll = dm._get_collection_from_object(st)
+      >>> tbl = dm._get_table_from_object(st)
       >>> dm._latest_states[st_ref] = writer.get_full_state(st)
       >>> dm._latest_states[st2_ref] = writer.get_full_state(st2)
 
@@ -653,21 +632,22 @@ def doctest_ObjectReader_resolve_lookup():
     """ObjectReader: resolve(): lookup
 
     If Python path resolution fails, we try to lookup the path from the
-    collection mapping collection names to Python paths.
+    table mapping table names to Python paths.
 
       >>> reader = serialize.ObjectReader(dm)
-      >>> ref = dbref.DBRef('Top', '4eb1b3d337a08e2de7000100', DBNAME)
+      >>> ref = serialize.DBRef(
+      ...     'Top', u'00000000-0000-0000-0000-000000000000', 'pjpersist_test')
       >>> reader.resolve(ref)
       Traceback (most recent call last):
       ...
-      ImportError: DBRef('Top', '4eb1b3d337a08e2de7000100', 'pjpersist_test')
+      ImportError: DBRef('Top', u'00000000-0000-0000-0000-000000000000', 'pjpersist_test')
 
     The lookup failed, because there is no map entry yet for the 'Top'
-    collection. The easiest way to create one is with the object writer:
+    table. The easiest way to create one is with the object writer:
 
       >>> top = Top()
       >>> writer = serialize.ObjectWriter(dm)
-      >>> writer.get_collection_name(top)
+      >>> writer.get_table_name(top)
       ('pjpersist_test', 'Top')
 
       >>> reader.resolve(ref)
@@ -677,17 +657,18 @@ def doctest_ObjectReader_resolve_lookup():
 def doctest_ObjectReader_resolve_lookup_with_multiple_maps():
     """ObjectReader: resolve(): lookup with multiple maps entries
 
-    When the collection name to Python path map has multiple entries, things
+    When the table name to Python path map has multiple entries, things
     are more interesting. In this case, we need to lookup the object, if it
     stores its persistent type otherwise we use the first map entry.
 
       >>> writer = serialize.ObjectWriter(dm)
       >>> top = Top()
       >>> writer.store(top)
-      DBRef('Top', ObjectId('4eb1e0f237a08e38dd000002'), 'pjpersist_test')
+      DBRef('Top', u'00000000-0000-0000-0000-000000000000', 'pjpersist_test')
       >>> top2 = Top2()
       >>> writer.store(top2)
-      DBRef('Top', ObjectId('4eb1e10437a08e38e8000004'), 'pjpersist_test')
+      DBRef('Top', u'00000000-0000-0000-0000-000000000001', 'pjpersist_test')
+      >>> dm.commit(None)
 
       >>> reader = serialize.ObjectReader(dm)
       >>> reader.resolve(top._p_oid)
@@ -695,14 +676,16 @@ def doctest_ObjectReader_resolve_lookup_with_multiple_maps():
       >>> reader.resolve(top2._p_oid)
       <class 'pjpersist.tests.test_serialize.Top2'>
 
-      >>> pprint.pprint(list(conn[DBNAME]['Top'].find()))
-      [{u'_id': ObjectId('4eb1e13337a08e392d000002')},
-       {u'_id': ObjectId('4eb1e13337a08e392d000004'),
-        u'_py_persistent_type': u'pjpersist.tests.test_serialize.Top2'}]
+      >>> dumpTable('Top')
+      [{'data': {},
+        'id': '00000000-0000-0000-0000-000000000000'},
+       {'data':
+            {u'_py_persistent_type': u'pjpersist.tests.test_serialize.Top2'},
+        'id': '00000000-0000-0000-0000-000000000000'}]
 
     If the DBRef does not have an object id, then an import error is raised:
 
-      >>> reader.resolve(dbref.DBRef('Top', None, 'pjpersist_test'))
+      >>> reader.resolve(serialize.DBRef('Top', None, 'pjpersist_test'))
       Traceback (most recent call last):
       ...
       ImportError: DBRef('Top', None, 'pjpersist_test')
@@ -718,10 +701,10 @@ def doctest_ObjectReader_resolve_lookup_with_multiple_maps_dont_read_full():
       >>> writer = serialize.ObjectWriter(dm)
       >>> top = Top()
       >>> writer.store(top)
-      DBRef('Top', ObjectId('4eb1e0f237a08e38dd000002'), 'pjpersist_test')
+      DBRef('Top', u'00000000-0000-0000-0000-000000000000', 'pjpersist_test')
       >>> top2 = Top2()
       >>> writer.store(top2)
-      DBRef('Top', ObjectId('4eb1e10437a08e38e8000004'), 'pjpersist_test')
+      DBRef('Top', u'00000000-0000-0000-0000-000000000001', 'pjpersist_test')
 
       >>> reader = serialize.ObjectReader(dm)
       >>> reader.resolve(top._p_oid)
@@ -732,7 +715,7 @@ def doctest_ObjectReader_resolve_lookup_with_multiple_maps_dont_read_full():
     Let's clear dome caches and try again:
 
       >>> dm.reset()
-      >>> serialize.COLLECTIONS_WITH_TYPE.__init__()
+      >>> serialize.TABLES_WITH_TYPE.__init__()
 
       >>> reader = serialize.ObjectReader(dm)
       >>> reader.resolve(top._p_oid)
@@ -742,7 +725,7 @@ def doctest_ObjectReader_resolve_lookup_with_multiple_maps_dont_read_full():
 
     If the DBRef does not have an object id, then an import error is raised:
 
-      >>> reader.resolve(dbref.DBRef('Top', None, 'pjpersist_test'))
+      >>> reader.resolve(serialize.DBRef('Top', None, 'pjpersist_test'))
       Traceback (most recent call last):
       ...
       ImportError: DBRef('Top', None, 'pjpersist_test')
@@ -792,10 +775,10 @@ def doctest_ObjectReader_get_non_persistent_object_py_persistent_type():
     We keep track of the containing object, so we can set _p_changed when this
     object changes.
 
-      >>> tier2._p_mongo_doc_object
+      >>> tier2._p_pj_doc_object
       <pjpersist.tests.test_serialize.Top object at 0x7fa30b534050>
       >>> tier2._p_jar
-      <pjpersist.datamanager.MongoDataManager object at 0x7fc3cab375d0>
+      <pjpersist.datamanager.PJDataManager object at 0x7fc3cab375d0>
     """
 
 def doctest_ObjectReader_get_non_persistent_object_py_factory():
@@ -814,24 +797,14 @@ def doctest_ObjectReader_get_non_persistent_object_py_factory():
       'TOP'
     """
 
-def doctest_ObjectReader_get_object_ObjectId():
-    """ObjectReader: get_object(): ObjectId
-
-    The object id is special and we simply conserve it:
-
-      >>> reader = serialize.ObjectReader(dm)
-      >>> reader.get_object(
-      ...     objectid.ObjectId('4e827608e13823598d000003'), None)
-      ObjectId('4e827608e13823598d000003')
-    """
-
 def doctest_ObjectReader_get_object_binary():
     """ObjectReader: get_object(): binary data
 
     Binary data is just converted to a string:
 
       >>> reader = serialize.ObjectReader(dm)
-      >>> reader.get_object(binary.Binary('hello'), None)
+      >>> reader.get_object(
+      ...     {'_py_type': 'BINARY', 'data': 'hello'.encode('base64')}, None)
       'hello'
     """
 
@@ -841,12 +814,12 @@ def doctest_ObjectReader_get_object_dbref():
       >>> writer = serialize.ObjectWriter(dm)
       >>> top = Top()
       >>> writer.store(top)
-      DBRef('Top', ObjectId('4eb1e0f237a08e38dd000002'), 'pjpersist_test')
+      DBRef('Top', u'00000000-0000-0000-0000-000000000000', 'pjpersist_test')
 
-    Database references load the ghost state of the obejct they represent:
+    Database references load the ghost state of the object they represent:
 
       >>> reader = serialize.ObjectReader(dm)
-      >>> reader.get_object(top._p_oid, None)
+      >>> reader.get_object(top._p_oid.as_json(), None)
       <pjpersist.tests.test_serialize.Top object at 0x2801938>
     """
 
@@ -898,7 +871,7 @@ def doctest_ObjectReader_get_object_mapping():
       >>> pprint.pprint(reader.get_object({'1': 1, '2': 2, '3': 3}, None))
       {'1': 1, '3': 3, '2': 2}
 
-    Since Mongo does not allow for non-string keys, the state for a dict with
+    Since JSONB does not allow for non-string keys, the state for a dict with
     non-string keys looks different:
 
       >>> pprint.pprint(reader.get_object(
@@ -926,14 +899,14 @@ def doctest_ObjectReader_get_ghost():
       >>> writer = serialize.ObjectWriter(dm)
       >>> top = Top()
       >>> writer.store(top)
-      DBRef('Top', ObjectId('4eb1e0f237a08e38dd000002'), 'pjpersist_test')
+      DBRef('Top', u'00000000-0000-0000-0000-000000000000', 'pjpersist_test')
 
     The ghost object is a shell without any loaded object state:
 
       >>> reader = serialize.ObjectReader(dm)
       >>> gobj = reader.get_ghost(top._p_oid)
       >>> gobj._p_jar
-      <pjpersist.datamanager.MongoDataManager object at 0x2720e50>
+      <pjpersist.datamanager.PJDataManager object at 0x2720e50>
       >>> gobj._p_state
       0
 
@@ -947,20 +920,18 @@ def doctest_ObjectReader_get_ghost():
 def doctest_ObjectReader_set_ghost_state():
     r"""ObjectReader: set_ghost_state()
 
-      >>> dm.conflict_handler = conflict.SimpleSerialConflictHandler(dm)
-
       >>> writer = serialize.ObjectWriter(dm)
       >>> top = Top()
       >>> top.name = 'top'
       >>> writer.store(top)
-      DBRef('Top', ObjectId('4eb1e0f237a08e38dd000002'), 'pjpersist_test')
+      DBRef('Top', u'00000000-0000-0000-0000-000000000000', 'pjpersist_test')
 
     The ghost object is a shell without any loaded object state:
 
       >>> reader = serialize.ObjectReader(dm)
       >>> gobj = reader.get_ghost(top._p_oid)
       >>> gobj._p_jar
-      <pjpersist.datamanager.MongoDataManager object at 0x2720e50>
+      <pjpersist.datamanager.PJDataManager object at 0x2720e50>
       >>> gobj._p_state
       0
 
@@ -969,19 +940,16 @@ def doctest_ObjectReader_set_ghost_state():
       >>> reader.set_ghost_state(gobj)
       >>> gobj.name
       u'top'
-      >>> gobj._p_serial
-      '\x00\x00\x00\x00\x00\x00\x00\x01'
 
     Note that the original state is stored in the data manager:
 
       >>> gobj._p_jar._original_states
-      {DBRef('Top', ObjectId('4f7487e237a08e1a86000001'), 'pjpersist_test'):
-          {u'_id': ObjectId('4f7487e237a08e1a86000001'),
-           u'_py_serial': 1,
-           u'name': u'top'}}
+      {DBRef('Top',
+             u'00000000-0000-0000-0000-000000000000',
+             'pjpersist_test'): {u'name': u'top'}}
 
-    Note that it is important that the fully returned Mongo document is stored
-    here, since this document is taken and put back into Mongo when a
+    Note that it is important that the fully returned JSONB document is stored
+    here, since this document is taken and put back into PostGreSQL when a
     transaction is not committed.
 
     This state does not change, even when the object is modified:
@@ -991,7 +959,6 @@ def doctest_ObjectReader_set_ghost_state():
       True
 
     """
-
 
 
 def doctest_deserialize_persistent_references():
@@ -1012,14 +979,17 @@ def doctest_deserialize_persistent_references():
 
     Let's check that the objects were properly serialized.
 
-      >>> pprint.pprint(list(conn[DBNAME]['Top'].find()))
-      [{u'_id': ObjectId('4e827608e13823598d000003'),
-        u'foo': DBRef(u'Foo',
-                      ObjectId('4e827608e13823598d000002'),
-                      u'pjpersist_test'),
-        u'name': u'top'}]
-      >>> pprint.pprint(list(conn[DBNAME]['Foo'].find()))
-      [{u'_id': ObjectId('4e8276c3e138235a2e000002'), u'name': u'foo'}]
+      >>> dumpTable('Top')
+      [{'data': {u'foo': {u'_py_type': u'DBREF',
+                          u'database': u'pjpersist_test',
+                          u'id': u'00000000-0000-0000-0000-000000000000',
+                          u'table': u'Foo'},
+                 u'name': u'top'},
+        'id': '00000000-0000-0000-0000-000000000000'}]
+
+      >>> dumpTable('Foo')
+      [{'data': {u'name': u'foo'},
+        'id': '00000000-0000-0000-0000-000000000000'}]
 
     Now we access the objects objects again to see whether they got properly
     deserialized.
