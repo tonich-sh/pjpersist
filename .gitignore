@@ -6,7 +6,7 @@ eggs
 parts
 tree
 develop-eggs
-src/mongopersist.egg-info/
+src/pjpersist.egg-info/
 .installed.cfg
 tmp
 *.py?
