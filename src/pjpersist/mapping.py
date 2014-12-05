@@ -19,12 +19,12 @@ import UserDict
 from pjpersist import serialize
 
 class PJTableMapping(UserDict.DictMixin, object):
-    __pj_database__ = None
     __pj_table__ = None
     __pj_mapping_key__ = 'key'
 
     def __init__(self, jar):
         self._pj_jar = jar
+        jar._create_doc_table(jar.database, self.__pj_table__)
 
     def __pj_filter__(self):
         return 'true'
@@ -56,12 +56,13 @@ class PJTableMapping(UserDict.DictMixin, object):
         # Deleting the object from the database is not our job. We simply
         # remove it from the dictionary.
         value = self[key]
-        filter += '''AND data @> '{"%s": %%s}' ''' % self.__pj_mapping_key__
         setattr(value, self.__pj_mapping_key__, None)
 
     def keys(self):
         filter = self.__pj_filter__()
-        filter += " AND (data->>'%s') is not null" % self.__pj_mapping_key__
+        filter += """ AND NOT (data @> '{"%s": null}' OR""" % \
+            self.__pj_mapping_key__
+        filter += "      NOT data ?& array['%s'] )" % self.__pj_mapping_key__
         with self._pj_jar.getCursor() as cur:
             cur.execute(
                 'SELECT * FROM ' + self.__pj_table__ + ' WHERE ' + filter)
