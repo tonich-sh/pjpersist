@@ -91,6 +91,8 @@ class DBRef(object):
     def __hash__(self):
         return self.hash
 
+    def __repr__(self):
+        return '<DBRef db=%s table=%s id=%s>' %(self.as_tuple())
     def as_tuple(self):
         return self.database, self.table, self.id
 
