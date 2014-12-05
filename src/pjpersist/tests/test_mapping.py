@@ -1,6 +1,7 @@
 ##############################################################################
 #
 # Copyright (c) 2011 Zope Foundation and Contributors.
+# Copyright (c) 2014 Shoobx, Inc.
 # All Rights Reserved.
 #
 # This software is subject to the provisions of the Zope Public License,
@@ -11,12 +12,11 @@
 # FOR A PARTICULAR PURPOSE.
 #
 ##############################################################################
-"""Mongo  Tests"""
+"""PostGreSQL/JSONB Mapping Tests"""
 import doctest
 import persistent
 import pprint
 import transaction
-#from bson import dbref, objectid
 
 from pjpersist import testing, mapping
 
@@ -25,15 +25,15 @@ class Item(persistent.Persistent):
         self.name = name
         self.site = site
 
-def doctest_MongoCollectionMapping_simple():
-    r"""MongoCollectionMapping: simple
+def doctest_PJTableMapping_simple():
+    r"""PJTableMapping: simple
 
-    The Mongo Collection Mapping provides a Python dict interface for a mongo
-    collection. Here is a simple example for our Item class/collection:
+    The PJ Table Mapping provides a Python dict interface for a PostGreSQL
+    table. Here is a simple example for our Item class/table:
 
-      >>> class SimpleContainer(mapping.MongoCollectionMapping):
-      ...     __mongo_collection__ = 'pjpersist.tests.test_mapping.Item'
-      ...     __mongo_mapping_key__ = 'name'
+      >>> class SimpleContainer(mapping.PJTableMapping):
+      ...     __pj_table__ = 'pjpersist_dot_tests_dot_test_mapping_dot_Item'
+      ...     __pj_mapping_key__ = 'name'
 
     To initialize the mapping, we need a data manager:
 
@@ -65,34 +65,23 @@ def doctest_MongoCollectionMapping_simple():
       >>> transaction.commit()
       >>> container.keys()
       []
-
-    Finally, you can always get to the collection that the mapping is
-    managing:
-
-      >>> container.get_mongo_collection()
-      <pjpersist.datamanager.CollectionWrapper object at 0x001122>
-
-      >>> container.get_mongo_collection().collection
-      Collection(Database(Connection('localhost', 27017),
-                          u'pjpersist_test'),
-                          u'pjpersist.tests.test_mapping.Item')
     """
 
-def doctest_MongoCollectionMapping_filter():
-    r"""MongoCollectionMapping: filter
+def doctest_PJTableMapping_filter():
+    r"""PJTableMapping: filter
 
     It is often desirable to manage multiple mappings for the same type of
-    object and thus same collection. The mongo mapping thus supports filtering
+    object and thus same table. The PJ mapping thus supports filtering
     for all its functions.
 
-      >>> class SiteContainer(mapping.MongoCollectionMapping):
-      ...     __mongo_collection__ = 'pjpersist.tests.test_mapping.Item'
-      ...     __mongo_mapping_key__ = 'name'
+      >>> class SiteContainer(mapping.PJTableMapping):
+      ...     __pj_table__ = 'pjpersist_dot_tests_dot_test_mapping_dot_Item'
+      ...     __pj_mapping_key__ = 'name'
       ...     def __init__(self, jar, site):
       ...         super(SiteContainer, self).__init__(jar)
       ...         self.site = site
-      ...     def __mongo_filter__(self):
-      ...         return {'site': self.site}
+      ...     def __pj_filter__(self):
+      ...         return '''data @> '{"site": "%s"}' ''' % self.site
 
       >>> container1 = SiteContainer(dm, 'site1')
       >>> container2 = SiteContainer(dm, 'site2')
