@@ -14,12 +14,13 @@
 """Mongo Persistence Doc Tests"""
 import datetime
 import doctest
+import psycopg2.extras
 import unittest
 from pprint import pprint
 
 from zope.exceptions import exceptionformatter
 
-from pjpersist import testing
+from pjpersist import serialize, testing
 
 
 class ReprMixin(object):
@@ -35,17 +36,24 @@ def setUp(test):
         exceptionformatter.DEBUG_EXCEPTION_FORMATTER
     exceptionformatter.DEBUG_EXCEPTION_FORMATTER = 0
 
-    def dumpTable(table):
-        with test.globs['dm'].getCursor() as cur:
+    def dumpTable(table, flush=True):
+        conn = testing.getConnection(testing.DBNAME)
+        with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
             cur.execute('SELECT * FROM ' + table)
             pprint([dict(e) for e in cur.fetchall()])
+        conn.close()
     test.globs['dumpTable'] = dumpTable
 
     def fetchone(table, clause=None):
+        qry = 'SELECT * FROM ' + table
+        if clause:
+            qry += ' WHERE ' + clause
         with test.globs['dm'].getCursor(False) as cur:
-            cur.execute('SELECT * FROM ' + table)
+            cur.execute(qry)
             return cur.fetchone()
     test.globs['fetchone'] = fetchone
+
+    del serialize.SERIALIZERS[1]
 
 def tearDown(test):
     testing.tearDown(test)

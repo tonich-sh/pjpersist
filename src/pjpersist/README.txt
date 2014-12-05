@@ -3,11 +3,11 @@ PostGreSQL/JSONB Data Persistence
 =================================
 
 This document outlines the general capabilities of the ``pjpersist``
-package. ``pjpersist`` is a mongoDB storage implementation for persistent
-Python objects. It is *not* a storage for the ZODB.
+package. ``pjpersist`` is a PostGreSQL/JSONB storage implementation for
+persistent Python objects. It is *not* a storage for the ZODB.
 
 The goal of ``pjpersist`` is to provide a data manager that serializes
-objects to mongoDB at transaction boundaries. The mongo data manager is a
+objects to JSONB blobs at transaction boundaries. The PJ data manager is a
 persistent data manager, which handles events at transaction boundaries (see
 ``transaction.interfaces.IDataManager``) as well as events from the
 persistency framework (see ``persistent.interfaces.IPersistentDataManager``).
@@ -36,7 +36,7 @@ Let's now define a simple persistent object:
   ...         self.visited = visited
   ...         self.phone = phone
   ...         self.birthday = birthday
-  ...         self.today = datetime.date(2014, 5, 14)
+  ...         self.today = datetime.datetime(2014, 5, 14, 12, 30)
   ...
   ...     def __str__(self):
   ...         return self.name
@@ -45,7 +45,7 @@ Let's now define a simple persistent object:
   ...         return '<%s %s>' %(self.__class__.__name__, self)
 
 We will fill out the other objects later. But for now, let's create a new
-person and store it in mongoDB:
+person and store it in PJ:
 
   >>> stephan = Person(u'Stephan')
   >>> stephan
@@ -59,10 +59,10 @@ to the DB:
   >>> dm.root['stephan']
   <Person Stephan>
 
-Custom Persistence Collections
+Custom Persistence Tables
 ------------------------------
 
-By default, persistent objects are stored in a collection having the escaped
+By default, persistent objects are stored in a table having the escaped
 Python path of the class:
 
   >>> from pjpersist import serialize
@@ -70,19 +70,22 @@ Python path of the class:
   >>> person_cn
   'u__main___dot_Person'
 
+  >>> transaction.commit()
   >>> dumpTable(person_cn)
   [{'data': {u'address': None,
              u'birthday': None,
              u'friends': {},
              u'name': u'Stephan',
              u'phone': None,
-             u'today': {u'_py_type': u'datetime.date', u'ordinal': 735367},
+             u'today': {u'_py_type': u'datetime.datetime',
+                        u'components': [2014, 5, 14, 12, 30, 0]},
              u'visited': []},
     'id': '5d657d28-2f41-4fee-8b0e-19f279e72365'}]
 
 
-As you can see, the stored document for the person looks very mongoDB. But oh
-no, I forgot to specify the full name for Stephan. Let's do that:
+As you can see, the stored document for the person looks very much like a
+natural JSON document. But oh no, I forgot to specify the full name for
+Stephan. Let's do that:
 
   >>> dm.root['stephan'].name = u'Stephan Richter'
   >>> dm.root['stephan']._p_changed
@@ -105,7 +108,7 @@ So we have to commit the transaction first:
 Let's now add an address for Stephan. Addresses are also persistent objects:
 
   >>> class Address(persistent.Persistent):
-  ...     _p_mongo_collection = 'address'
+  ...     _p_pj_table = 'address'
   ...
   ...     def __init__(self, city, zip):
   ...         self.city = city
@@ -117,8 +120,8 @@ Let's now add an address for Stephan. Addresses are also persistent objects:
   ...     def __repr__(self):
   ...         return '<%s %s>' %(self.__class__.__name__, self)
 
-mongoDBPersist supports a special attribute called ``_p_mongo_collection``,
-which allows you to specify a custom collection to use.
+pjpersist supports a special attribute called ``_p_pj_table``,
+which allows you to specify a custom table to use.
 
   >>> stephan = dm.root['stephan']
   >>> stephan.address = Address('Maynard', '01754')
@@ -127,28 +130,32 @@ which allows you to specify a custom collection to use.
 
 Note that the address is not immediately saved in the database:
 
-  >>> list(conn[DBNAME]['address'].find())
-  []
+  >>> dumpTable('address')
+  Traceback (most recent call last):
+  ...
+  ProgrammingError: relation "address" does not exist
+  ...
 
 But once we commit the transaction, everything is available:
 
   >>> transaction.commit()
-  >>> pprint.pprint(list(conn[DBNAME]['address'].find()))
-  [{u'_id': ObjectId('4e7de388e1382377f4000003'),
-    u'city': u'Maynard',
-    u'zip': u'01754'}]
+  >>> dumpTable('address')
+  [{'data': {u'city': u'Maynard', u'zip': u'01754'},
+   'id': '00000000-0000-0000-0000-000000000000'}]
 
-  >>> pprint.pprint(list(conn[DBNAME][person_cn].find()))
-  [{u'_id': ObjectId('4e7ddf12e138237403000000'),
-    u'address': DBRef(u'address',
-                      ObjectId('4e7ddf12e138237403000000'),
-                      u'pjpersist_test'),
-    u'birthday': None,
-    u'friends': {},
-    u'name': u'Stephan Richter',
-    u'phone': None,
-    u'today': datetime.datetime(2011, 10, 1, 9, 45)
-    u'visited': []}]
+  >>> dumpTable(person_cn)
+  [{'data': {u'address': {u'_py_type': u'DBREF',
+                          u'database': u'pjpersist_test',
+                          u'id': u'c0cef959-c2e6-4644-948c-2dc2313afdae',
+                          u'table': u'address'},
+             u'birthday': None,
+             u'friends': {},
+             u'name': u'Stephan Richter',
+             u'phone': None,
+             u'today': {u'_py_type': u'datetime.datetime',
+                        u'components': [2014, 5, 14, 12, 30, 0]},
+             u'visited': []},
+    'id': '95f4648e-5156-4814-8d9a-9a2f193ab316'}]
 
   >>> dm.root['stephan'].address
   <Address Maynard (01754)>
@@ -157,8 +164,8 @@ But once we commit the transaction, everything is available:
 Non-Persistent Objects
 ----------------------
 
-As you can see, even the reference looks nice and uses the standard mongoDB DB
-reference construct. But what about arbitrary non-persistent, but picklable,
+As you can see, even the reference looks nice and all components are easily
+visible. But what about arbitrary non-persistent, but picklable,
 objects? Well, let's create a phone number object for that:
 
   >>> class Phone(object):
@@ -178,26 +185,28 @@ objects? Well, let's create a phone number object for that:
   >>> dm.root['stephan'].phone
   <Phone +1-978-394-5124>
 
-Let's now commit the transaction and look at the mongoDB document again:
+Let's now commit the transaction and look at the JSONB document again:
 
   >>> transaction.commit()
   >>> dm.root['stephan'].phone
   <Phone +1-978-394-5124>
 
-  >>> pprint.pprint(list(conn[DBNAME][person_cn].find()))
-  [{u'_id': ObjectId('4e7ddf12e138237403000000'),
-    u'address': DBRef(u'address',
-                      ObjectId('4e7ddf12e138237403000000'),
-                      u'pjpersist_test'),
-    u'birthday': None,
-    u'friends': {},
-    u'name': u'Stephan Richter',
-    u'phone': {u'_py_type': u'__main__.Phone',
-               u'area': u'978',
-               u'country': u'+1',
-               u'number': u'394-5124'},
-    u'today': datetime.datetime(2011, 10, 1, 9, 45)
-    u'visited': []}]
+  >>> dumpTable(person_cn)
+  [{'data': {u'address': {u'_py_type': u'DBREF',
+                          u'database': u'pjpersist_test',
+                          u'id': u'00000000-0000-0000-0000-000000000000',
+                          u'table': u'address'},
+             u'birthday': None,
+             u'friends': {},
+             u'name': u'Stephan Richter',
+             u'phone': {u'_py_type': u'__main__.Phone',
+                        u'area': u'978',
+                        u'country': u'+1',
+                        u'number': u'394-5124'},
+             u'today': {u'_py_type': u'datetime.datetime',
+                        u'components': [2014, 5, 14, 12, 30, 0]},
+             u'visited': []},
+    'id': '00000000-0000-0000-0000-000000000000'}]
 
 As you can see, for arbitrary non-persistent objects we need a small hint in
 the sub-document, but it is very minimal. If the ``__reduce__`` method returns
@@ -217,26 +226,31 @@ when storing a date and other arbitrary data:
   datetime.date(1980, 1, 25)
 
 As you can see, a dictionary key is always converted to unicode and tuples are
-always maintained as lists, since BSON does not have two sequence types.
+always maintained as lists, since JSON does not have two sequence types.
 
-  >>> pprint.pprint(conn[DBNAME][person_cn].find_one(
-  ...     {'name': 'Stephan Richter'}))
-  {u'_id': ObjectId('4e7df744e138230a3e000000'),
-   u'address': DBRef(u'address',
-                     ObjectId('4e7df744e138230a3e000003'),
-                     u'pjpersist_test'),
-   u'birthday': {u'_py_factory': u'datetime.date',
-                 u'_py_factory_args': [Binary('\x07\xbc\x01\x19', 0)]},
-   u'friends': {u'roy': DBRef(u'__main__.Person',
-                              ObjectId('4e7df745e138230a3e000004'),
-                              u'pjpersist_test')},
-   u'name': u'Stephan Richter',
-   u'phone': {u'_py_type': u'__main__.Phone',
-              u'area': u'978',
-              u'country': u'+1',
-              u'number': u'394-5124'},
-   u'today': datetime.datetime(2011, 9, 24, 11, 29, 8, 930000),
-   u'visited': [u'Germany', u'USA']}
+  >>> import pprint
+  >>> pprint.pprint(dict(
+  ...     fetchone(person_cn, """data @> '{"name": "Stephan Richter"}'""")))
+  {'data': {u'address': {u'_py_type': u'DBREF',
+                         u'database': u'pjpersist_test',
+                         u'id': u'00000000-0000-0000-0000-000000000000',
+                         u'table': u'address'},
+            u'birthday': {u'_py_factory': u'datetime_dot_date',
+                          u'_py_factory_args': [{u'_py_type': u'BINARY',
+                                                 u'data': u'B7wBGQ==\n'}]},
+            u'friends': {u'roy': {u'_py_type': u'DBREF',
+                                  u'database': u'pjpersist_test',
+                                  u'id': u'00000000-0000-0000-0000-000000000000',
+                                  u'table': u'u__main___dot_Person'}},
+            u'name': u'Stephan Richter',
+            u'phone': {u'_py_type': u'__main__.Phone',
+                       u'area': u'978',
+                       u'country': u'+1',
+                       u'number': u'394-5124'},
+            u'today': {u'_py_type': u'datetime.datetime',
+                       u'components': [2014, 5, 14, 12, 30, 0]},
+            u'visited': [u'Germany', u'USA']},
+   'id': '00000000-0000-0000-0000-000000000000'}
 
 
 Custom Serializers
@@ -270,23 +284,27 @@ Let's have a look again:
   >>> dm.root['stephan'].birthday
   datetime.date(1980, 1, 25)
 
-  >>> pprint.pprint(conn[DBNAME][person_cn].find_one(
-  ...     {'name': 'Stephan Richter'}))
-  {u'_id': ObjectId('4e7df803e138230aeb000000'),
-   u'address': DBRef(u'address',
-                     ObjectId('4e7df803e138230aeb000003'),
-                     u'pjpersist_test'),
-   u'birthday': {u'_py_type': u'datetime.date', u'ordinal': 722839},
-   u'friends': {u'roy': DBRef(u'__main__.Person',
-                              ObjectId('4e7df803e138230aeb000004'),
-                              u'pjpersist_test')},
-   u'name': u'Stephan Richter',
-   u'phone': {u'_py_type': u'__main__.Phone',
-              u'area': u'978',
-              u'country': u'+1',
-              u'number': u'394-5124'},
-   u'today': datetime.datetime(2011, 9, 24, 11, 32, 19, 640000),
-   u'visited': [u'Germany', u'USA']}
+  >>> pprint.pprint(dict(
+  ...     fetchone(person_cn, """data @> '{"name": "Stephan Richter"}'""")))
+  {'data': {u'address': {u'_py_type': u'DBREF',
+                         u'database': u'pjpersist_test',
+                         u'id': u'00000000-0000-0000-0000-000000000000',
+                         u'table': u'address'},
+            u'birthday': {u'_py_type': u'datetime.date', u'ordinal': 722839},
+            u'friends': {u'roy': {u'_py_type': u'DBREF',
+                                  u'database': u'pjpersist_test',
+                                  u'id': u'00000000-0000-0000-0000-000000000000',
+                                  u'table': u'u__main___dot_Person'}},
+            u'name': u'Stephan Richter',
+            u'phone': {u'_py_type': u'__main__.Phone',
+                       u'area': u'978',
+                       u'country': u'+1',
+                       u'number': u'394-5124'},
+            u'today': {u'_py_type': u'datetime.datetime',
+                       u'components': [2014, 5, 14, 12, 30, 0]},
+            u'visited': [u'Germany', u'USA']},
+   'id': '00000000-0000-0000-0000-000000000000'}
+
 
 Much better!
 
@@ -294,12 +312,12 @@ Much better!
 Persistent Objects as Sub-Documents
 -----------------------------------
 
-In order to give more control over which objects receive their own collections
+In order to give more control over which objects receive their own tables
 and which do not, the developer can provide a special flag marking a
 persistent class so that it becomes part of its parent object's document:
 
   >>> class Car(persistent.Persistent):
-  ...     _p_mongo_sub_object = True
+  ...     _p_pj_sub_object = True
   ...
   ...     def __init__(self, year, make, model):
   ...         self.year = year
@@ -312,7 +330,7 @@ persistent class so that it becomes part of its parent object's document:
   ...     def __repr__(self):
   ...         return '<%s %s>' %(self.__class__.__name__, self)
 
-The ``_p_mongo_sub_object`` is used to mark a type of object to be just part
+The ``_p_pj_sub_object`` is used to mark a type of object to be just part
 of another document:
 
   >>> dm.root['stephan'].car = car = Car('2005', 'Ford', 'Explorer')
@@ -321,27 +339,31 @@ of another document:
   >>> dm.root['stephan'].car
   <Car 2005 Ford Explorer>
 
-  >>> pprint.pprint(conn[DBNAME][person_cn].find_one(
-  ...     {'name': 'Stephan Richter'}))
-  {u'_id': ObjectId('4e7dfac7e138230d3d000000'),
-   u'address': DBRef(u'address',
-                     ObjectId('4e7dfac7e138230d3d000003'),
-                     u'pjpersist_test'),
-   u'birthday': {u'_py_type': u'datetime.date', u'ordinal': 722839},
-   u'car': {u'_py_persistent_type': u'__main__.Car',
-            u'make': u'Ford',
-            u'model': u'Explorer',
-            u'year': u'2005'},
-   u'friends': {u'roy': DBRef(u'__main__.Person',
-                              ObjectId('4e7dfac7e138230d3d000004'),
-                              u'pjpersist_test')},
-   u'name': u'Stephan Richter',
-   u'phone': {u'_py_type': u'__main__.Phone',
-              u'area': u'978',
-              u'country': u'+1',
-              u'number': u'394-5124'},
-   u'today': datetime.datetime(2011, 9, 24, 11, 44, 7, 662000),
-   u'visited': [u'Germany', u'USA']}
+  >>> pprint.pprint(dict(
+  ...     fetchone(person_cn, """data @> '{"name": "Stephan Richter"}'""")))
+  {'data': {u'address': {u'_py_type': u'DBREF',
+                         u'database': u'pjpersist_test',
+                         u'id': u'00000000-0000-0000-0000-000000000000',
+                         u'table': u'address'},
+            u'birthday': {u'_py_type': u'datetime.date', u'ordinal': 722839},
+            u'car': {u'_py_persistent_type': u'u__main___dot_Car',
+                     u'make': u'Ford',
+                     u'model': u'Explorer',
+                     u'year': u'2005'},
+            u'friends': {u'roy': {u'_py_type': u'DBREF',
+                                  u'database': u'pjpersist_test',
+                                  u'id': u'00000000-0000-0000-0000-000000000000',
+                                  u'table': u'u__main___dot_Person'}},
+            u'name': u'Stephan Richter',
+            u'phone': {u'_py_type': u'__main__.Phone',
+                       u'area': u'978',
+                       u'country': u'+1',
+                       u'number': u'394-5124'},
+            u'today': {u'_py_type': u'datetime.datetime',
+                       u'components': [2014, 5, 14, 12, 30, 0]},
+            u'visited': [u'Germany', u'USA']},
+   'id': '00000000-0000-0000-0000-000000000000'}
+
 
 The reason we want objects to be persistent is so that they pick up changes
 automatically:
@@ -352,12 +374,12 @@ automatically:
   <Car 2004 Ford Explorer>
 
 
-Collection Sharing
-------------------
+Table Sharing
+-------------
 
-Since mongoDB is so flexible, it sometimes makes sense to store multiple types
-of (similar) objects in the same collection. In those cases you instruct the
-object type to store its Python path as part of the document.
+Since PostGreSQL/JSONB is so flexible, it sometimes makes sense to store
+multiple types of (similar) objects in the same table. In those cases you
+instruct the object type to store its Python path as part of the document.
 
 Warning: Please note though that this method is less efficient, since the
 document must be loaded in order to create a ghost causing more database
@@ -372,8 +394,8 @@ access.
   ...     def __str__(self):
   ...         return '%s (%s) in %s' %(self.city, self.zip, self.country)
 
-In order to accomplish collection sharing, you simply create another class
-that has the same ``_p_mongo_collection`` string as another (sub-classing will
+In order to accomplish table sharing, you simply create another class
+that has the same ``_p_pj_table`` string as another (sub-classing will
 ensure that).
 
 So let's give Stephan two extended addresses now.
@@ -487,21 +509,21 @@ reduce the state.
   >>> dm.root['ptop'] = top
 
 
-Containers and Collections
---------------------------
+Containers and Tables
+---------------------
 
 Now that we have talked so much about the gory details on storing one object,
-what about mappings that reflect an entire collection, for example a
-collection of people.
+what about mappings that reflect an entire table, for example a
+table of people.
 
 There are many approaches that can be taken. The following implementation
 defines an attribute in the document as the mapping key and names a
-collection:
+table:
 
   >>> from pjpersist import mapping
-  >>> class People(mapping.MongoCollectionMapping):
-  ...     __mongo_collection__ = person_cn
-  ...     __mongo_mapping_key__ = 'short_name'
+  >>> class People(mapping.PJTableMapping):
+  ...     __pj_table__ = person_cn
+  ...     __pj_mapping_key__ = 'short_name'
 
 The mapping takes the data manager as an argument. One can easily create a
 sub-class that assigns the data manager automatically. Let's have a look:
@@ -527,88 +549,3 @@ it to the mapping:
   >>> transaction.commit()
   >>> sorted(People(dm).keys())
   [u'roy', u'stephan']
-
-
-Write-Conflict Detection
-------------------------
-
-Since mongoDB has no support for MVCC, it does not provide a concept of write
-conflict detection. However, a simple write-conflict detection can be easily
-implemented using a serial number on the document.
-
-Let's reset the database and create a data manager with enabled conflict
-detection:
-
-  >>> from pjpersist import conflict, datamanager
-  >>> conn.drop_database(DBNAME)
-  >>> dm2 = datamanager.MongoDataManager(
-  ...     conn,
-  ...     default_database=DBNAME,
-  ...     root_database=DBNAME,
-  ...     conflict_handler_factory=conflict.SimpleSerialConflictHandler)
-
-Now we add a person and see that the serial got stored.
-
-  >>> dm2.root['stephan'] = Person(u'Stephan')
-  >>> dm2.root['stephan']._p_serial
-  '\x00\x00\x00\x00\x00\x00\x00\x01'
-  >>> pprint.pprint(dm2._conn[DBNAME][person_cn].find_one())
-  {u'_id': ObjectId('4e7fe18de138233a5b000009'),
-   u'_py_serial': 1,
-   u'address': None,
-   u'birthday': None,
-   u'friends': {},
-   u'name': u'Stephan',
-   u'phone': None,
-   u'today': datetime.datetime(2011, 9, 25, 22, 21, 1, 656000),
-   u'visited': []}
-
-Next we change the person and commit it again:
-
-  >>> dm2.root['stephan'].name = u'Stephan <Unknown>'
-  >>> transaction.commit()
-  >>> pprint.pprint(dm2._conn[DBNAME][person_cn].find_one())
-  {u'_id': ObjectId('4e7fe18de138233a5b000009'),
-   u'_py_serial': 2,
-   u'address': None,
-   u'birthday': None,
-   u'friends': {},
-   u'name': u'Stephan <Unknown>',
-   u'phone': None,
-   u'today': datetime.datetime(2011, 9, 25, 22, 21, 1, 656000),
-   u'visited': []}
-
-Let's now start a new transaction with some modifications:
-
-  >>> dm2.root['stephan'].name = u'Stephan Richter'
-
-However, in the mean time another transaction modifies the object. (We will do
-this here directly via mongoDB for simplicity.)
-
-  >>> _ = dm2._conn[DBNAME][person_cn].update(
-  ...     {'name': u'Stephan <Unknown>'},
-  ...     {'$set': {'name': u'Stephan R.', '_py_serial': 3}})
-  >>> pprint.pprint(dm2._conn[DBNAME][person_cn].find_one())
-  {u'_id': ObjectId('4e7fe1f4e138233ac4000009'),
-   u'_py_serial': 3,
-   u'address': None,
-   u'birthday': None,
-   u'friends': {},
-   u'name': u'Stephan R.',
-   u'phone': None,
-   u'today': datetime.datetime(2011, 9, 25, 22, 22, 44, 343000),
-   u'visited': []}
-
-Now our changing transaction tries to commit:
-
-  >>> transaction.commit()
-  Traceback (most recent call last):
-  ...
-  ConflictError: database conflict error
-      (oid DBRef(u'__main__.Person',
-                 ObjectId('4e7ddf12e138237403000000'),
-                 u'pjpersist_test'),
-       class Person,
-       orig serial 2, cur serial 3, new serial 3)
-
-  >>> transaction.abort()

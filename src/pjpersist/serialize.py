@@ -36,8 +36,10 @@ AVAILABLE_NAME_MAPPINGS = set()
 PATH_RESOLVE_CACHE = {}
 
 
-def get_dotted_name(obj):
+def get_dotted_name(obj, escape=True):
     name = obj.__module__ + '.' + obj.__name__
+    if not escape:
+        return name
     # Make the name safe.
     name = name.replace('.', '_dot_')
     # XXX: Circumventing a bug in sqlobject.sqlbuilder that prohibits names to
@@ -92,6 +94,13 @@ class DBRef(object):
     def as_tuple(self):
         return self.database, self.table, self.id
 
+    def as_json(self):
+        return {'_py_type': 'DBREF',
+                'database': self.database,
+                'table': self.table,
+                'id': self.id}
+
+
 class Binary(str):
     pass
 
@@ -143,7 +152,7 @@ class ObjectWriter(object):
             # If there is already a map for this table, the next map must
             # force the object to store the type.
             result = self._jar._get_name_map_entry(db_name, table_name)
-            if result is not None:
+            if len(result):
                 setattr(obj.__class__, interfaces.STORE_TYPE_ATTR_NAME, True)
             map['doc_has_type'] = getattr(
                 obj, interfaces.STORE_TYPE_ATTR_NAME, False)
@@ -196,7 +205,7 @@ class ObjectWriter(object):
                args == (obj.__class__, object, None):
             # This is the simple case, which means we can produce a nicer
             # JSONB output.
-            state = {'_py_type': get_dotted_name(args[0])}
+            state = {'_py_type': get_dotted_name(args[0], escape=False)}
         elif factory == copy_reg.__newobj__ and args == (obj.__class__,):
             # Another simple case for persistent objects that do not want
             # their own document.
@@ -222,7 +231,7 @@ class ObjectWriter(object):
             dbref = obj._p_oid
         # Create the reference sub-document. The _p_type value helps with the
         # deserialization later.
-        return dbref
+        return dbref.as_json()
 
     def get_state(self, obj, pobj=None, seen=None):
         seen = seen or []
@@ -238,7 +247,7 @@ class ObjectWriter(object):
                 obj.decode('utf-8')
                 return obj
             except UnicodeError:
-                return Binary(obj.encode('base64'))
+                return {'_py_type': 'BINARY', 'data': obj.encode('base64')}
 
         # Some objects might not naturally serialize well and create a very
         # ugly JSONB entry. Thus, we allow custom serializers to be
@@ -394,7 +403,7 @@ class ObjectReader(object):
                 obj_doc = self._jar._latest_states[dbref]
             elif ALWAYS_READ_FULL_DOC:
                 obj_doc = self._jar._get_doc(
-                    dbref.database, dbref.table, dbref.id)['data']
+                    dbref.database, dbref.table, dbref.id)
                 self._jar._latest_states[dbref] = obj_doc
             else:
                 pytype = self._jar._get_doc_py_type(
@@ -496,7 +505,7 @@ class ObjectReader(object):
                 # we risk to store this object in its own table next time.
                 setattr(sub_obj, interfaces.SUB_OBJECT_ATTR_NAME, True)
         if getattr(sub_obj, interfaces.SUB_OBJECT_ATTR_NAME, False):
-            setattr(sub_obj, DOC_OBJECT_ATTR_NAME, obj)
+            setattr(sub_obj, interfaces.DOC_OBJECT_ATTR_NAME, obj)
             sub_obj._p_jar = self._jar
         return sub_obj
 

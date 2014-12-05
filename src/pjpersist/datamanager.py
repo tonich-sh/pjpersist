@@ -133,7 +133,8 @@ class Root(UserDict.DictMixin):
 
     def keys(self):
         with self._jar.getCursor(False) as cur:
-            cur.execute(sb.Select(sb.Field(tbl, 'name')))
+            tbl = getattr(sb.table, self.table)
+            cur.execute(sb.Select(sb.Field(self.table, 'name')))
             return [doc['name'] for doc in cur.fetchall()]
 
 
@@ -177,7 +178,7 @@ class PJDataManager(object):
         return self._conn.cursor(cursor_factory=factory)
 
     def _init_name_map_table(self):
-        with self.getCursor() as cur:
+        with self.getCursor(False) as cur:
             cur.execute(
             "SELECT * FROM information_schema.tables where table_name=%s",
                 (self.name_map_table,))
@@ -193,15 +194,17 @@ class PJDataManager(object):
 
     def _get_name_map_entry(self, database, table, path=None):
         name_map = getattr(sb.table, self.name_map_table)
-        clause = name_map.database == database & name_map.tbl == table
+        clause = (name_map.database == database) & (name_map.tbl == table)
         if path is not None:
-            clause &= name_map.path == path
-        with self.getCursor() as cur:
+            clause &= (name_map.path == path)
+        with self.getCursor(False) as cur:
             cur.execute(sb.Select(sb.Field(self.name_map_table, '*'), clause))
-            return cur.fetchall()
+            if path is None:
+                return cur.fetchall()
+            return cur.fetchone() if cur.rowcount else None
 
     def _insert_name_map_entry(self, database, table, path, doc_has_type):
-        with self.getCursor() as cur:
+        with self.getCursor(False) as cur:
             cur.execute(
                 sb.Insert(
                     self.name_map_table, values={
@@ -219,7 +222,7 @@ class PJDataManager(object):
         if (database, table) in INITIALIZED_TABLES:
             return
 
-        with self.getCursor() as cur:
+        with self.getCursor(False) as cur:
             cur.execute(
             "SELECT * FROM information_schema.tables where table_name=%s",
                 (table,))
@@ -247,7 +250,7 @@ class PJDataManager(object):
     def _update_doc(self, database, table, doc, id):
         # Insert the document into the table.
         with self.getCursor() as cur:
-                cur.execute(
+            cur.execute(
                 "UPDATE " + table + " SET data=%s WHERE id = %s",
                 (psycopg2.extras.Json(doc), id)
                 )
@@ -328,6 +331,9 @@ class PJDataManager(object):
         self._registered_objects = {}
 
     def insert(self, obj, oid=None):
+        if self._needs_to_join:
+            self.transaction_manager.get().join(self)
+            self._needs_to_join = False
         if obj._p_oid is not None:
             raise ValueError('Object has already an OID.', obj)
         res = self._writer.store(obj, id=oid)
