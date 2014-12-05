@@ -25,8 +25,8 @@ import transaction
 import cPickle
 import cProfile
 
-from mongopersist import conflict, datamanager
-from mongopersist.zope import container
+from pjpersist import conflict, datamanager
+from pjpersist.zope import container
 
 import zope.container
 import zope.container.btree

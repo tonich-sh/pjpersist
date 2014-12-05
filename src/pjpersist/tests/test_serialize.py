@@ -18,9 +18,9 @@ import persistent
 import pprint
 import copy_reg
 
-from bson import binary, dbref, objectid
+#from bson import binary, dbref, objectid
 
-from mongopersist import conflict, interfaces, serialize, testing
+from pjpersist import interfaces, serialize, testing
 
 class Top(persistent.Persistent):
     _p_mongo_collection = 'Top'
@@ -117,18 +117,18 @@ def doctest_ObjectWriter_get_collection_name():
 
       >>> writer = serialize.ObjectWriter(dm)
       >>> writer.get_collection_name(Anything())
-      ('mongopersist_test', 'mongopersist.tests.test_serialize.Anything')
+      ('pjpersist_test', 'pjpersist.tests.test_serialize.Anything')
 
       >>> top = Top()
       >>> writer.get_collection_name(top)
-      ('mongopersist_test', 'Top')
+      ('pjpersist_test', 'Top')
 
       >>> print tuple(conn[DBNAME][dm.name_map_collection].find())
-      ({u'path': u'mongopersist.tests.test_serialize.Top',
+      ({u'path': u'pjpersist.tests.test_serialize.Top',
         u'doc_has_type': False,
         u'_id': ObjectId('4eb19f9937a08e27b7000000'),
         u'collection': u'Top',
-        u'database': u'mongopersist_test'},)
+        u'database': u'pjpersist_test'},)
 
       >>> getattr(top, '_p_mongo_store_type', None)
 
@@ -139,19 +139,19 @@ def doctest_ObjectWriter_get_collection_name():
 
       >>> top2 = Top2()
       >>> writer.get_collection_name(top2)
-      ('mongopersist_test', 'Top')
+      ('pjpersist_test', 'Top')
 
       >>> pprint.pprint(tuple(conn[DBNAME][dm.name_map_collection].find()))
       ({u'_id': ObjectId('4eb1b5ab37a08e2f06000000'),
         u'collection': u'Top',
-        u'database': u'mongopersist_test',
+        u'database': u'pjpersist_test',
         u'doc_has_type': False,
-        u'path': u'mongopersist.tests.test_serialize.Top'},
+        u'path': u'pjpersist.tests.test_serialize.Top'},
        {u'_id': ObjectId('4eb1b5ab37a08e2f06000001'),
         u'collection': u'Top',
-        u'database': u'mongopersist_test',
+        u'database': u'pjpersist_test',
         u'doc_has_type': True,
-        u'path': u'mongopersist.tests.test_serialize.Top2'})
+        u'path': u'pjpersist.tests.test_serialize.Top2'})
 
       >>> getattr(top2, '_p_mongo_store_type', None)
       True
@@ -199,7 +199,7 @@ def doctest_ObjectWriter_get_non_persistent_state():
 
       >>> top = Top()
       >>> writer.get_non_persistent_state(top, [])
-      {'_py_persistent_type': 'mongopersist.tests.test_serialize.Top'}
+      {'_py_persistent_type': 'pjpersist.tests.test_serialize.Top'}
 
     And then there are the really weird cases:
 
@@ -291,17 +291,17 @@ def doctest_ObjectWriter_get_persistent_state():
       []
 
       >>> writer.get_persistent_state(foo, [])
-      DBRef('Foo', ObjectId('4eb1a87f37a08e29ff000002'), 'mongopersist_test')
+      DBRef('Foo', ObjectId('4eb1a87f37a08e29ff000002'), 'pjpersist_test')
 
       >>> foo._p_oid
-      DBRef('Foo', ObjectId('4eb1a87f37a08e29ff000002'), 'mongopersist_test')
+      DBRef('Foo', ObjectId('4eb1a87f37a08e29ff000002'), 'pjpersist_test')
       >>> pprint.pprint(list(conn[DBNAME]['Foo'].find()))
       [{u'_id': ObjectId('4eb1a96c37a08e2a7b000002')}]
 
     The next time the object simply returns its reference:
 
       >>> writer.get_persistent_state(foo, [])
-      DBRef('Foo', ObjectId('4eb1a87f37a08e29ff000002'), 'mongopersist_test')
+      DBRef('Foo', ObjectId('4eb1a87f37a08e29ff000002'), 'pjpersist_test')
       >>> pprint.pprint(list(conn[DBNAME]['Foo'].find()))
       [{u'_id': ObjectId('4eb1a96c37a08e2a7b000002')}]
     """
@@ -334,11 +334,11 @@ def doctest_ObjectWriter_get_state_constant():
 
       >>> writer = serialize.ObjectWriter(None)
       >>> writer.get_state(Constant)
-      {'_py_constant': 'mongopersist.tests.test_serialize.Constant'}
+      {'_py_constant': 'pjpersist.tests.test_serialize.Constant'}
       >>> writer.get_state(interfaces.IObjectWriter)
-      {'_py_constant': 'mongopersist.interfaces.IObjectWriter'}
+      {'_py_constant': 'pjpersist.interfaces.IObjectWriter'}
       >>> writer.get_state(CopyReggedConstant)
-      {'_py_constant': 'mongopersist.tests.test_serialize.CopyReggedConstant'}
+      {'_py_constant': 'pjpersist.tests.test_serialize.CopyReggedConstant'}
     """
 
 def doctest_ObjectWriter_get_state_types():
@@ -346,7 +346,7 @@ def doctest_ObjectWriter_get_state_types():
 
       >>> writer = serialize.ObjectWriter(None)
       >>> writer.get_state(Top)
-      {'path': 'mongopersist.tests.test_serialize.Top', '_py_type': 'type'}
+      {'path': 'pjpersist.tests.test_serialize.Top', '_py_type': 'type'}
       >>> writer.get_state(str)
       {'path': '__builtin__.str', '_py_type': 'type'}
     """
@@ -402,7 +402,7 @@ def doctest_ObjectWriter_get_state_Persistent():
 
       >>> top = Top()
       >>> writer.get_state(top)
-      DBRef('Top', ObjectId('4eb1aede37a08e2c8d000004'), 'mongopersist_test')
+      DBRef('Top', ObjectId('4eb1aede37a08e2c8d000004'), 'pjpersist_test')
 
     But a persistent object can declare that it does not want a separate
     document:
@@ -410,7 +410,7 @@ def doctest_ObjectWriter_get_state_Persistent():
       >>> top2 = Top()
       >>> top2._p_mongo_sub_object = True
       >>> writer.get_state(top2, top)
-      {'_py_persistent_type': 'mongopersist.tests.test_serialize.Top'}
+      {'_py_persistent_type': 'pjpersist.tests.test_serialize.Top'}
     """
 
 def doctest_ObjectWriter_get_state_sub_doc_object_with_no_pobj():
@@ -425,7 +425,7 @@ def doctest_ObjectWriter_get_state_sub_doc_object_with_no_pobj():
 
       >>> t2 = Tier2()
       >>> writer.get_state(t2)
-      {'_py_persistent_type': 'mongopersist.tests.test_serialize.Tier2'}
+      {'_py_persistent_type': 'pjpersist.tests.test_serialize.Tier2'}
 
       >>> t2._p_jar is None
       True
@@ -436,7 +436,7 @@ def doctest_ObjectWriter_get_state_sub_doc_object_with_no_pobj():
 
       >>> top = Top()
       >>> writer.get_state(t2, top)
-      {'_py_persistent_type': 'mongopersist.tests.test_serialize.Tier2'}
+      {'_py_persistent_type': 'pjpersist.tests.test_serialize.Tier2'}
 
       >>> t2._p_jar is None
       True
@@ -465,13 +465,13 @@ def doctest_ObjectWriter_get_full_state():
       >>> st = StoreType()
       >>> st.name = 'storetype'
       >>> pprint.pprint(writer.get_full_state(st))
-      {'_py_persistent_type': 'mongopersist.tests.test_serialize.StoreType',
+      {'_py_persistent_type': 'pjpersist.tests.test_serialize.StoreType',
        'name': 'storetype'}
 
       >>> st_ref = dm.insert(st)
       >>> pprint.pprint(writer.get_full_state(st))
       {'_id': ObjectId('4f79372637a08e1cdf000001'),
-       '_py_persistent_type': 'mongopersist.tests.test_serialize.StoreType',
+       '_py_persistent_type': 'pjpersist.tests.test_serialize.StoreType',
        'name': 'storetype'}
     """
 
@@ -487,7 +487,7 @@ def doctest_ObjectWriter_store():
 
       >>> top = Top()
       >>> writer.store(top)
-      DBRef('Top', ObjectId('4eb1b16537a08e2d1a000001'), 'mongopersist_test')
+      DBRef('Top', ObjectId('4eb1b16537a08e2d1a000001'), 'pjpersist_test')
       >>> pprint.pprint(list(conn[DBNAME]['Top'].find()))
       [{u'_id': ObjectId('4eb1b17937a08e2d29000001')}]
 
@@ -496,7 +496,7 @@ def doctest_ObjectWriter_store():
 
       >>> top.name = 'top'
       >>> writer.store(top)
-      DBRef('Top', ObjectId('4eb1b16537a08e2d1a000001'), 'mongopersist_test')
+      DBRef('Top', ObjectId('4eb1b16537a08e2d1a000001'), 'pjpersist_test')
       >>> pprint.pprint(list(conn[DBNAME]['Top'].find()))
       [{u'_id': ObjectId('4eb1b17937a08e2d29000001'), u'name': u'top'}]
 
@@ -510,10 +510,10 @@ def doctest_ObjectWriter_store_with_mongo_store_type():
       >>> top = Top()
       >>> top._p_mongo_store_type = True
       >>> writer.store(top)
-      DBRef('Top', ObjectId('4eb1b16537a08e2d1a000001'), 'mongopersist_test')
+      DBRef('Top', ObjectId('4eb1b16537a08e2d1a000001'), 'pjpersist_test')
       >>> pprint.pprint(list(conn[DBNAME]['Top'].find()))
       [{u'_id': ObjectId('4eb1b27437a08e2d7d000003'),
-        u'_py_persistent_type': u'mongopersist.tests.test_serialize.Top'}]
+        u'_py_persistent_type': u'pjpersist.tests.test_serialize.Top'}]
     """
 
 def doctest_ObjectWriter_store_with_conflict_detection():
@@ -529,7 +529,7 @@ def doctest_ObjectWriter_store_with_conflict_detection():
 
       >>> top = Top()
       >>> writer.store(top)
-      DBRef('Top', ObjectId('4eb1b16537a08e2d1a000001'), 'mongopersist_test')
+      DBRef('Top', ObjectId('4eb1b16537a08e2d1a000001'), 'pjpersist_test')
       >>> pprint.pprint(list(conn[DBNAME]['Top'].find()))
       [{u'_id': ObjectId('4eb1b31137a08e2d9d000003'), u'_py_serial': 1}]
     """
@@ -547,11 +547,11 @@ def doctest_ObjectWriter_store_with_new_object_references():
       >>> top.foo = Foo()
       >>> top.foo.top = top
       >>> writer.store(top)
-      DBRef('Top', ObjectId('4eb1b16537a08e2d1a000001'), 'mongopersist_test')
+      DBRef('Top', ObjectId('4eb1b16537a08e2d1a000001'), 'pjpersist_test')
       >>> pprint.pprint(list(conn[DBNAME]['Top'].find()))
       [{u'_id': ObjectId('4eb1b3d337a08e2de7000009'),
         u'foo': DBRef(u'Foo', ObjectId('4eb1b3d337a08e2de7000008'),
-                      u'mongopersist_test')}]
+                      u'pjpersist_test')}]
     """
 
 def doctest_ObjectReader_simple_resolve():
@@ -560,14 +560,14 @@ def doctest_ObjectReader_simple_resolve():
     This methods simply resolves a Python path to the represented object.
 
       >>> reader = serialize.ObjectReader(dm)
-      >>> reader.simple_resolve('mongopersist.tests.test_serialize.Top')
-      <class 'mongopersist.tests.test_serialize.Top'>
+      >>> reader.simple_resolve('pjpersist.tests.test_serialize.Top')
+      <class 'pjpersist.tests.test_serialize.Top'>
 
     After the original lookup, the result is cached:
 
       >>> pprint.pprint(serialize.PATH_RESOLVE_CACHE)
-      {'mongopersist.tests.test_serialize.Top':
-          <class 'mongopersist.tests.test_serialize.Top'>}
+      {'pjpersist.tests.test_serialize.Top':
+          <class 'pjpersist.tests.test_serialize.Top'>}
 
     Note that even lookup failures are cached.
 
@@ -577,14 +577,14 @@ def doctest_ObjectReader_simple_resolve():
       ImportError: path.to.bad
 
       >>> pprint.pprint(serialize.PATH_RESOLVE_CACHE)
-      {'mongopersist.tests.test_serialize.Top':
-          <class 'mongopersist.tests.test_serialize.Top'>,
+      {'pjpersist.tests.test_serialize.Top':
+          <class 'pjpersist.tests.test_serialize.Top'>,
        'path.to.bad': None}
 
     Resolving the path the second time uses the cache:
 
-      >>> reader.simple_resolve('mongopersist.tests.test_serialize.Top')
-      <class 'mongopersist.tests.test_serialize.Top'>
+      >>> reader.simple_resolve('pjpersist.tests.test_serialize.Top')
+      <class 'pjpersist.tests.test_serialize.Top'>
 
       >>> reader.simple_resolve('path.to.bad')
       Traceback (most recent call last):
@@ -599,10 +599,10 @@ def doctest_ObjectReader_resolve_simple():
     can be either any arbitrary string or a Python path.
 
       >>> reader = serialize.ObjectReader(dm)
-      >>> ref = dbref.DBRef('mongopersist.tests.test_serialize.Top',
+      >>> ref = dbref.DBRef('pjpersist.tests.test_serialize.Top',
       ...                   '4eb1b3d337a08e2de7000100')
       >>> reader.resolve(ref)
-      <class 'mongopersist.tests.test_serialize.Top'>
+      <class 'pjpersist.tests.test_serialize.Top'>
     """
 
 def doctest_ObjectReader_resolve_quick_when_type_in_doc():
@@ -621,15 +621,15 @@ def doctest_ObjectReader_resolve_quick_when_type_in_doc():
 
       >>> reader = serialize.ObjectReader(dm)
       >>> reader.resolve(st_ref)
-      <class 'mongopersist.tests.test_serialize.StoreType'>
+      <class 'pjpersist.tests.test_serialize.StoreType'>
       >>> reader.resolve(st2_ref)
-      <class 'mongopersist.tests.test_serialize.StoreType2'>
+      <class 'pjpersist.tests.test_serialize.StoreType2'>
       >>> dm.reset()
 
     The collection is now stored as one where objects save their type:
 
       >>> serialize.COLLECTIONS_WITH_TYPE
-      set([('mongopersist_test', 'storetype')])
+      set([('pjpersist_test', 'storetype')])
 
     So here comes the trick. When fast-loading objects, the documents are made
     immediately available in the ``_latest_states`` mapping. This allows our
@@ -643,9 +643,9 @@ def doctest_ObjectReader_resolve_quick_when_type_in_doc():
 
       >>> reader = serialize.ObjectReader(dm)
       >>> reader.resolve(st_ref)
-      <class 'mongopersist.tests.test_serialize.StoreType'>
+      <class 'pjpersist.tests.test_serialize.StoreType'>
       >>> reader.resolve(st2_ref)
-      <class 'mongopersist.tests.test_serialize.StoreType2'>
+      <class 'pjpersist.tests.test_serialize.StoreType2'>
 
   """
 
@@ -660,7 +660,7 @@ def doctest_ObjectReader_resolve_lookup():
       >>> reader.resolve(ref)
       Traceback (most recent call last):
       ...
-      ImportError: DBRef('Top', '4eb1b3d337a08e2de7000100', 'mongopersist_test')
+      ImportError: DBRef('Top', '4eb1b3d337a08e2de7000100', 'pjpersist_test')
 
     The lookup failed, because there is no map entry yet for the 'Top'
     collection. The easiest way to create one is with the object writer:
@@ -668,10 +668,10 @@ def doctest_ObjectReader_resolve_lookup():
       >>> top = Top()
       >>> writer = serialize.ObjectWriter(dm)
       >>> writer.get_collection_name(top)
-      ('mongopersist_test', 'Top')
+      ('pjpersist_test', 'Top')
 
       >>> reader.resolve(ref)
-      <class 'mongopersist.tests.test_serialize.Top'>
+      <class 'pjpersist.tests.test_serialize.Top'>
     """
 
 def doctest_ObjectReader_resolve_lookup_with_multiple_maps():
@@ -684,28 +684,28 @@ def doctest_ObjectReader_resolve_lookup_with_multiple_maps():
       >>> writer = serialize.ObjectWriter(dm)
       >>> top = Top()
       >>> writer.store(top)
-      DBRef('Top', ObjectId('4eb1e0f237a08e38dd000002'), 'mongopersist_test')
+      DBRef('Top', ObjectId('4eb1e0f237a08e38dd000002'), 'pjpersist_test')
       >>> top2 = Top2()
       >>> writer.store(top2)
-      DBRef('Top', ObjectId('4eb1e10437a08e38e8000004'), 'mongopersist_test')
+      DBRef('Top', ObjectId('4eb1e10437a08e38e8000004'), 'pjpersist_test')
 
       >>> reader = serialize.ObjectReader(dm)
       >>> reader.resolve(top._p_oid)
-      <class 'mongopersist.tests.test_serialize.Top'>
+      <class 'pjpersist.tests.test_serialize.Top'>
       >>> reader.resolve(top2._p_oid)
-      <class 'mongopersist.tests.test_serialize.Top2'>
+      <class 'pjpersist.tests.test_serialize.Top2'>
 
       >>> pprint.pprint(list(conn[DBNAME]['Top'].find()))
       [{u'_id': ObjectId('4eb1e13337a08e392d000002')},
        {u'_id': ObjectId('4eb1e13337a08e392d000004'),
-        u'_py_persistent_type': u'mongopersist.tests.test_serialize.Top2'}]
+        u'_py_persistent_type': u'pjpersist.tests.test_serialize.Top2'}]
 
     If the DBRef does not have an object id, then an import error is raised:
 
-      >>> reader.resolve(dbref.DBRef('Top', None, 'mongopersist_test'))
+      >>> reader.resolve(dbref.DBRef('Top', None, 'pjpersist_test'))
       Traceback (most recent call last):
       ...
-      ImportError: DBRef('Top', None, 'mongopersist_test')
+      ImportError: DBRef('Top', None, 'pjpersist_test')
     """
 
 def doctest_ObjectReader_resolve_lookup_with_multiple_maps_dont_read_full():
@@ -718,16 +718,16 @@ def doctest_ObjectReader_resolve_lookup_with_multiple_maps_dont_read_full():
       >>> writer = serialize.ObjectWriter(dm)
       >>> top = Top()
       >>> writer.store(top)
-      DBRef('Top', ObjectId('4eb1e0f237a08e38dd000002'), 'mongopersist_test')
+      DBRef('Top', ObjectId('4eb1e0f237a08e38dd000002'), 'pjpersist_test')
       >>> top2 = Top2()
       >>> writer.store(top2)
-      DBRef('Top', ObjectId('4eb1e10437a08e38e8000004'), 'mongopersist_test')
+      DBRef('Top', ObjectId('4eb1e10437a08e38e8000004'), 'pjpersist_test')
 
       >>> reader = serialize.ObjectReader(dm)
       >>> reader.resolve(top._p_oid)
-      <class 'mongopersist.tests.test_serialize.Top'>
+      <class 'pjpersist.tests.test_serialize.Top'>
       >>> reader.resolve(top2._p_oid)
-      <class 'mongopersist.tests.test_serialize.Top2'>
+      <class 'pjpersist.tests.test_serialize.Top2'>
 
     Let's clear dome caches and try again:
 
@@ -736,16 +736,16 @@ def doctest_ObjectReader_resolve_lookup_with_multiple_maps_dont_read_full():
 
       >>> reader = serialize.ObjectReader(dm)
       >>> reader.resolve(top._p_oid)
-      <class 'mongopersist.tests.test_serialize.Top'>
+      <class 'pjpersist.tests.test_serialize.Top'>
       >>> reader.resolve(top2._p_oid)
-      <class 'mongopersist.tests.test_serialize.Top2'>
+      <class 'pjpersist.tests.test_serialize.Top2'>
 
     If the DBRef does not have an object id, then an import error is raised:
 
-      >>> reader.resolve(dbref.DBRef('Top', None, 'mongopersist_test'))
+      >>> reader.resolve(dbref.DBRef('Top', None, 'pjpersist_test'))
       Traceback (most recent call last):
       ...
-      ImportError: DBRef('Top', None, 'mongopersist_test')
+      ImportError: DBRef('Top', None, 'pjpersist_test')
 
     Cleanup:
 
@@ -760,13 +760,13 @@ def doctest_ObjectReader_get_non_persistent_object_py_type():
 
       >>> reader = serialize.ObjectReader(dm)
       >>> reader.get_non_persistent_object(
-      ...    {'_py_type': 'mongopersist.tests.test_serialize.Simple'}, None)
-      <mongopersist.tests.test_serialize.Simple object at 0x306f410>
+      ...    {'_py_type': 'pjpersist.tests.test_serialize.Simple'}, None)
+      <pjpersist.tests.test_serialize.Simple object at 0x306f410>
 
     It is a little bit more interesting when there is some additional state:
 
       >>> simple = reader.get_non_persistent_object(
-      ...    {u'_py_type': 'mongopersist.tests.test_serialize.Simple',
+      ...    {u'_py_type': 'pjpersist.tests.test_serialize.Simple',
       ...     u'name': u'Here'},
       ...    None)
       >>> simple.name
@@ -783,19 +783,19 @@ def doctest_ObjectReader_get_non_persistent_object_py_persistent_type():
 
       >>> reader = serialize.ObjectReader(dm)
       >>> tier2 = reader.get_non_persistent_object(
-      ...    {'_py_persistent_type': 'mongopersist.tests.test_serialize.Tier2',
+      ...    {'_py_persistent_type': 'pjpersist.tests.test_serialize.Tier2',
       ...     'name': 'Number 2'},
       ...    top)
       >>> tier2
-      <mongopersist.tests.test_serialize.Tier2 object at 0x306f410>
+      <pjpersist.tests.test_serialize.Tier2 object at 0x306f410>
 
     We keep track of the containing object, so we can set _p_changed when this
     object changes.
 
       >>> tier2._p_mongo_doc_object
-      <mongopersist.tests.test_serialize.Top object at 0x7fa30b534050>
+      <pjpersist.tests.test_serialize.Top object at 0x7fa30b534050>
       >>> tier2._p_jar
-      <mongopersist.datamanager.MongoDataManager object at 0x7fc3cab375d0>
+      <pjpersist.datamanager.MongoDataManager object at 0x7fc3cab375d0>
     """
 
 def doctest_ObjectReader_get_non_persistent_object_py_factory():
@@ -805,11 +805,11 @@ def doctest_ObjectReader_get_non_persistent_object_py_factory():
 
       >>> reader = serialize.ObjectReader(dm)
       >>> top = reader.get_non_persistent_object(
-      ...    {'_py_factory': 'mongopersist.tests.test_serialize.create_top',
+      ...    {'_py_factory': 'pjpersist.tests.test_serialize.create_top',
       ...     '_py_factory_args': ('TOP',)},
       ...    None)
       >>> top
-      <mongopersist.tests.test_serialize.Top object at 0x306f410>
+      <pjpersist.tests.test_serialize.Top object at 0x306f410>
       >>> top.name
       'TOP'
     """
@@ -841,13 +841,13 @@ def doctest_ObjectReader_get_object_dbref():
       >>> writer = serialize.ObjectWriter(dm)
       >>> top = Top()
       >>> writer.store(top)
-      DBRef('Top', ObjectId('4eb1e0f237a08e38dd000002'), 'mongopersist_test')
+      DBRef('Top', ObjectId('4eb1e0f237a08e38dd000002'), 'pjpersist_test')
 
     Database references load the ghost state of the obejct they represent:
 
       >>> reader = serialize.ObjectReader(dm)
       >>> reader.get_object(top._p_oid, None)
-      <mongopersist.tests.test_serialize.Top object at 0x2801938>
+      <pjpersist.tests.test_serialize.Top object at 0x2801938>
     """
 
 def doctest_ObjectReader_get_object_type_ref():
@@ -858,9 +858,9 @@ def doctest_ObjectReader_get_object_type_ref():
       >>> reader = serialize.ObjectReader(dm)
       >>> reader.get_object(
       ...     {'_py_type': 'type',
-      ...      'path': 'mongopersist.tests.test_serialize.Simple'},
+      ...      'path': 'pjpersist.tests.test_serialize.Simple'},
       ...     None)
-      <class 'mongopersist.tests.test_serialize.Simple'>
+      <class 'pjpersist.tests.test_serialize.Simple'>
     """
 
 def doctest_ObjectReader_get_object_instance():
@@ -870,11 +870,11 @@ def doctest_ObjectReader_get_object_instance():
 
       >>> reader = serialize.ObjectReader(dm)
       >>> simple = reader.get_object(
-      ...     {u'_py_type': 'mongopersist.tests.test_serialize.Simple',
+      ...     {u'_py_type': 'pjpersist.tests.test_serialize.Simple',
       ...      u'name': u'easy'},
       ...     None)
       >>> simple
-      <mongopersist.tests.test_serialize.Simple object at 0x2bcc950>
+      <pjpersist.tests.test_serialize.Simple object at 0x2bcc950>
       >>> simple.name
       u'easy'
     """
@@ -912,12 +912,12 @@ def doctest_ObjectReader_get_object_constant():
 
       >>> reader = serialize.ObjectReader(dm)
       >>> reader.get_object(
-      ...     {'_py_constant': 'mongopersist.tests.test_serialize.Constant'},
+      ...     {'_py_constant': 'pjpersist.tests.test_serialize.Constant'},
       ...     None)
-      <mongopersist.tests.test_serialize.Constant object at ...>
+      <pjpersist.tests.test_serialize.Constant object at ...>
       >>> reader.get_object(
-      ...     {'_py_constant': 'mongopersist.interfaces.IObjectWriter'}, None)
-      <InterfaceClass mongopersist.interfaces.IObjectWriter>
+      ...     {'_py_constant': 'pjpersist.interfaces.IObjectWriter'}, None)
+      <InterfaceClass pjpersist.interfaces.IObjectWriter>
     """
 
 def doctest_ObjectReader_get_ghost():
@@ -926,14 +926,14 @@ def doctest_ObjectReader_get_ghost():
       >>> writer = serialize.ObjectWriter(dm)
       >>> top = Top()
       >>> writer.store(top)
-      DBRef('Top', ObjectId('4eb1e0f237a08e38dd000002'), 'mongopersist_test')
+      DBRef('Top', ObjectId('4eb1e0f237a08e38dd000002'), 'pjpersist_test')
 
     The ghost object is a shell without any loaded object state:
 
       >>> reader = serialize.ObjectReader(dm)
       >>> gobj = reader.get_ghost(top._p_oid)
       >>> gobj._p_jar
-      <mongopersist.datamanager.MongoDataManager object at 0x2720e50>
+      <pjpersist.datamanager.MongoDataManager object at 0x2720e50>
       >>> gobj._p_state
       0
 
@@ -953,14 +953,14 @@ def doctest_ObjectReader_set_ghost_state():
       >>> top = Top()
       >>> top.name = 'top'
       >>> writer.store(top)
-      DBRef('Top', ObjectId('4eb1e0f237a08e38dd000002'), 'mongopersist_test')
+      DBRef('Top', ObjectId('4eb1e0f237a08e38dd000002'), 'pjpersist_test')
 
     The ghost object is a shell without any loaded object state:
 
       >>> reader = serialize.ObjectReader(dm)
       >>> gobj = reader.get_ghost(top._p_oid)
       >>> gobj._p_jar
-      <mongopersist.datamanager.MongoDataManager object at 0x2720e50>
+      <pjpersist.datamanager.MongoDataManager object at 0x2720e50>
       >>> gobj._p_state
       0
 
@@ -975,7 +975,7 @@ def doctest_ObjectReader_set_ghost_state():
     Note that the original state is stored in the data manager:
 
       >>> gobj._p_jar._original_states
-      {DBRef('Top', ObjectId('4f7487e237a08e1a86000001'), 'mongopersist_test'):
+      {DBRef('Top', ObjectId('4f7487e237a08e1a86000001'), 'pjpersist_test'):
           {u'_id': ObjectId('4f7487e237a08e1a86000001'),
            u'_py_serial': 1,
            u'name': u'top'}}
@@ -1016,7 +1016,7 @@ def doctest_deserialize_persistent_references():
       [{u'_id': ObjectId('4e827608e13823598d000003'),
         u'foo': DBRef(u'Foo',
                       ObjectId('4e827608e13823598d000002'),
-                      u'mongopersist_test'),
+                      u'pjpersist_test'),
         u'name': u'top'}]
       >>> pprint.pprint(list(conn[DBNAME]['Foo'].find()))
       [{u'_id': ObjectId('4e8276c3e138235a2e000002'), u'name': u'foo'}]
@@ -1033,7 +1033,7 @@ def doctest_deserialize_persistent_references():
       >>> id(top2.foo) == id(top.foo)
       False
       >>> top2.foo
-      <mongopersist.tests.test_serialize.Foo object at 0x7fb1a0c0b668>
+      <pjpersist.tests.test_serialize.Foo object at 0x7fb1a0c0b668>
       >>> top2.foo.name
       u'foo'
     """

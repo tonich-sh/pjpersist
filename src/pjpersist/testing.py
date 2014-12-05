@@ -20,7 +20,7 @@ import re
 import transaction
 from zope.testing import cleanup, module, renormalizing
 
-from mongopersist import datamanager, serialize
+from pjpersist import datamanager, serialize
 
 checker = renormalizing.RENormalizing([
     (re.compile(r'datetime.datetime(.*)'),
@@ -33,33 +33,45 @@ checker = renormalizing.RENormalizing([
      "object at 0x001122>"),
     ])
 
-OPTIONFLAGS = (doctest.NORMALIZE_WHITESPACE|
-               doctest.ELLIPSIS|
-               doctest.REPORT_ONLY_FIRST_FAILURE
-               #|doctest.REPORT_NDIFF
-               )
+OPTIONFLAGS = (
+    doctest.NORMALIZE_WHITESPACE|
+    doctest.ELLIPSIS|
+    doctest.REPORT_ONLY_FIRST_FAILURE
+    #|doctest.REPORT_NDIFF
+    )
 
 DBNAME = 'pjpersist_test'
 
 
 def getConnection(database=None):
-    if database is None:
-        return psycopg2.connect(host='localhost', port=5432)
-    return psycopg2.connect(database=database, host='localhost', port=5432)
+    return psycopg2.connect(
+        database=database or 'template1',
+        host='localhost', port=5433,
+        user='shoobx', password='shoobx')
+
 
 def createDB():
     dropDB()
-    with getConnection().cursor() as cur:
-        cur.execute('CREATE DATABASE %s', (DBNAME,))
+    conn = getConnection()
+    with conn.cursor() as cur:
+        cur.execute('END')
+        cur.execute('CREATE DATABASE %s' %DBNAME)
+    conn.close()
 
 def dropDB():
-    with getConnection().cursor() as cur:
-        cur.execute('DROP DATABASE %s', (DBNAME,))
+    conn = getConnection()
+    with conn.cursor() as cur:
+        cur.execute('END')
+        try:
+            cur.execute('DROP DATABASE %s' %DBNAME)
+        except psycopg2.ProgrammingError:
+            pass
+    conn.close()
 
 def setUp(test):
     module.setUp(test)
-    test.globs['conn'] = getConnection(DBNAME)
     createDB()
+    test.globs['conn'] = getConnection(DBNAME)
     test.globs['commit'] = transaction.commit
     test.globs['dm'] = datamanager.PJDataManager(test.globs['conn'])
 
@@ -67,15 +79,15 @@ def setUp(test):
 def tearDown(test):
     module.tearDown(test)
     transaction.abort()
+    test.globs['conn'].close()
     dropDB()
-    test.globs['conn'].disconnect()
     resetCaches()
 
 
 def resetCaches():
     serialize.SERIALIZERS.__init__()
     serialize.OID_CLASS_LRU.__init__(20000)
-    serialize.COLLECTIONS_WITH_TYPE.__init__()
+    serialize.TABLES_WITH_TYPE.__init__()
     serialize.AVAILABLE_NAME_MAPPINGS.__init__()
     serialize.PATH_RESOLVE_CACHE = {}
 

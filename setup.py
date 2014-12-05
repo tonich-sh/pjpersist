@@ -51,6 +51,7 @@ setup(
         'repoze.lru',
         'psycopg2',
         'setuptools',
+        'sqlobject',
         'zope.dottedname',
         'zope.interface',
         'zope.schema',

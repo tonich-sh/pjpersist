@@ -12,134 +12,71 @@
 # FOR A PARTICULAR PURPOSE.
 #
 ##############################################################################
-"""PG/JSONB Persistent Data Manager"""
+"""PostGreSQL/JSONB Persistent Data Manager"""
 from __future__ import absolute_import
 import UserDict
-import bson
 import logging
-import transaction
+import psycopg2.extensions
+import psycopg2.extras
+import sqlobject.sqlbuilder as sb
 import sys
+import transaction
+import uuid
 import zope.interface
-
 from zope.exceptions import exceptionformatter
-from pjpersist import conflict, interfaces, serialize
 
-#PJ_ACCESS_LOGGING = False
-#COLLECTION_LOG = logging.getLogger('pjpersist.collection')
-#
-#LOG = logging.getLogger(__name__)
-#
-#
-#class FlushDecorator(object):
-#
-#    def __init__(self, datamanager, function):
-#        self.datamanager = datamanager
-#        self.function = function
-#
-#    def __call__(self, *args, **kwargs):
-#        self.datamanager.flush()
-#        return self.function(*args, **kwargs)
-#
-#
-#class ProcessSpecDecorator(object):
-#
-#    def __init__(self, collection, function):
-#        self.collection = collection
-#        self.function = function
-#
-#    def __call__(self, *args, **kwargs):
-#        if args:
-#            args = (process_spec(self.collection, args[0]),) + args[1:]
-#        # find()
-#        if 'spec' in kwargs:
-#            kwargs['spec'] = process_spec(self.collection, kwargs['spec'])
-#        # find_one()
-#        elif 'spec_or_id' in kwargs:
-#            kwargs['spec_or_id'] = process_spec(
-#                self.collection, kwargs['spec_or_id'])
-#        # find_and_modify()
-#        elif 'query' in kwargs:
-#            kwargs['query'] = process_spec(self.collection, kwargs['query'])
-#        return self.function(*args, **kwargs)
-#
-#
-#class LoggingDecorator(object):
-#
-#    # these are here to be easily patched
-#    ADD_TB = True
-#    TB_LIMIT = 10  # 10 should be sufficient to figure
-#
-#    def __init__(self, collection, function):
-#        self.collection = collection
-#        self.function = function
-#
-#    def __call__(self, *args, **kwargs):
-#        if self.ADD_TB:
-#            try:
-#                raise ValueError('boom')
-#            except:
-#                # we need here exceptionformatter, otherwise __traceback_info__
-#                # is not added
-#                tb = ''.join(exceptionformatter.extract_stack(
-#                    sys.exc_info()[2].tb_frame.f_back, limit=self.TB_LIMIT))
-#        else:
-#            tb = '  <omitted>'
-#
-#        txn = transaction.get()
-#        txn = '%i - %s' % (id(txn), txn.description),
-#
-#        COLLECTION_LOG.debug(
-#            "collection: %s.%s %s,\n TXN:%s,\n args:%r,\n kwargs:%r, \n tb:\n%s",
-#            self.collection.database.name, self.collection.name,
-#            self.function.__name__, txn, args, kwargs, tb)
-#
-#        return self.function(*args, **kwargs)
-#
-#
-#class CollectionWrapper(object):
-#
-#    LOGGED_METHODS = ['insert', 'update', 'remove', 'save',
-#                      'find_and_modify', 'find_one', 'find', 'count']
-#    QUERY_METHODS = ['group', 'map_reduce', 'inline_map_reduce', 'find_one',
-#                     'find', 'find_and_modify', 'aggregate', 'distinct', 'count']
-#    PROCESS_SPEC_METHODS = ['find_and_modify', 'find_one', 'find']
-#
-#    def __init__(self, collection, datamanager):
-#        self.__dict__['collection'] = collection
-#        self.__dict__['_datamanager'] = datamanager
-#
-#    def find_objects(self, *args, **kw):
-#        docs = self.find(*args, **kw)
-#        coll = self.collection.name
-#        dbname = self.collection.database.name
-#        for doc in docs:
-#            dbref = bson.dbref.DBRef(coll, doc['_id'], dbname)
-#            self._datamanager._latest_states[dbref] = doc
-#            yield self._datamanager.load(dbref)
-#
-#    def find_one_object(self, *args, **kw):
-#        doc = self.find_one(*args, **kw)
-#        coll = self.collection.name
-#        dbname = self.collection.database.name
-#        dbref = bson.dbref.DBRef(coll, doc['_id'], dbname)
-#        self._datamanager._latest_states[dbref] = doc
-#        return self._datamanager.load(dbref)
-#
-#    def __getattr__(self, name):
-#        attr = getattr(self.collection, name)
-#        if PJ_ACCESS_LOGGING and name in self.LOGGED_METHODS:
-#            attr = LoggingDecorator(self.collection, attr)
-#        if name in self.QUERY_METHODS:
-#            attr = FlushDecorator(self._datamanager, attr)
-#        if name in self.PROCESS_SPEC_METHODS:
-#            attr = ProcessSpecDecorator(self.collection, attr)
-#        return attr
-#
-#    def __setattr__(self, name, value):
-#        setattr(self.collection, name, value)
-#
-#    def __delattr__(self, name):
-#        delattr(self.collection, name)
+from pjpersist import interfaces, serialize
+
+PJ_ACCESS_LOGGING = False
+TABLE_LOG = logging.getLogger('pjpersist.table')
+
+LOG = logging.getLogger(__name__)
+
+INITIALIZED_TABLES = []
+
+
+class PJPersistCursor(psycopg2.extras.DictCursor):
+
+    ADD_TB = True
+    TB_LIMIT = 10  # 10 should be sufficient to figure
+
+    def __init__(self, datamanager, *args, **kwargs):
+        super(PJPersistCursor, self).__init__(*args, **kwargs)
+        self.datamanager = datamanager
+
+    def log_query(self, sql, args):
+        if self.ADD_TB:
+            try:
+                raise ValueError('boom')
+            except:
+                # we need here exceptionformatter, otherwise __traceback_info__
+                # is not added
+                tb = ''.join(exceptionformatter.extract_stack(
+                    sys.exc_info()[2].tb_frame.f_back, limit=self.TB_LIMIT))
+        else:
+            tb = '  <omitted>'
+
+        txn = transaction.get()
+        txn = '%i - %s' % (id(txn), txn.description),
+
+        TABLE_LOG.debug(
+            "sql:%r,\n args:%r,\n TXN:%s,\n tb:\n%s", txn, sql, args, tb)
+
+    def execute(self, sql, args=None):
+        # Convert SQLBuilder object to string
+        if not isinstance(sql, basestring):
+            sql = sql.__sqlrepr__('postgres')
+        # Flush the data manager before any select.
+        if sql.strip().split()[0].lower() == 'select':
+            self.datamanager.flush()
+        # Very useful logging of every SQL command with tracebakc to code.
+        if PJ_ACCESS_LOGGING:
+            self.log_query(sql, args)
+
+        # XXX: Optimization opportunity to store returned JSONB docs in the
+        # cache of the data manager. (SR)
+
+        return super(PJPersistCursor, self).execute(sql, args)
 
 
 class Root(UserDict.DictMixin):
@@ -153,7 +90,7 @@ class Root(UserDict.DictMixin):
         self._init_table()
 
     def _init_table(self):
-        with self._jar._conn.cursor() as cur:
+        with self._jar.getCursor() as cur:
             cur.execute(
                 "SELECT * FROM information_schema.tables where table_name=%s",
                 (self.table,))
@@ -161,43 +98,52 @@ class Root(UserDict.DictMixin):
                 return
             cur.execute('''
                 CREATE TABLE %s (
-                    uid SERIAL PRIMARY KEY,
-                    data JSONB)
-                ''', (self.table,))
+                    id SERIAL PRIMARY KEY,
+                    name TEXT,
+                    dbref TEXT[])
+                ''' %self.table)
 
     def __getitem__(self, key):
-        doc = self._collection_inst.find_one({'name': key})
-        if doc is None:
-            raise KeyError(key)
-        return self._jar.load(doc['ref'])
+        with self._jar.getCursor() as cur:
+            tbl = getattr(sb.table, self.table)
+            cur.execute(
+                sb.Select(sb.Field(self.table, 'dbref'), tbl.name == key))
+            if not cur.rowcount:
+                raise KeyError(key)
+            db, tbl, id = cur.fetchone()['dbref']
+            dbref = serialize.DBRef(tbl, id, db)
+            return self._jar.load(dbref)
 
     def __setitem__(self, key, value):
         dbref = self._jar.insert(value)
         if self.get(key) is not None:
             del self[key]
-        doc = {'ref': dbref, 'name': key}
-        self._collection_inst.insert(doc)
+        with self._jar.getCursor() as cur:
+            cur.execute(
+                'INSERT INTO %s (name, dbref) VALUES (%%s, %%s)' %self.table,
+                (key, list(dbref.as_tuple()))
+                )
 
     def __delitem__(self, key):
-        doc = self._collection_inst.find_one({'name': key})
-        coll = self._jar.get_collection(
-            doc['ref'].database, doc['ref'].collection)
-        coll.remove(doc['ref'].id)
-        self._collection_inst.remove({'name': key})
+        self._jar.remove(self[key])
+        with self._jar.getCursor() as cur:
+            tbl = getattr(sb.table, self.table)
+            cur.execute(sb.Delete(self.table, tbl.name == key))
 
     def keys(self):
-        return [doc['name'] for doc in self._collection_inst.find()]
+        with self._jar.getCursor() as cur:
+            cur.execute(sb.Select(sb.Field(tbl, 'name')))
+            return [doc['name'] for doc in cur.fetchall()]
 
 
 class PJDataManager(object):
     zope.interface.implements(interfaces.IPJDataManager)
 
-    default_database = 'pjpersist'
     name_map_table = 'persistence_name_map'
-    conflict_handler = None
 
     def __init__(self, conn, root_table=None, name_map_table=None):
         self._conn = conn
+        self.database = conn.dsn.split()[0][7:]
         self._reader = serialize.ObjectReader(self)
         self._writer = serialize.ObjectWriter(self)
         # All of the following object lists are keys by object id. This is
@@ -218,16 +164,106 @@ class PJDataManager(object):
         self._needs_to_join = True
         self._object_cache = {}
         self.annotations = {}
-        if default_database is not None:
-            self.default_database = default_database
-        if name_map_collection is not None:
-            self.name_map_collection = name_map_collection
+        if name_map_table is not None:
+            self.name_map_table = name_map_table
+        self._init_name_map_table()
         self.transaction_manager = transaction.manager
-        self.root = Root(self, root_database, root_collection)
+        self.root = Root(self, root_table)
 
-    def _get_collection_from_object(self, obj):
-        db_name, coll_name = self._writer.get_collection_name(obj)
-        return self._get_collection(db_name, coll_name)
+    def getCursor(self):
+        def factory(*args, **kwargs):
+            return PJPersistCursor(self, *args, **kwargs)
+        return self._conn.cursor(cursor_factory=factory)
+
+    def _init_name_map_table(self):
+        with self.getCursor() as cur:
+            cur.execute(
+            "SELECT * FROM information_schema.tables where table_name=%s",
+                (self.name_map_table,))
+            if cur.rowcount:
+                return
+            cur.execute('''
+                CREATE TABLE %s (
+                    database varchar,
+                    tbl varchar,
+                    path varchar,
+                    doc_has_type bool)
+                ''' % self.name_map_table)
+
+    def _get_name_map_entry(self, database, table, path=None):
+        name_map = getattr(sb.table, self.name_map_table)
+        clause = name_map.database == database & name_map.tbl == table
+        if path is not None:
+            clause &= name_map.path == path
+        with self.getCursor() as cur:
+            cur.execute(sb.Select(sb.Field(self.name_map_table, '*'), clause))
+            return cur.fetchall()
+
+    def _insert_name_map_entry(self, database, table, path, doc_has_type):
+        with self.getCursor() as cur:
+            cur.execute(
+                sb.Insert(
+                    self.name_map_table, values={
+                        'database': database,
+                        'tbl': table,
+                        'path': path,
+                        'doc_has_type': doc_has_type})
+                )
+
+    def _create_doc_table(self, database, table):
+        if self.database != database:
+            raise NotImplemented(
+                'Cannot store an object of a different database.')
+
+        if (database, table) in INITIALIZED_TABLES:
+            return
+
+        with self.getCursor() as cur:
+            cur.execute(
+            "SELECT * FROM information_schema.tables where table_name=%s",
+                (table,))
+            if not cur.rowcount:
+                cur.execute('''
+                    CREATE TABLE %s (
+                        id uuid primary key,
+                        data jsonb);
+                    ''' % table)
+            INITIALIZED_TABLES.append((database, table))
+
+    def _insert_doc(self, database, table, doc, id=None):
+        self._create_doc_table(database, table)
+        # Create id if it is None.
+        if id is None:
+            id = unicode(uuid.uuid4())
+        # Insert the document into the table.
+        with self.getCursor() as cur:
+                cur.execute(
+                "INSERT INTO " + table + " (id, data) VALUES (%s, %s)",
+                (id, psycopg2.extras.Json(doc))
+                )
+        return id
+
+    def _get_doc(self, database, table, id):
+        self._create_doc_table(datebase, table)
+        tbl = getattr(sb.table, table)
+        with self.getCursor() as cur:
+            cur.execute(sb.Select(sb.Field(table, '*'), tbl.id == id))
+            return cur.fetchone()
+
+    def _get_doc_by_dbref(self, dbref):
+        return self._get_doc(dbref.database, dbref.table, dbref.id)
+
+    def _get_doc_py_type(self, database, table, id):
+        self._create_doc_table(datebase, table)
+        tbl = getattr(sb.table, table)
+        with self.getCursor() as cur:
+            cur.execute(
+                sb.Select(sb.Field(table, interfaces.PY_TYPE_ATTR_NAME),
+                          tbl.id == id))
+            return cur.fetchone()[interfaces.PY_TYPE_ATTR_NAME]
+
+    def _get_table_from_object(self, obj):
+        return self._writer.get_table_name(obj)
 
     def _flush_objects(self):
         # Now write every registered object, but make sure we write each
@@ -249,19 +285,13 @@ class PJDataManager(object):
     def _get_doc_object(self, obj):
         seen = []
         # Make sure we write the object representing a document in a
-        # collection and not a sub-object.
+        # table and not a sub-object.
         while getattr(obj, '_p_pj_sub_object', False):
             if id(obj) in seen:
                 raise interfaces.CircularReferenceError(obj)
             seen.append(id(obj))
             obj = obj._p_pj_doc_object
         return obj
-
-    def get_collection(self, db_name, coll_name):
-        return CollectionWrapper(self._get_collection(db_name, coll_name), self)
-
-    def get_collection_from_object(self, obj):
-        return CollectionWrapper(self._get_collection_from_object(obj), self)
 
     def dump(self, obj):
         res = self._writer.store(obj)
@@ -279,8 +309,6 @@ class PJDataManager(object):
         self.root = root
 
     def flush(self):
-        # Check for conflicts.
-        self.conflict_handler.check_conflicts(self._registered_objects.values())
         # Now write every registered object, but make sure we write each
         # object just once.
         self._flush_objects()
@@ -307,8 +335,8 @@ class PJDataManager(object):
             self.setstate(obj)
         # Now we remove the object from PostGreSQL.
         table = self.get_table_from_object(obj)
-        with self._conn.cursor() as cur:
-            cur.execute('DELETE FROM %s WHERE uid = %s', table, obj._p_oid)
+        with self.getCursor() as cur:
+            cur.execute('DELETE FROM %s WHERE uid = %s', table, obj._p_oid.id)
         if hash(obj._p_oid) in self._object_cache:
             del self._object_cache[hash(obj._p_oid)]
 
@@ -365,7 +393,6 @@ class PJDataManager(object):
             if id(obj) not in self._modified_objects:
                 obj = self._get_doc_object(obj)
                 self._modified_objects[id(obj)] = obj
-            self.conflict_handler.on_modified(obj)
 
     def abort(self, transaction):
         self._conn.rollback()

@@ -15,16 +15,16 @@
 import UserDict
 import persistent
 import transaction
-import bson.dbref
-import bson.objectid
+#import bson.dbref
+#import bson.objectid
 import zope.component
-from bson.errors import InvalidId
+#from bson.errors import InvalidId
 from rwproperty import getproperty, setproperty
 from zope.container import contained, sample
 from zope.container.interfaces import IContainer
 
-from mongopersist import interfaces
-from mongopersist.zope import interfaces as zinterfaces
+from pjpersist import interfaces
+from pjpersist.zope import interfaces as zinterfaces
 
 USE_CONTAINER_CACHE = True
 
@@ -78,7 +78,7 @@ class SimpleMongoContainer(sample.SampleContainer, persistent.Persistent):
         return state
 
     def __setstate__(self, state):
-        # Mongopersist always reads a dictionary as persistent dictionary. And
+        # pjpersist always reads a dictionary as persistent dictionary. And
         # modifying this dictionary will cause the persistence mechanism to
         # kick in. So we create a new object that we can easily modify without
         # harm.

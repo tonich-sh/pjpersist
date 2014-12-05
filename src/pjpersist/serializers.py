@@ -13,7 +13,7 @@
 ##############################################################################
 """Python Serializers for common objects with weird reduce output."""
 import datetime
-from mongopersist import serialize
+from pjpersist import serialize
 
 class DateSerializer(serialize.ObjectSerializer):
 
@@ -47,3 +47,20 @@ class TimeSerializer(serialize.ObjectSerializer):
     def write(self, obj):
         return {'_py_type': 'datetime.time',
                 'components': [obj.hour, obj.minute, obj.second]}
+
+class DateTimeSerializer(serialize.ObjectSerializer):
+
+    def can_read(self, state):
+        return isinstance(state, dict) and \
+               state.get('_py_type') == 'datetime.datetime'
+
+    def read(self, state):
+        return datetime.datetime(*state['components'])
+
+    def can_write(self, obj):
+        return isinstance(obj, datetime.datetime)
+
+    def write(self, obj):
+        return {'_py_type': 'datetime.datetime',
+                'components': [obj.year, obj.month, obj.day,
+                               obj.hour, obj.minute, obj.second]}

@@ -15,10 +15,10 @@
 import doctest
 import persistent
 import transaction
-from bson import dbref, objectid
+#from bson import dbref, objectid
 from pprint import pprint
 
-from mongopersist import conflict, interfaces, serialize, testing, datamanager
+from pjpersist import interfaces, serialize, testing, datamanager
 
 class Root(persistent.Persistent):
     pass
@@ -114,16 +114,16 @@ def doctest_MongoDataManager_get_collection():
       >>> dm.reset()
 
       >>> coll = dm.get_collection(
-      ...     DBNAME, 'mongopersist.tests.test_datamanager.Foo')
+      ...     DBNAME, 'pjpersist.tests.test_datamanager.Foo')
 
     We are returning a collection wrapper instead, so that we can flush the
     data before any method involving a query.
 
       >>> coll
-      <mongopersist.datamanager.CollectionWrapper object at 0x19e47d0>
+      <pjpersist.datamanager.CollectionWrapper object at 0x19e47d0>
       >>> coll.collection
-      Collection(Database(Connection('localhost', 27017), u'mongopersist_test'),
-                 u'mongopersist.tests.test_datamanager.Foo')
+      Collection(Database(Connection('localhost', 27017), u'pjpersist_test'),
+                 u'pjpersist.tests.test_datamanager.Foo')
 
     Let's now make a query:
 
@@ -146,11 +146,11 @@ def doctest_MongoDataManager_get_collection_from_object():
     data before any method involving a query.
 
       >>> coll
-      <mongopersist.datamanager.CollectionWrapper object at 0x19e47d0>
+      <pjpersist.datamanager.CollectionWrapper object at 0x19e47d0>
 
       >>> coll.collection
-      Collection(Database(Connection('localhost', 27017), u'mongopersist_test'),
-                 u'mongopersist.tests.test_datamanager.Foo')
+      Collection(Database(Connection('localhost', 27017), u'pjpersist_test'),
+                 u'pjpersist.tests.test_datamanager.Foo')
 
     Let's make sure that modifying attributes is done on the original
     collection:
@@ -206,9 +206,9 @@ def doctest_MongoDataManager_object_dump_load_reset():
 
       >>> foo = Foo()
       >>> dm.dump(foo)
-      DBRef('mongopersist.tests.test_datamanager.Foo',
+      DBRef('pjpersist.tests.test_datamanager.Foo',
             ObjectId('4eb2eb7437a08e0156000000'),
-            'mongopersist_test')
+            'pjpersist_test')
 
     When the object is modified, ``dump()`` will remove it from the list of
     registered objects.
@@ -431,9 +431,9 @@ def doctest_MongoDataManager_flush():
         Traceback (most recent call last):
         ...
         ConflictError: database conflict error
-            (oid DBRef('mongopersist.tests.test_datamanager.Foo',
+            (oid DBRef('pjpersist.tests.test_datamanager.Foo',
                        ObjectId('4e7ddf12e138237403000000'),
-                       'mongopersist_test'),
+                       'pjpersist_test'),
              class Foo,
              orig serial 1, cur serial 2, new serial 2)
     """
@@ -941,7 +941,7 @@ def doctest_MongoDataManager_abort_subobjects():
       >>> coll = dm._get_collection_from_object(ComplexFoo())
       >>> tuple(coll.find({}))
       ({u'item': {u'bar': 6,
-                  u'_py_type': u'mongopersist.tests.test_datamanager.FooItem'},
+                  u'_py_type': u'pjpersist.tests.test_datamanager.FooItem'},
         u'_id': ObjectId('51b9987786a4bd2bfa5ad62c'),
         u'name': u'complex'},)
 
@@ -953,7 +953,7 @@ def doctest_MongoDataManager_abort_subobjects():
 
       >>> tuple(coll.find({}))
       ({u'item': {u'bar': 6,
-                  u'_py_type': u'mongopersist.tests.test_datamanager.FooItem'},
+                  u'_py_type': u'pjpersist.tests.test_datamanager.FooItem'},
         u'_id': ObjectId('51b9987786a4bd2bfa5ad62c'),
         u'name': u'modified'},)
 
@@ -962,7 +962,7 @@ def doctest_MongoDataManager_abort_subobjects():
       >>> dm.abort(transaction.get())
       >>> tuple(coll.find({}))
       ({u'item': {u'bar': 6,
-                  u'_py_type': u'mongopersist.tests.test_datamanager.FooItem'},
+                  u'_py_type': u'pjpersist.tests.test_datamanager.FooItem'},
         u'_id': ObjectId('51b9987786a4bd2bfa5ad62c'),
         u'name': u'complex'},)
 
@@ -1177,7 +1177,7 @@ def doctest_MongoDataManager_complex_sub_objects():
       >>> dm.tpc_finish(None)
 
       >>> sorted(conn[DBNAME].collection_names())
-      [u'mongopersist.tests.test_datamanager.Foo',
+      [u'pjpersist.tests.test_datamanager.Foo',
        u'persistence_root',
        u'system.indexes']
 
@@ -1199,19 +1199,19 @@ def doctest_MongoDataManager_complex_sub_objects():
       >>> dm.tpc_finish(None)
 
       >>> sorted(conn[DBNAME].collection_names())
-      [u'mongopersist.tests.test_datamanager.Foo',
+      [u'pjpersist.tests.test_datamanager.Foo',
        u'persistence_root',
        u'system.indexes']
 
       >>> dm.root['two'].sup.bar
       <Bar second bar>
 
-      >>> pprint(list(conn[DBNAME]['mongopersist.tests.test_datamanager.Foo'].
+      >>> pprint(list(conn[DBNAME]['pjpersist.tests.test_datamanager.Foo'].
       ...     find({'name': 'one'})))
       [{u'_id': ObjectId('...'),
         u'name': u'one',
-        u'sup': {u'_py_persistent_type': u'mongopersist.tests.test_datamanager.Super',
-                 u'bar': {u'_py_persistent_type': u'mongopersist.tests.test_datamanager.Bar',
+        u'sup': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Super',
+                 u'bar': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Bar',
                           u'name': u'bar'},
                  u'name': u'super'}}]
 
@@ -1239,7 +1239,7 @@ def doctest_MongoDataManager_complex_sub_objects():
       <Foo one>
 
       >>> sorted(conn[DBNAME].collection_names())
-      [u'mongopersist.tests.test_datamanager.Foo',
+      [u'pjpersist.tests.test_datamanager.Foo',
        u'persistence_root',
        u'system.indexes']
 
@@ -1252,7 +1252,7 @@ def doctest_MongoDataManager_complex_sub_objects():
       >>> dm.tpc_finish(None)
 
       >>> sorted(conn[DBNAME].collection_names())
-      [u'mongopersist.tests.test_datamanager.Foo',
+      [u'pjpersist.tests.test_datamanager.Foo',
        u'persistence_root',
        u'system.indexes']
     """
@@ -1395,7 +1395,7 @@ def doctest_MongoDataManager_modify_sub_delete_doc():
       >>> foo.bar = Bar('bar')
 
       >>> dm.tpc_finish(None)
-      >>> conn[DBNAME]['mongopersist.tests.test_datamanager.Foo'].find().count()
+      >>> conn[DBNAME]['pjpersist.tests.test_datamanager.Foo'].find().count()
       1
 
     Let's now modify bar and delete foo.
@@ -1405,7 +1405,7 @@ def doctest_MongoDataManager_modify_sub_delete_doc():
       >>> dm.remove(foo)
 
       >>> dm.tpc_finish(None)
-      >>> conn[DBNAME]['mongopersist.tests.test_datamanager.Foo'].find().count()
+      >>> conn[DBNAME]['pjpersist.tests.test_datamanager.Foo'].find().count()
       0
     """
 
@@ -1495,7 +1495,7 @@ def doctest_FlushDecorator_basic():
 
     The database is not immediately updated:
 
-      >>> coll = conn[DBNAME]['mongopersist.tests.test_datamanager.Foo']
+      >>> coll = conn[DBNAME]['pjpersist.tests.test_datamanager.Foo']
       >>> list(coll.find())
       [{u'_id': ObjectId('4e7ddf12e138237403000000'), u'name': u'foo'}]
 
@@ -1536,7 +1536,7 @@ def doctest_ProcessSpecDecorator_basic():
 
     Let's now create the decorator:
 
-      >>> coll = conn[DBNAME]['mongopersist.tests.test_datamanager.Foo']
+      >>> coll = conn[DBNAME]['pjpersist.tests.test_datamanager.Foo']
       >>> process_find = datamanager.ProcessSpecDecorator(coll, coll.find)
       >>> list(process_find({'life': 42}))
       passed in: {'life': 42}
@@ -1578,10 +1578,10 @@ def doctest_LoggingDecorator_basic():
 
     Let's create the decorator:
 
-      >>> coll = conn[DBNAME]['mongopersist.tests.test_datamanager.Foo']
+      >>> coll = conn[DBNAME]['pjpersist.tests.test_datamanager.Foo']
       >>> logging_find = datamanager.LoggingDecorator(coll, coll.find)
       >>> list(logging_find({'life': 42}))
-      collection: mongopersist_test.mongopersist.tests.test_datamanager.Foo find,
+      collection: pjpersist_test.pjpersist.tests.test_datamanager.Foo find,
        TXN:('... - ',),
        args:({'life': 42},),
        kwargs:{},
@@ -1594,7 +1594,7 @@ def doctest_LoggingDecorator_basic():
     Keyword arguments are also supported:
 
       >>> list(logging_find(spec={'life': 42}))
-      collection: mongopersist_test.mongopersist.tests.test_datamanager.Foo find,
+      collection: pjpersist_test.pjpersist.tests.test_datamanager.Foo find,
        TXN:('... - ',),
        args:(),
        kwargs:{'spec': {'life': 42}},
@@ -1608,7 +1608,7 @@ def doctest_LoggingDecorator_basic():
 
       >>> logging_find.ADD_TB = False
       >>> list(logging_find({'life': 42}))
-      collection: mongopersist_test.mongopersist.tests.test_datamanager.Foo find,
+      collection: pjpersist_test.pjpersist.tests.test_datamanager.Foo find,
        TXN:('... - ',),
        args:({'life': 42},),
        kwargs:{},

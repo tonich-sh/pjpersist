@@ -62,16 +62,18 @@ to the DB:
 Custom Persistence Collections
 ------------------------------
 
-By default, persistent objects are stored in a collection having the Python
-path of the class:
+By default, persistent objects are stored in a collection having the escaped
+Python path of the class:
 
   >>> from pjpersist import serialize
   >>> person_cn = serialize.get_dotted_name(Person)
   >>> person_cn
-  '__main__.Person'
+  '__main___dot_Person'
 
   >>> import pprint
-  >>> pprint.pprint(list(conn[DBNAME][person_cn].find()))
+  >>> cur = dm.getCursor()
+  >>> cur.execute('SELECT * FROM ' + person_cn)
+  >>> pprint.pprint(cur.fetchall())
   [{u'_id': ObjectId('4e7ddf12e138237403000000'),
     u'address': None,
     u'birthday': None,

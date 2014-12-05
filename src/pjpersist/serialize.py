@@ -1,6 +1,7 @@
 ##############################################################################
 #
 # Copyright (c) 2011 Zope Foundation and Contributors.
+# Copyright (c) 2014 Shoobx, Inc.
 # All Rights Reserved.
 #
 # This software is subject to the provisions of the Zope Public License,
@@ -11,41 +12,38 @@
 # FOR A PARTICULAR PURPOSE.
 #
 ##############################################################################
-"""Object Serialization for Mongo/BSON"""
+"""Object Serialization for PostGreSQL's JSONB"""
 from __future__ import absolute_import
 import copy
 import copy_reg
 
-import bson.dbref
-import bson.objectid
 import persistent.interfaces
 import persistent.dict
 import persistent.list
-import bson.dbref
-import bson.binary
 import repoze.lru
 import types
 import zope.interface
 from zope.dottedname.resolve import resolve
 
-from mongopersist import interfaces
+from pjpersist import interfaces
 
 IGNORE_IDENTICAL_DOCUMENTS = True
 ALWAYS_READ_FULL_DOC = True
 
 SERIALIZERS = []
 OID_CLASS_LRU = repoze.lru.LRUCache(20000)
-COLLECTIONS_WITH_TYPE = set()
+TABLES_WITH_TYPE = set()
 AVAILABLE_NAME_MAPPINGS = set()
 PATH_RESOLVE_CACHE = {}
 
 
 def get_dotted_name(obj):
-    return obj.__module__ + '.' + obj.__name__
-
+    name = obj.__module__ + '.' + obj.__name__
+    # Make the name safe.
+    return name.replace('.', '_dot_')
 
 class PersistentDict(persistent.dict.PersistentDict):
-    _p_mongo_sub_object = True
+    _p_pj_sub_object = True
 
     def __init__(self, data=None, **kwargs):
         # We optimize the case where data is not a dict. The original
@@ -74,8 +72,25 @@ class PersistentDict(persistent.dict.PersistentDict):
 
 
 class PersistentList(persistent.list.PersistentList):
-    _p_mongo_sub_object = True
+    _p_pj_sub_object = True
 
+
+class DBRef(object):
+
+    def __init__(self, table, id, database=None):
+        self.table = table
+        self.id = id
+        self.database = database
+        self.hash = hash(str(self.database)+self.table+self.id)
+
+    def __hash__(self):
+        return self.hash
+
+    def as_tuple(self):
+        return self.database, self.table, self.id
+
+class Binary(str):
+    pass
 
 class ObjectSerializer(object):
     zope.interface.implements(interfaces.IObjectSerializer)
@@ -99,47 +114,45 @@ class ObjectWriter(object):
     def __init__(self, jar):
         self._jar = jar
 
-    def get_collection_name(self, obj):
+    def get_table_name(self, obj):
         __traceback_info__ = obj
         db_name = getattr(
-            obj, '_p_mongo_database',
-            self._jar.default_database if self._jar else None)
+            obj, interfaces.DATABASE_ATTR_NAME,
+            self._jar.database if self._jar else None)
         try:
-            coll_name = obj._p_mongo_collection
+            table_name = getattr(obj, interfaces.TABLE_ATTR_NAME)
         except AttributeError:
             return db_name, get_dotted_name(obj.__class__)
         # If the object writer is run without a datamager, there is no need to
-        # try to dump the collection info into the database.
+        # try to dump the table info into the database.
         if self._jar is None:
-            return db_name, coll_name
-        # Make sure that the coll_name to class path mapping is available.
+            return db_name, table_name
+        # Make sure that the table_name to class path mapping is available.
         # Let's make sure we do the lookup only once, since the info will
         # never change.
         path = get_dotted_name(obj.__class__)
-        map = {'collection': coll_name, 'database': db_name, 'path': path}
-        map_hash = (db_name, coll_name, path)
+        map = {'table': table_name, 'database': db_name, 'path': path}
+        map_hash = (db_name, table_name, path)
         if map_hash in AVAILABLE_NAME_MAPPINGS:
-            return db_name, coll_name
-        db = self._jar._conn[self._jar.default_database]
-        coll = db[self._jar.name_map_collection]
-        result = coll.find_one(map)
+            return db_name, table_name
+        result = self._jar._get_name_map_entry(**map)
         if result is None:
-            # If there is already a map for this collection, the next map must
+            # If there is already a map for this table, the next map must
             # force the object to store the type.
-            result = coll.find({'collection': coll_name,
-                                'database': db_name})
-            if result.count() > 0:
-                setattr(obj.__class__, '_p_mongo_store_type', True)
-            map['doc_has_type'] = getattr(obj, '_p_mongo_store_type', False)
-            coll.save(map)
+            result = self._jar._get_name_map_entry(db_name, table_name)
+            if result is not None:
+                setattr(obj.__class__, interfaces.STORE_TYPE_ATTR_NAME, True)
+            map['doc_has_type'] = getattr(
+                obj, interfaces.STORE_TYPE_ATTR_NAME, False)
+            self._jar._insert_name_map_entry(**map)
             result = map
-        # Make sure that derived classes that share a collection know they
+        # Make sure that derived classes that share a table know they
         # have to store their type.
         if (result['doc_has_type'] and
-            not getattr(obj, '_p_mongo_store_type', False)):
-            obj.__class__._p_mongo_store_type = True
+            not getattr(obj, interfaces.STORE_TYPE_ATTR_NAME, False)):
+            setattr(obj.__class__, interfaces.STORE_TYPE_ATTR_NAME, True)
         AVAILABLE_NAME_MAPPINGS.add(map_hash)
-        return db_name, coll_name
+        return db_name, table_name
 
     def get_non_persistent_state(self, obj, seen):
         __traceback_info__ = obj, type(obj)
@@ -174,17 +187,17 @@ class ObjectWriter(object):
             factory, args, obj_state = reduced
             if obj_state is None:
                 obj_state = {}
-        # We are trying very hard to create a clean Mongo (sub-)document. But
+        # We are trying very hard to create a clean JSONB (sub-)document. But
         # we need a little bit of meta-data to help us out later.
         if factory == copy_reg._reconstructor and \
                args == (obj.__class__, object, None):
             # This is the simple case, which means we can produce a nicer
-            # Mongo output.
+            # JSONB output.
             state = {'_py_type': get_dotted_name(args[0])}
         elif factory == copy_reg.__newobj__ and args == (obj.__class__,):
             # Another simple case for persistent objects that do not want
             # their own document.
-            state = {'_py_persistent_type': get_dotted_name(args[0])}
+            state = {interfaces.PY_TYPE_ATTR_NAME: get_dotted_name(args[0])}
         else:
             state = {'_py_factory': get_dotted_name(factory),
                      '_py_factory_args': self.get_state(args, obj, seen)}
@@ -195,14 +208,14 @@ class ObjectWriter(object):
     def get_persistent_state(self, obj, seen):
         __traceback_info__ = obj
         # Persistent sub-objects are stored by reference, the key being
-        # (collection name, oid).
-        # Getting the collection name is easy, but if we have an unsaved
+        # (table name, oid).
+        # Getting the table name is easy, but if we have an unsaved
         # persistent object, we do not yet have an OID. This must be solved by
         # storing the persistent object.
         if obj._p_oid is None:
             dbref = self.store(obj, ref_only=True)
         else:
-            db_name, coll_name = self.get_collection_name(obj)
+            db_name, table_name = self.get_table_name(obj)
             dbref = obj._p_oid
         # Create the reference sub-document. The _p_type value helps with the
         # deserialization later.
@@ -210,7 +223,7 @@ class ObjectWriter(object):
 
     def get_state(self, obj, pobj=None, seen=None):
         seen = seen or []
-        if type(obj) in interfaces.MONGO_NATIVE_TYPES:
+        if type(obj) in interfaces.PJ_NATIVE_TYPES:
             # If we have a native type, we'll just use it as the state.
             return obj
         if isinstance(obj, str):
@@ -222,10 +235,10 @@ class ObjectWriter(object):
                 obj.decode('utf-8')
                 return obj
             except UnicodeError:
-                return bson.binary.Binary(obj)
+                return Binary(obj.encode('base64'))
 
         # Some objects might not naturally serialize well and create a very
-        # ugly Mongo entry. Thus, we allow custom serializers to be
+        # ugly JSONB entry. Thus, we allow custom serializers to be
         # registered, which can encode/decode different types of objects.
         for serializer in SERIALIZERS:
             if serializer.can_write(obj):
@@ -240,12 +253,12 @@ class ObjectWriter(object):
         # We need to make sure that the object's jar and doc-object are
         # set. This is important for the case when a sub-object was just
         # added.
-        if getattr(obj, '_p_mongo_sub_object', False):
+        if getattr(obj, interfaces.SUB_OBJECT_ATTR_NAME, False):
             if obj._p_jar is None:
                 if pobj is not None and \
                         getattr(pobj, '_p_jar', None) is not None:
                     obj._p_jar = pobj._p_jar
-                obj._p_mongo_doc_object = pobj
+                setattr(obj, interfaces.DOC_OBJECT_ATTR_NAME, pobj)
 
         if isinstance(obj, (tuple, list, PersistentList)):
             # Make sure that all values within a list are serialized
@@ -254,17 +267,13 @@ class ObjectWriter(object):
         if isinstance(obj, (dict, PersistentDict)):
             # Same as for sequences, make sure that the contained values are
             # properly serialized.
-            # Note: A big constraint in Mongo is that keys must be strings!
+            # Note: A big constraint in JSONB is that keys must be strings!
             has_non_string_key = False
             data = []
             for key, value in obj.items():
                 data.append((key, self.get_state(value, pobj, seen)))
                 has_non_string_key |= not isinstance(key, basestring)
-                if (not isinstance(key, basestring) or '.' in key or '$' in key
-                    or '\0' in key):
-                    # "Field names cannot contain dots (i.e. .), dollar signs
-                    # (i.e. $), or null characters."
-                    #   -- http://docs.mongodb.org/manual/reference/limits/
+                if (not isinstance(key, basestring) or '\0' in key):
                     has_non_string_key = True
             if not has_non_string_key:
                 # The easy case: all keys are strings:
@@ -279,7 +288,7 @@ class ObjectWriter(object):
         if isinstance(obj, persistent.Persistent):
             # Only create a persistent reference, if the object does not want
             # to be a sub-document.
-            if not getattr(obj, '_p_mongo_sub_object', False):
+            if not getattr(obj, interfaces.SUB_OBJECT_ATTR_NAME, False):
                 return self.get_persistent_state(obj, seen)
             # This persistent object is a sub-document, so it is treated like
             # a non-persistent object.
@@ -289,22 +298,14 @@ class ObjectWriter(object):
     def get_full_state(self, obj):
         doc = self.get_state(obj.__getstate__(), obj)
         # Add a persistent type info, if necessary.
-        if getattr(obj, '_p_mongo_store_type', False):
-            doc['_py_persistent_type'] = get_dotted_name(obj.__class__)
-        # A hook, so that the conflict handler can modify the state document
-        # if needed.
-        self._jar.conflict_handler.on_before_store(obj, doc)
-        # Add the object id.
-        if obj._p_oid is not None:
-            doc['_id'] = obj._p_oid.id
+        if getattr(obj, interfaces.STORE_TYPE_ATTR_NAME, False):
+            doc[interfaces.PY_TYPE_ATTR_NAME] = get_dotted_name(obj.__class__)
         # Return the full state document
         return doc
 
     def store(self, obj, ref_only=False, id=None):
         __traceback_info__ = (obj, ref_only)
 
-        db_name, coll_name = self.get_collection_name(obj)
-        coll = self._jar.get_collection(db_name, coll_name)
         if ref_only:
             # We only want to get OID quickly. Trying to reduce the full state
             # might cause infinite recursion loop. (Example: 2 new objects
@@ -317,43 +318,32 @@ class ObjectWriter(object):
             # Go through each attribute and search for persistent references.
             doc = self.get_state(obj.__getstate__(), obj)
 
-        if getattr(obj, '_p_mongo_store_type', False):
-            doc['_py_persistent_type'] = get_dotted_name(obj.__class__)
+        if getattr(obj, interfaces.STORE_TYPE_ATTR_NAME, False):
+            doc[interfaces.PY_TYPE_ATTR_NAME] = get_dotted_name(obj.__class__)
 
-        # A hook, so that the conflict handler can modify the state document
-        # if needed.
-        self._jar.conflict_handler.on_before_store(obj, doc)
-
+        db_name, table_name = self.get_table_name(obj)
         stored = False
         if obj._p_oid is None:
-            if id is not None:
-                doc['_id'] = id
-            doc_id = coll.insert(doc)
+            doc_id = self._jar._insert_doc(db_name, table_name, doc, id)
             stored = True
             obj._p_jar = self._jar
-            obj._p_oid = bson.dbref.DBRef(coll_name, doc_id, db_name)
+            obj._p_oid = DBRef(table_name, doc_id, db_name)
             # Make sure that any other code accessing this object in this
             # session, gets the same instance.
             self._jar._object_cache[hash(obj._p_oid)] = obj
         else:
-            doc['_id'] = obj._p_oid.id
             # We only want to store a new version of the document, if it is
             # different. We have to delegate that task to the conflict
             # handler, since it might know about meta-fields that need to be
             # ignored.
             orig_doc = self._jar._latest_states.get(obj._p_oid)
-            if (not IGNORE_IDENTICAL_DOCUMENTS or
-                not self._jar.conflict_handler.is_same(obj, orig_doc, doc)):
-                coll.save(doc)
+            if (not IGNORE_IDENTICAL_DOCUMENTS):
+                self._jar._insert_doc(db_name, table_name, doc, obj._p_oid.id)
                 stored = True
 
         if stored:
             # Make sure that the doc is added to the latest states.
             self._jar._latest_states[obj._p_oid] = doc
-
-            # A hook, so that the conflict handler can modify the object or state
-            # document after an object was stored.
-            self._jar.conflict_handler.on_after_store(obj, doc)
 
         return obj._p_oid
 
@@ -367,6 +357,7 @@ class ObjectReader(object):
         self.preferPersistent = True
 
     def simple_resolve(self, path):
+        path = path.replace('_dot_', '.')
         # We try to look up the klass from a cache. The important part here is
         # that we also cache lookup failures as None, since they actually
         # happen more frequently than a hit due to an optimization in the
@@ -393,47 +384,42 @@ class ObjectReader(object):
             return klass
         # 2. Check the transient single map entry lookup cache.
         try:
-            return self._single_map_cache[(dbref.database, dbref.collection)]
+            return self._single_map_cache[(dbref.database, dbref.table)]
         except KeyError:
             pass
-        # 3. If we have found the type within the document for a collection
-        #    before, let's try again. This will only hit, if we have more than
-        #    one type for the collection, otherwise the single map entry
-        #    lookup failed.
-        coll_key = (dbref.database, dbref.collection)
-        if coll_key in COLLECTIONS_WITH_TYPE:
+        # 3. If we have found the type within the document for a table before,
+        #    let's try again. This will only hit, if we have more than one
+        #    type for the table, otherwise the single map entry lookup failed.
+        table_key = (dbref.database, dbref.table)
+        if table_key in TABLES_WITH_TYPE:
             if dbref in self._jar._latest_states:
                 obj_doc = self._jar._latest_states[dbref]
             elif ALWAYS_READ_FULL_DOC:
-                obj_doc = self._jar.get_collection(
-                    dbref.database, dbref.collection).find_one(dbref.id)
+                obj_doc = self._jar._get_doc(
+                    dbref.database, dbref.table, dbref.id)['data']
                 self._jar._latest_states[dbref] = obj_doc
             else:
-                obj_doc = self._jar\
-                    .get_collection(dbref.database, dbref.collection)\
-                    .find_one(dbref.id, fields=('_py_persistent_type',))
+                pytype = self._jar._get_doc_py_type(
+                    dbref.database, dbref.table, dbref.id)
+                obj_doc = {interfaces.PY_TYPE_ATTR_NAME: pytype}
             #if obj_doc is None:
             #    # There is no document for this reference in the database.
             #    raise ImportError(dbref)
-            if '_py_persistent_type' in obj_doc:
-                klass = self.simple_resolve(obj_doc['_py_persistent_type'])
+            if interfaces.PY_TYPE_ATTR_NAME in obj_doc:
+                klass = self.simple_resolve(
+                    obj_doc[interfaces.PY_TYPE_ATTR_NAME])
                 OID_CLASS_LRU.put(hash(dbref), klass)
                 return klass
         # 4. Try to resolve the path directly. We want to do this optimization
         #    after all others, because trying it a lot is very expensive.
         try:
-            return self.simple_resolve(dbref.collection)
+            return self.simple_resolve(dbref.table)
         except ImportError:
             pass
         # 5. No simple hits, so we have to do some leg work.
-        # Let's now try to look up the path from the collection to path
-        # mapping
-        db = self._jar._conn[self._jar.default_database]
-        coll = db[self._jar.name_map_collection]
-        result = tuple(coll.find(
-            {'collection': dbref.collection, 'database': dbref.database}))
-        # Calling count() on a query result causes another database
-        # access. Since the result sets should be typically very small, let's
+        # Let's now try to look up the path from the table to path mapping
+        result = self._jar._get_name_map_entry(dbref.database, dbref.table)
+        # Since the result sets should be typically very small, let's
         # load them all.
         count = len(result)
         if count == 0:
@@ -444,12 +430,12 @@ class ObjectReader(object):
             # is fine, which is really useful if you load a lot of objects of
             # the same type.
             klass = self.simple_resolve(result[0]['path'])
-            self._single_map_cache[(dbref.database, dbref.collection)] = klass
+            self._single_map_cache[(dbref.database, dbref.table)] = klass
             return klass
         else:
             if dbref.id is None:
                 raise ImportError(dbref)
-            # Multiple object types are stored in the collection. We have to
+            # Multiple object types are stored in the table. We have to
             # look at the object to find out the type.
             if dbref in self._jar._latest_states:
                 # Optimization: If we have the latest state, then we just get
@@ -461,17 +447,17 @@ class ObjectReader(object):
                 # Optimization: Read the entire doc and stick it in the right
                 # place so that unghostifying the object later will not cause
                 # another database access.
-                obj_doc = self._jar\
-                    .get_collection(dbref.database, dbref.collection)\
-                    .find_one(dbref.id)
+                obj_doc = self._jar._get_doc(
+                    dbref.database, dbref.table, dbref.id)
                 self._jar._latest_states[dbref] = obj_doc
             else:
-                obj_doc = self._jar\
-                    .get_collection(dbref.database, dbref.collection)\
-                    .find_one(dbref.id, fields=('_py_persistent_type',))
-            if '_py_persistent_type' in obj_doc:
-                COLLECTIONS_WITH_TYPE.add(coll_key)
-                klass = self.simple_resolve(obj_doc['_py_persistent_type'])
+                pytype = self._jar._get_doc_py_type(
+                    dbref.database, dbref.table, dbref.id)
+                obj_doc = {interfaces.PY_TYPE_ATTR_NAME: pytype}
+            if interfaces.PY_TYPE_ATTR_NAME in obj_doc:
+                TABLES_WITH_TYPE.add(table_key)
+                klass = self.simple_resolve(
+                    obj_doc[interfaces.PY_TYPE_ATTR_NAME])
             else:
                 # Find the name-map entry where "doc_has_type" is False.
                 # Note: This case is really inefficient and does not allow any
@@ -492,10 +478,10 @@ class ObjectReader(object):
             # Handle the simplified case.
             klass = self.simple_resolve(state.pop('_py_type'))
             sub_obj = copy_reg._reconstructor(klass, object, None)
-        elif '_py_persistent_type' in state:
+        elif interfaces.PY_TYPE_ATTR_NAME in state:
             # Another simple case for persistent objects that do not want
             # their own document.
-            klass = self.simple_resolve(state.pop('_py_persistent_type'))
+            klass = self.simple_resolve(state.pop(interfaces.PY_TYPE_ATTR_NAME))
             sub_obj = copy_reg.__newobj__(klass)
         else:
             factory = self.simple_resolve(state.pop('_py_factory'))
@@ -509,25 +495,23 @@ class ObjectReader(object):
                 sub_obj.__dict__.update(sub_obj_state)
             if isinstance(sub_obj, persistent.Persistent):
                 # This is a persistent sub-object -- mark it as such. Otherwise
-                # we risk to store this object in its own collection next time.
-                sub_obj._p_mongo_sub_object = True
-        if getattr(sub_obj, '_p_mongo_sub_object', False):
-            sub_obj._p_mongo_doc_object = obj
+                # we risk to store this object in its own table next time.
+                setattr(sub_obj, interfaces.SUB_OBJECT_ATTR_NAME, True)
+        if getattr(sub_obj, interfaces.SUB_OBJECT_ATTR_NAME, False):
+            setattr(sub_obj, DOC_OBJECT_ATTR_NAME, obj)
             sub_obj._p_jar = self._jar
         return sub_obj
 
     def get_object(self, state, obj):
-        if isinstance(state, bson.objectid.ObjectId):
-            # The object id is special. Preserve it.
-            return state
-        if isinstance(state, bson.binary.Binary):
+        if isinstance(state, dict) and state.get('_py_type') == 'BINARY':
             # Binary data in Python 2 is presented as a string. We will
             # convert back to binary when serializing again.
-            return str(state)
-        if isinstance(state, bson.dbref.DBRef):
+            return state['data'].decode('base64')
+        if isinstance(state, dict) and state.get('_py_type') == 'DBREF':
             # Load a persistent object. Using the get_ghost() method, so that
             # caching is properly applied.
-            return self.get_ghost(state)
+            dbref = DBRef(state['table'], state['id'], state['database'])
+            return self.get_ghost(dbref)
         if isinstance(state, dict) and state.get('_py_type') == 'type':
             # Convert a simple object reference, mostly classes.
             return self.simple_resolve(state['path'])
@@ -541,7 +525,7 @@ class ObjectReader(object):
             '_py_factory' in state
             or '_py_constant' in state
             or '_py_type' in state
-            or '_py_persistent_type' in state):
+            or interfaces.PY_TYPE_ATTR_NAME in state):
             # Load a non-persistent object.
             return self.get_non_persistent_object(state, obj)
         if isinstance(state, (tuple, list)):
@@ -551,7 +535,7 @@ class ObjectReader(object):
             sub_obj = [self.get_object(value, obj) for value in state]
             if self.preferPersistent:
                 sub_obj = PersistentList(sub_obj)
-                sub_obj._p_mongo_doc_object = obj
+                setattr(sub_obj, interfaces.DOC_OBJECT_ATTR_NAME, obj)
                 sub_obj._p_jar = self._jar
             return sub_obj
         if isinstance(state, dict):
@@ -568,7 +552,7 @@ class ObjectReader(object):
                  for name, value in items])
             if self.preferPersistent:
                 sub_obj = PersistentDict(sub_obj)
-                sub_obj._p_mongo_doc_object = obj
+                setattr(sub_obj, interfaces.DOC_OBJECT_ATTR_NAME, obj)
                 sub_obj._p_jar = self._jar
             return sub_obj
         return state
@@ -577,23 +561,17 @@ class ObjectReader(object):
         __traceback_info__ = (obj, doc)
         # Check whether the object state was stored on the object itself.
         if doc is None:
-            doc = getattr(obj, '_p_mongo_state', None)
-        # Look up the object state by coll_name and oid.
+            doc = getattr(obj, interfaces.STATE_ATTR_NAME, None)
+        # Look up the object state by table_name and oid.
         if doc is None:
-            coll = self._jar.get_collection(
-                obj._p_oid.database, obj._p_oid.collection)
-            doc = coll.find_one({'_id': obj._p_oid.id})
+            doc = self._jar._get_doc_by_dbref(obj._p_oid)
         # Check that we really have a state doc now.
         if doc is None:
             raise ImportError(obj._p_oid)
         # Create a copy of the doc, so that we can modify it.
         state_doc = copy.deepcopy(doc)
         # Remove unwanted attributes.
-        state_doc.pop('_id')
-        state_doc.pop('_py_persistent_type', None)
-        # Allow the conflict handler to modify the object or state document
-        # before it is set on the object.
-        self._jar.conflict_handler.on_before_set_state(obj, state_doc)
+        state_doc.pop(interfaces.PY_TYPE_ATTR_NAME, None)
         # Now convert the document to a proper Python state dict.
         state = dict(self.get_object(state_doc, obj))
         # Now store the original state. It is assumed that the state dict is
@@ -622,10 +600,10 @@ class ObjectReader(object):
         obj._p_jar = self._jar
         obj._p_oid = dbref
         del obj._p_changed
-        # Assign the collection after deleting _p_changed, since the attribute
+        # Assign the table after deleting _p_changed, since the attribute
         # is otherwise deleted.
-        obj._p_mongo_database = dbref.database
-        obj._p_mongo_collection = dbref.collection
+        setattr(obj, interfaces.DATABASE_ATTR_NAME, dbref.database)
+        setattr(obj, interfaces.TABLE_ATTR_NAME, dbref.table)
         # Adding the object to the cache is very important, so that we get the
         # same object reference throughout the transaction.
         self._jar._object_cache[hash(dbref)] = obj

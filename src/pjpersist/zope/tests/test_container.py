@@ -19,7 +19,6 @@ import unittest
 import ZODB
 import ZODB.DemoStorage
 import persistent
-import pymongo
 import random
 import re
 import transaction
@@ -32,10 +31,10 @@ from zope.app.testing import placelesssetup
 from zope.container import contained, btree
 from zope.testing import cleanup, module, renormalizing
 
-from mongopersist import datamanager, interfaces, serialize, testing
-from mongopersist.zope import container
+from pjpersist import datamanager, interfaces, serialize, testing
+from pjpersist.zope import container
 
-DBNAME = 'mongopersist_container_test'
+DBNAME = 'pjpersist_container_test'
 
 
 class ApplicationRoot(container.SimpleMongoContainer):
@@ -258,7 +257,7 @@ def doctest_MongoContained_mixed():
 def doctest_SimpleMongoContainer_basic():
     """SimpleMongoContainer: basic
 
-      >>> cn = 'mongopersist.zope.container.SimpleMongoContainer'
+      >>> cn = 'pjpersist.zope.container.SimpleMongoContainer'
 
     Let's make sure events are fired correctly:
 
@@ -283,7 +282,7 @@ def doctest_SimpleMongoContainer_basic():
       <SimplePerson Stephan>
 
       >>> dm.root['c']['stephan'].__parent__
-      <mongopersist.zope.container.SimpleMongoContainer object at 0x7fec50f86500>
+      <pjpersist.zope.container.SimpleMongoContainer object at 0x7fec50f86500>
       >>> dm.root['c']['stephan'].__name__
       u'stephan'
 
@@ -291,7 +290,7 @@ def doctest_SimpleMongoContainer_basic():
 
       >>> stephan = dm.root['c'].get(u'stephan')
       >>> stephan.__parent__
-      <mongopersist.zope.container.SimpleMongoContainer object at 0x7fec50f86500>
+      <pjpersist.zope.container.SimpleMongoContainer object at 0x7fec50f86500>
       >>> stephan.__name__
       u'stephan'
 
@@ -302,16 +301,16 @@ def doctest_SimpleMongoContainer_basic():
       >>> pprint(list(db['person'].find()))
       [{u'__name__': u'stephan',
         u'__parent__':
-            DBRef(u'mongopersist.zope.container.SimpleMongoContainer',
+            DBRef(u'pjpersist.zope.container.SimpleMongoContainer',
                   ObjectId('4e7ddf12e138237403000000'),
-                  u'mongopersist_container_test'),
+                  u'pjpersist_container_test'),
         u'_id': ObjectId('4e7ddf12e138237403000000'),
         u'name': u'Stephan'}]
 
       >>> dm.root['c'].keys()
       [u'stephan']
       >>> dm.root['c']['stephan'].__parent__
-      <mongopersist.zope.container.SimpleMongoContainer object at 0x7fec50f86500>
+      <pjpersist.zope.container.SimpleMongoContainer object at 0x7fec50f86500>
       >>> dm.root['c']['stephan'].__name__
       u'stephan'
 
@@ -374,7 +373,7 @@ def doctest_MongoContainer_basic():
       >>> dm.root['c'] = container.MongoContainer('person')
 
       >>> db = dm._conn[DBNAME]
-      >>> pprint(list(db['mongopersist.zope.container.MongoContainer'].find()))
+      >>> pprint(list(db['pjpersist.zope.container.MongoContainer'].find()))
       [{u'_id': ObjectId('4e7ddf12e138237403000000'),
         u'_m_collection': u'person'}]
 
@@ -389,7 +388,7 @@ def doctest_MongoContainer_basic():
       <Person Stephan>
 
       >>> dm.root['c']['stephan'].__parent__
-      <mongopersist.zope.container.MongoContainer object at 0x7fec50f86500>
+      <pjpersist.zope.container.MongoContainer object at 0x7fec50f86500>
       >>> dm.root['c']['stephan'].__name__
       u'stephan'
 
@@ -403,16 +402,16 @@ def doctest_MongoContainer_basic():
       [{u'_id': ObjectId('4e7e9d3ae138232d7b000003'),
         u'key': u'stephan',
         u'name': u'Stephan',
-        u'parent': DBRef(u'mongopersist.zope.container.MongoContainer',
+        u'parent': DBRef(u'pjpersist.zope.container.MongoContainer',
                          ObjectId('4e7e9d3ae138232d7b000000'),
-                         u'mongopersist_container_test')}]
+                         u'pjpersist_container_test')}]
 
       >>> 'stephan' in dm.root['c']
       True
       >>> dm.root['c'].keys()
       [u'stephan']
       >>> dm.root['c']['stephan'].__parent__
-      <mongopersist.zope.container.MongoContainer object at 0x7fec50f86500>
+      <pjpersist.zope.container.MongoContainer object at 0x7fec50f86500>
       >>> dm.root['c']['stephan'].__name__
       u'stephan'
 
@@ -520,7 +519,7 @@ def doctest_MongoContainer_m_parent_key_value():
       >>> c._p_jar = c._p_oid = None
       >>> dm.root['people'] = c
       >>> c._m_get_parent_key_value()
-      <mongopersist.zope.container.MongoContainer object at 0x32deed8>
+      <pjpersist.zope.container.MongoContainer object at 0x32deed8>
 
     In that final case, the container itself is returned, because upon
     serialization, we simply look up the dbref.
@@ -661,15 +660,15 @@ def doctest_MongoContainer_find():
       [{u'_id': ObjectId('4e7eb152e138234158000004'),
         u'key': u'roy',
         u'name': u'Roy',
-        u'parent': DBRef(u'mongopersist.zope.container.MongoContainer',
+        u'parent': DBRef(u'pjpersist.zope.container.MongoContainer',
                          ObjectId('4e7eb152e138234158000000'),
-                         u'mongopersist_container_test')},
+                         u'pjpersist_container_test')},
        {u'_id': ObjectId('4e7eb152e138234158000005'),
         u'key': u'roger',
         u'name': u'Roger',
-        u'parent': DBRef(u'mongopersist.zope.container.MongoContainer',
+        u'parent': DBRef(u'pjpersist.zope.container.MongoContainer',
                          ObjectId('4e7eb152e138234158000000'),
-                         u'mongopersist_container_test')}]
+                         u'pjpersist_container_test')}]
 
     And now the same query, but this time with object results:
 
@@ -691,9 +690,9 @@ def doctest_MongoContainer_find():
       {u'_id': ObjectId('4e7eb259e138234289000003'),
        u'key': u'stephan',
        u'name': u'Stephan',
-       u'parent': DBRef(u'mongopersist.zope.container.MongoContainer',
+       u'parent': DBRef(u'pjpersist.zope.container.MongoContainer',
                         ObjectId('4e7eb259e138234289000000'),
-                        u'mongopersist_container_test')}
+                        u'pjpersist_container_test')}
 
       >>> stephan = dm.root['people'].find_one({'name': {'$regex': '^St.*'}})
       >>> pprint(stephan)
@@ -809,7 +808,7 @@ def doctest_IdNamesMongoContainer_basic():
       [<Person Stephan>]
 
       >>> dm.root['c'][name].__parent__
-      <mongopersist.zope.container.IdNamesMongoContainer object at 0x7fec50f86500>
+      <pjpersist.zope.container.IdNamesMongoContainer object at 0x7fec50f86500>
       >>> dm.root['c'][name].__name__
       u'4e7ddf12e138237403000003'
 
@@ -823,9 +822,9 @@ def doctest_IdNamesMongoContainer_basic():
       >>> pprint(list(db['person'].find()))
       [{u'_id': ObjectId('4e7e9d3ae138232d7b000003'),
         u'name': u'Stephan',
-        u'parent': DBRef(u'mongopersist.zope.container.IdNamesMongoContainer',
+        u'parent': DBRef(u'pjpersist.zope.container.IdNamesMongoContainer',
                          ObjectId('4e7e9d3ae138232d7b000000'),
-                         u'mongopersist_container_test')}]
+                         u'pjpersist_container_test')}]
 
     Notice how there is no "key" entry in the document. We get a usual key
     error, if an object does not exist:
@@ -927,14 +926,14 @@ def doctest_SubDocumentMongoContainer_basic():
          {u'people':
           {u'_m_collection': u'person',
            u'_py_persistent_type':
-               u'mongopersist.zope.container.SubDocumentMongoContainer'}}}]
+               u'pjpersist.zope.container.SubDocumentMongoContainer'}}}]
 
     It is unfortunate that the '_m_collection' attribute is set. This is
     avoidable using a sub-class. Let's make sure the container can be loaded
     correctly:
 
       >>> dm.root['app_root']['people']
-      <mongopersist.zope.container.SubDocumentMongoContainer ...>
+      <pjpersist.zope.container.SubDocumentMongoContainer ...>
       >>> dm.root['app_root']['people'].__parent__
       <ApplicationRoot>
       >>> dm.root['app_root']['people'].__name__
@@ -971,7 +970,7 @@ def doctest_MongoContainer_with_ZODB():
       >>> root['app']
       <zope.container.btree.BTreeContainer object at 0x7fbb5842f578>
       >>> root['app']['people']
-      <mongopersist.zope.container.MongoContainer object at 0x7fd6e23555f0>
+      <pjpersist.zope.container.MongoContainer object at 0x7fd6e23555f0>
 
     Trying accessing people fails:
 
@@ -979,7 +978,7 @@ def doctest_MongoContainer_with_ZODB():
       Traceback (most recent call last):
       ...
       ComponentLookupError:
-       (<InterfaceClass mongopersist.interfaces.IMongoDataManagerProvider>, '')
+       (<InterfaceClass pjpersist.interfaces.IMongoDataManagerProvider>, '')
 
     This is because we have not told the system how to get a datamanager:
 
@@ -1006,7 +1005,7 @@ def doctest_MongoContainer_with_ZODB():
       >>> stephan.__name__
       u'stephan'
       >>> stephan.__parent__
-      <mongopersist.zope.container.MongoContainer object at 0x7f6b6273b7d0>
+      <pjpersist.zope.container.MongoContainer object at 0x7f6b6273b7d0>
 
       >>> pprint(list(dm._get_collection(DBNAME, 'person').find()))
       [{u'_id': ObjectId('4e7ed795e1382366a0000001'),
@@ -1074,7 +1073,7 @@ def doctest_Realworldish():
       >>> dm.root['c'] = Campaigns('foobar')
 
       >>> db = dm._conn[DBNAME]
-      >>> pprint(list(db['mongopersist.zope.tests.test_container.Campaigns'].find()))
+      >>> pprint(list(db['pjpersist.zope.tests.test_container.Campaigns'].find()))
       [{u'_id': ObjectId('4e7ddf12e138237403000000'),
         u'name': u'foobar'}]
 
@@ -1103,9 +1102,9 @@ def doctest_Realworldish():
       [{u'_id': ObjectId('4e7ddf12e138237403000000'),
         u'key': u'one',
         u'name': u'one',
-        u'parent': DBRef(u'mongopersist.zope.tests.test_container.Campaigns',
+        u'parent': DBRef(u'pjpersist.zope.tests.test_container.Campaigns',
             ObjectId('4e7ddf12e138237403000000'),
-            u'mongopersist_container_test')}]
+            u'pjpersist_container_test')}]
 
       >>> 'one' in dm.root['c']
       True
@@ -1369,10 +1368,6 @@ def handleObjectModifiedEvent(object, event):
     print event.__class__.__name__+':', repr(object)
 
 
-def dropDB():
-    testing.getConnection().drop_database(DBNAME)
-
-
 def setUp(test):
     placelesssetup.setUp(test)
     module.setUp(test)
@@ -1434,5 +1429,3 @@ def test_suite():
                              )
                 ),
         ))
-
-atexit.register(dropDB)

@@ -16,9 +16,9 @@ import doctest
 import persistent
 import pprint
 import transaction
-from bson import dbref, objectid
+#from bson import dbref, objectid
 
-from mongopersist import testing, mapping
+from pjpersist import testing, mapping
 
 class Item(persistent.Persistent):
     def __init__(self, name=None, site=None):
@@ -32,7 +32,7 @@ def doctest_MongoCollectionMapping_simple():
     collection. Here is a simple example for our Item class/collection:
 
       >>> class SimpleContainer(mapping.MongoCollectionMapping):
-      ...     __mongo_collection__ = 'mongopersist.tests.test_mapping.Item'
+      ...     __mongo_collection__ = 'pjpersist.tests.test_mapping.Item'
       ...     __mongo_mapping_key__ = 'name'
 
     To initialize the mapping, we need a data manager:
@@ -70,12 +70,12 @@ def doctest_MongoCollectionMapping_simple():
     managing:
 
       >>> container.get_mongo_collection()
-      <mongopersist.datamanager.CollectionWrapper object at 0x001122>
+      <pjpersist.datamanager.CollectionWrapper object at 0x001122>
 
       >>> container.get_mongo_collection().collection
       Collection(Database(Connection('localhost', 27017),
-                          u'mongopersist_test'),
-                          u'mongopersist.tests.test_mapping.Item')
+                          u'pjpersist_test'),
+                          u'pjpersist.tests.test_mapping.Item')
     """
 
 def doctest_MongoCollectionMapping_filter():
@@ -86,7 +86,7 @@ def doctest_MongoCollectionMapping_filter():
     for all its functions.
 
       >>> class SiteContainer(mapping.MongoCollectionMapping):
-      ...     __mongo_collection__ = 'mongopersist.tests.test_mapping.Item'
+      ...     __mongo_collection__ = 'pjpersist.tests.test_mapping.Item'
       ...     __mongo_mapping_key__ = 'name'
       ...     def __init__(self, jar, site):
       ...         super(SiteContainer, self).__init__(jar)

@@ -11,16 +11,16 @@
 # FOR A PARTICULAR PURPOSE.
 #
 ##############################################################################
-"""Mongo Persistence Schema Fields"""
+"""PostGreSQL/JSONB Persistence Schema Fields"""
 import zope.interface
 import zope.schema._field
 import zope.schema.interfaces
-import mongopersist.serialize
+import pjpersist.serialize
 
-class MongoSequence(zope.schema._field.AbstractCollection):
+class PJSequence(zope.schema._field.AbstractCollection):
     zope.interface.implements(zope.schema.interfaces.IList)
-    _type = (tuple, list, mongopersist.serialize.PersistentList)
+    _type = (tuple, list, pjpersist.serialize.PersistentList)
 
-class MongoMapping(zope.schema._field.Dict):
+class PJMapping(zope.schema._field.Dict):
     zope.interface.implements(zope.schema.interfaces.IDict)
-    _type = (dict, mongopersist.serialize.PersistentDict)
+    _type = (dict, pjpersist.serialize.PersistentDict)

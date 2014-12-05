@@ -23,10 +23,17 @@ import zope.interface
 import zope.schema
 
 PJ_NATIVE_TYPES = (
-    bool, int, long, float, unicode, datetime.datetime, types.NoneType)
+    bool, int, long, float, unicode, types.NoneType)
 REFERENCE_SAFE_TYPES = (
-    datetime.date, datetime.time, decimal.Decimal)
+    datetime.datetime, datetime.date, datetime.time, decimal.Decimal)
 
+DATABASE_ATTR_NAME = '_p_pj_database'
+TABLE_ATTR_NAME = '_p_pj_table'
+STORE_TYPE_ATTR_NAME = '_p_pj_store_type'
+SUB_OBJECT_ATTR_NAME = '_p_pj_sub_object'
+DOC_OBJECT_ATTR_NAME = '_p_pj_doc_object'
+STATE_ATTR_NAME = '_p_pj_state'
+PY_TYPE_ATTR_NAME = '_py_persistent_type'
 
 class ConflictError(transaction.interfaces.TransientError):
     """An error raised when a write conflict is detected."""
@@ -70,61 +77,6 @@ class ConflictError(transaction.interfaces.TransientError):
 
 class CircularReferenceError(Exception):
     pass
-
-
-class IConflictHandler(zope.interface.Interface):
-
-    datamanager = zope.interface.Attribute(
-        """The datamanager for which to conduct the conflict resolution.""")
-
-    def on_before_set_state(obj, state):
-        """Method called just before the object's state is set."""
-
-    def on_before_store(obj, state):
-        """Method called just before the object state is written to MongoDB."""
-
-    def on_after_store(obj, state):
-        """Method called right after the object state was written to MongoDB."""
-
-    def on_modified(obj):
-        """Method called when an object is registered as modified."""
-
-    def is_same(obj, orig_state, new_state):
-        """Compares two states of the object and determines whether they are
-        the same. It should only compare actual object fields and not any
-        meta-data fields."""
-
-    def has_conflicts(objs):
-        """Checks whether any of the passed in objects have conflicts.
-
-        Returns False if conflicts were found, otherwise True is returned.
-
-        While calling this method, the conflict handler may try to resolve
-        conflicts.
-        """
-
-    def check_conflicts(self, objs):
-        """Checks whether any of the passed in objects have conflicts.
-
-        Raises a ``ConflictError`` for the first object with a conflict.
-
-        While calling this method, the conflict handler may try to resolve
-        conflicts.
-        """
-
-
-class IResolvingConflictHandler(IConflictHandler):
-    """A conflict handler that is able to resolve conflicts."""
-
-    def resolve(obj, orig_doc, cur_doc, new_doc):
-        """Tries to resolve a conflict.
-
-        This is usually done through some comparison of the states. The method
-        returns ``True`` if the conflict was resolved and ``False`` otherwise.
-
-        It is the responsibility of this method to modify the object and data
-        manager models, so that the resolution is valid in the next step.
-        """
 
 
 class IObjectSerializer(zope.interface.Interface):
@@ -195,29 +147,23 @@ class IObjectReader(zope.interface.Interface):
         """
 
 
-class IMongoDataManager(persistent.interfaces.IPersistentDataManager):
-    """A persistent data manager that stores data in Mongo."""
+class IPJDataManager(persistent.interfaces.IPersistentDataManager):
+    """A persistent data manager that stores data in PostGreSQL/JSONB."""
 
     root = zope.interface.Attribute(
         """Get the root object, which is a mapping.""")
 
-    conflict_handler = zope.interface.Attribute(
-        """An ``IConflictHandler`` instance that handles all conflicts.""")
-
-    def get_collection(db_name, coll_name):
-        """Return the collection for the given DB and collection names."""
-
-    def get_collection_of_object(obj):
-        """Return the collection for an object."""
+    def get_table_of_object(obj):
+        """Return the table name for an object."""
 
     def reset():
         """Reset the datamanager for the next transaction."""
 
     def dump(obj):
-        """Store the object to Mongo and return its DBRef."""
+        """Store the object to PostGreSQL/JSONB and return its DBRef."""
 
     def load(dbref):
-        """Load the object from Mongo by using its DBRef.
+        """Load the object from PostGreSQL/JSONB by using its DBRef.
 
         Note: The returned object is in the ghost state.
         """

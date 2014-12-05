@@ -14,7 +14,7 @@
 """Mongo Mapping Implementations"""
 from __future__ import absolute_import
 import UserDict
-import bson.dbref
+#import bson.dbref
 
 
 class MongoCollectionMapping(UserDict.DictMixin, object):
