@@ -58,6 +58,14 @@ def test_convert():
         >>> run(mq.convert({'quantity': {'$nin': [20, 30, 40]}}))
         NOT (((Bar.data) ->> ('quantity')) IN (20, 30, 40))
 
+    There can be just one element in this object:
+
+        >>> run(mq.convert({'quantity': {'$eq': 1, 'foo': 'bar'}}))
+        Traceback (most recent call last):
+          ...
+        ValueError: Too many elements: {'$eq': 1, 'foo': 'bar'}
+
+
     """
 
 

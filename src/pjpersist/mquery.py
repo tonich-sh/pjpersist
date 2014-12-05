@@ -32,6 +32,8 @@ class Converter(object):
                 accessor = sb.JSON_PATH_TEXT(doc, key.split("."))
 
             if isinstance(value, dict):
+                if len(value) != 1:
+                    raise ValueError("Too many elements: %r" % value)
                 comparison, val = value.items()[0]
                 if comparison == '$gt':
                     clauses.append(accessor > val)
