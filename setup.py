@@ -10,7 +10,7 @@ def read(*rnames):
 
 
 setup(
-    name='mongopersist',
+    name='pjpersist',
     version='0.1.0dev0',
     author="Shoobx Team",
     author_email="dev@shoobx.com",
