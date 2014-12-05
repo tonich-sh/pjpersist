@@ -46,26 +46,11 @@ class ConflictError(transaction.interfaces.TransientError):
         self.cur_state = cur_state
         self.new_state = new_state
 
-    @property
-    def orig_serial(self):
-        return self.orig_state.get('_py_serial') if self.orig_state else None
-
-    @property
-    def cur_serial(self):
-        return self.cur_state.get('_py_serial') if self.cur_state else None
-
-    @property
-    def new_serial(self):
-        return self.new_state.get('_py_serial') if self.new_state else None
-
     def __str__(self):
         extras = [
             'oid %s' % self.object._p_oid if self.object else '',
             'class %s' % self.object.__class__.__name__ if self.object
-            else '',
-            'orig serial %s' % self.orig_serial,
-            'cur serial %s' % self.cur_serial,
-            'new serial %s' % self.new_serial]
+            else '']
         return "%s (%s)" % (self.message, ", ".join(extras))
 
     def __unicode__(self):
