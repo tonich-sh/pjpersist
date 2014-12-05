@@ -84,7 +84,7 @@ def setUp(test):
     test.globs['dm'] = datamanager.PJDataManager(test.globs['conn'])
 
     def dumpTable(table, flush=True):
-        conn = getConnection(DBNAME)
+        conn = test.globs['dm']._conn
         with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
             try:
                 cur.execute('SELECT * FROM ' + table)
@@ -92,7 +92,6 @@ def setUp(test):
                 print err
             else:
                 pprint([dict(e) for e in cur.fetchall()])
-        conn.close()
     test.globs['dumpTable'] = dumpTable
 
 
