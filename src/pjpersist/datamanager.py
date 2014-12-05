@@ -18,7 +18,7 @@ import UserDict
 import logging
 import psycopg2.extensions
 import psycopg2.extras
-import sqlobject.sqlbuilder as sb
+import pjpersist.sqlbuilder as sb
 import sys
 import transaction
 import uuid
