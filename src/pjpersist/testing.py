@@ -57,6 +57,7 @@ def createDB():
     with conn.cursor() as cur:
         cur.execute('END')
         cur.execute('CREATE DATABASE %s' %DBNAME)
+    conn.commit()
     conn.close()
 
 def dropDB():
@@ -67,6 +68,7 @@ def dropDB():
             cur.execute('DROP DATABASE %s' %DBNAME)
         except psycopg2.ProgrammingError:
             pass
+    conn.commit()
     conn.close()
 
 def setUp(test):
@@ -95,6 +97,7 @@ def resetCaches():
     serialize.TABLES_WITH_TYPE.__init__()
     serialize.AVAILABLE_NAME_MAPPINGS.__init__()
     serialize.PATH_RESOLVE_CACHE = {}
+    datamanager.INITIALIZED_TABLES = []
 
 cleanup.addCleanUp(resetCaches)
 atexit.register(dropDB)
