@@ -15,15 +15,21 @@
 """PostGreSQL/JSONB Persistent Data Manager"""
 from __future__ import absolute_import
 import UserDict
+import binascii
+import hashlib
 import logging
+import os
 import psycopg2
 import psycopg2.extensions
 import psycopg2.extras
 import pjpersist.sqlbuilder as sb
+import random
 import re
+import socket
+import struct
 import sys
+import time
 import transaction
-import uuid
 import zope.interface
 from zope.exceptions import exceptionformatter
 
@@ -206,6 +212,19 @@ class PJDataManager(object):
             return PJPersistCursor(self, flush, *args, **kwargs)
         return self._conn.cursor(cursor_factory=factory)
 
+    def createId(self):
+        # 4 bytes current time
+        id = struct.pack(">i", int(time.time()))
+        # 3 bytes machine
+        mhash = hashlib.md5()
+        mhash.update(socket.gethostname())
+        id += mhash.digest()[:3]
+        # 2 bytes pid
+        id += struct.pack(">H", os.getpid() % 0xFFFF)
+        # 3 bytes inc
+        id += struct.pack(">i", random.randint(0, 0xFFFFFF))[1:4]
+        return binascii.hexlify(id)
+
     def _init_name_map_table(self):
         with self.getCursor(False) as cur:
             cur.execute(
@@ -254,13 +273,13 @@ class PJDataManager(object):
 
         with self.getCursor(False) as cur:
             cur.execute(
-            "SELECT * FROM information_schema.tables where table_name=%s",
+            "SELECT * FROM information_schema.tables WHERE table_name=%s",
                 (table,))
             if not cur.rowcount:
                 cur.execute('''
                     CREATE TABLE %s (
-                        id uuid primary key,
-                        data jsonb);
+                        id VARCHAR(24) NOT NULL PRIMARY KEY,
+                        data JSONB);
                     ''' % table)
             INITIALIZED_TABLES.append((database, table))
 
@@ -268,7 +287,7 @@ class PJDataManager(object):
         self._create_doc_table(database, table)
         # Create id if it is None.
         if id is None:
-            id = unicode(uuid.uuid4())
+            id = self.createId()
         # Insert the document into the table.
         with self.getCursor() as cur:
                 cur.execute(

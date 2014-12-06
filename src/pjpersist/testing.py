@@ -28,9 +28,9 @@ checker = renormalizing.RENormalizing([
     # Date/Time objects
     (re.compile(r'datetime.datetime\(.*\)'),
      'datetime.datetime(2011, 10, 1, 9, 45)'),
-    # UUIDs
-    (re.compile(r"'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'"),
-     "'00000000-0000-0000-0000-000000000000'"),
+    # IDs
+    (re.compile(r"'[0-9a-f]{24}'"),
+     "'0001020304050607080a0b0c0'"),
     # Object repr output.
     (re.compile(r"object at 0x[0-9a-f]*>"),
      "object at 0x001122>"),
@@ -94,8 +94,11 @@ def setUp(test):
     test.globs['commit'] = transaction.commit
     test.globs['dm'] = datamanager.PJDataManager(test.globs['conn'])
 
-    def dumpTable(table, flush=True):
-        conn = test.globs['dm']._conn
+    def dumpTable(table, flush=True, isolate=False):
+        if isolate:
+            conn = getConnection(database=DBNAME)
+        else:
+            conn = test.globs['dm']._conn
         with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
             try:
                 cur.execute('SELECT * FROM ' + table)
@@ -103,6 +106,8 @@ def setUp(test):
                 print err
             else:
                 pprint([dict(e) for e in cur.fetchall()])
+        if isolate:
+            conn.close()
     test.globs['dumpTable'] = dumpTable
 
 

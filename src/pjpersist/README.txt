@@ -66,7 +66,7 @@ By default, persistent objects are stored in a table having the escaped
 Python path of the class:
 
   >>> from pjpersist import serialize
-  >>> person_cn = serialize.get_dotted_name(Person)
+  >>> person_cn = serialize.get_dotted_name(Person, True)
   >>> person_cn
   'u__main___dot_Person'
 
@@ -80,7 +80,7 @@ Python path of the class:
              u'today': {u'_py_type': u'datetime.datetime',
                         u'components': [2014, 5, 14, 12, 30, 0]},
              u'visited': []},
-    'id': '5d657d28-2f41-4fee-8b0e-19f279e72365'}]
+    'id': u'0001020304050607080a0b0c0'}]
 
 
 As you can see, the stored document for the person looks very much like a
@@ -130,10 +130,8 @@ which allows you to specify a custom table to use.
 
 Note that the address is not immediately saved in the database:
 
-  >>> dumpTable('address')
-  Traceback (most recent call last):
-  ...
-  ProgrammingError: relation "address" does not exist
+  >>> dumpTable('address', isolate=True)
+  relation "address" does not exist
   ...
 
 But once we commit the transaction, everything is available:
@@ -141,12 +139,12 @@ But once we commit the transaction, everything is available:
   >>> transaction.commit()
   >>> dumpTable('address')
   [{'data': {u'city': u'Maynard', u'zip': u'01754'},
-   'id': '00000000-0000-0000-0000-000000000000'}]
+   'id': u'0001020304050607080a0b0c0'}]
 
   >>> dumpTable(person_cn)
   [{'data': {u'address': {u'_py_type': u'DBREF',
                           u'database': u'pjpersist_test',
-                          u'id': u'c0cef959-c2e6-4644-948c-2dc2313afdae',
+                          u'id': u'0001020304050607080a0b0c0',
                           u'table': u'address'},
              u'birthday': None,
              u'friends': {},
@@ -155,7 +153,7 @@ But once we commit the transaction, everything is available:
              u'today': {u'_py_type': u'datetime.datetime',
                         u'components': [2014, 5, 14, 12, 30, 0]},
              u'visited': []},
-    'id': '95f4648e-5156-4814-8d9a-9a2f193ab316'}]
+    'id': u'0001020304050607080a0b0c0'}]
 
   >>> dm.root['stephan'].address
   <Address Maynard (01754)>
@@ -194,7 +192,7 @@ Let's now commit the transaction and look at the JSONB document again:
   >>> dumpTable(person_cn)
   [{'data': {u'address': {u'_py_type': u'DBREF',
                           u'database': u'pjpersist_test',
-                          u'id': u'00000000-0000-0000-0000-000000000000',
+                          u'id': u'0001020304050607080a0b0c0',
                           u'table': u'address'},
              u'birthday': None,
              u'friends': {},
@@ -206,7 +204,7 @@ Let's now commit the transaction and look at the JSONB document again:
              u'today': {u'_py_type': u'datetime.datetime',
                         u'components': [2014, 5, 14, 12, 30, 0]},
              u'visited': []},
-    'id': '00000000-0000-0000-0000-000000000000'}]
+    'id': u'0001020304050607080a0b0c0'}]
 
 As you can see, for arbitrary non-persistent objects we need a small hint in
 the sub-document, but it is very minimal. If the ``__reduce__`` method returns
@@ -233,14 +231,14 @@ always maintained as lists, since JSON does not have two sequence types.
   ...     fetchone(person_cn, """data @> '{"name": "Stephan Richter"}'""")))
   {'data': {u'address': {u'_py_type': u'DBREF',
                          u'database': u'pjpersist_test',
-                         u'id': u'00000000-0000-0000-0000-000000000000',
+                         u'id': u'0001020304050607080a0b0c0',
                          u'table': u'address'},
-            u'birthday': {u'_py_factory': u'datetime_dot_date',
+            u'birthday': {u'_py_factory': u'datetime.date',
                           u'_py_factory_args': [{u'_py_type': u'BINARY',
                                                  u'data': u'B7wBGQ==\n'}]},
             u'friends': {u'roy': {u'_py_type': u'DBREF',
                                   u'database': u'pjpersist_test',
-                                  u'id': u'00000000-0000-0000-0000-000000000000',
+                                  u'id': u'0001020304050607080a0b0c0',
                                   u'table': u'u__main___dot_Person'}},
             u'name': u'Stephan Richter',
             u'phone': {u'_py_type': u'__main__.Phone',
@@ -250,7 +248,7 @@ always maintained as lists, since JSON does not have two sequence types.
             u'today': {u'_py_type': u'datetime.datetime',
                        u'components': [2014, 5, 14, 12, 30, 0]},
             u'visited': [u'Germany', u'USA']},
-   'id': '00000000-0000-0000-0000-000000000000'}
+   'id': u'0001020304050607080a0b0c0'}
 
 
 Custom Serializers
@@ -288,12 +286,12 @@ Let's have a look again:
   ...     fetchone(person_cn, """data @> '{"name": "Stephan Richter"}'""")))
   {'data': {u'address': {u'_py_type': u'DBREF',
                          u'database': u'pjpersist_test',
-                         u'id': u'00000000-0000-0000-0000-000000000000',
+                         u'id': u'0001020304050607080a0b0c',
                          u'table': u'address'},
             u'birthday': {u'_py_type': u'datetime.date', u'ordinal': 722839},
             u'friends': {u'roy': {u'_py_type': u'DBREF',
                                   u'database': u'pjpersist_test',
-                                  u'id': u'00000000-0000-0000-0000-000000000000',
+                                  u'id': u'0001020304050607080a0b0c',
                                   u'table': u'u__main___dot_Person'}},
             u'name': u'Stephan Richter',
             u'phone': {u'_py_type': u'__main__.Phone',
@@ -303,7 +301,7 @@ Let's have a look again:
             u'today': {u'_py_type': u'datetime.datetime',
                        u'components': [2014, 5, 14, 12, 30, 0]},
             u'visited': [u'Germany', u'USA']},
-   'id': '00000000-0000-0000-0000-000000000000'}
+   'id': u'0001020304050607080a0b0c'}
 
 
 Much better!
@@ -343,16 +341,16 @@ of another document:
   ...     fetchone(person_cn, """data @> '{"name": "Stephan Richter"}'""")))
   {'data': {u'address': {u'_py_type': u'DBREF',
                          u'database': u'pjpersist_test',
-                         u'id': u'00000000-0000-0000-0000-000000000000',
+                         u'id': u'0001020304050607080a0b0c',
                          u'table': u'address'},
             u'birthday': {u'_py_type': u'datetime.date', u'ordinal': 722839},
-            u'car': {u'_py_persistent_type': u'u__main___dot_Car',
+            u'car': {u'_py_persistent_type': u'__main__.Car',
                      u'make': u'Ford',
                      u'model': u'Explorer',
                      u'year': u'2005'},
             u'friends': {u'roy': {u'_py_type': u'DBREF',
                                   u'database': u'pjpersist_test',
-                                  u'id': u'00000000-0000-0000-0000-000000000000',
+                                  u'id': u'0001020304050607080a0b0c',
                                   u'table': u'u__main___dot_Person'}},
             u'name': u'Stephan Richter',
             u'phone': {u'_py_type': u'__main__.Phone',
@@ -362,7 +360,7 @@ of another document:
             u'today': {u'_py_type': u'datetime.datetime',
                        u'components': [2014, 5, 14, 12, 30, 0]},
             u'visited': [u'Germany', u'USA']},
-   'id': '00000000-0000-0000-0000-000000000000'}
+   'id': u'0001020304050607080a0b0c'}
 
 
 The reason we want objects to be persistent is so that they pick up changes

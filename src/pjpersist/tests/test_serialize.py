@@ -120,10 +120,10 @@ def doctest_ObjectWriter_get_table_name():
       >>> dm.commit(None)
 
       >>> dumpTable(dm.name_map_table)
-      [{'database': 'pjpersist_test',
+      [{'database': u'pjpersist_test',
         'doc_has_type': False,
-        'path': 'pjpersist_dot_tests_dot_test_serialize_dot_Top',
-        'tbl': 'Top'}]
+        'path': u'pjpersist_dot_tests_dot_test_serialize_dot_Top',
+        'tbl': u'Top'}]
 
       >>> getattr(top, '_p_pj_store_type', None)
 
@@ -138,14 +138,14 @@ def doctest_ObjectWriter_get_table_name():
       >>> dm.commit(None)
 
       >>> dumpTable(dm.name_map_table)
-      [{'database': 'pjpersist_test',
+      [{'database': u'pjpersist_test',
         'doc_has_type': False,
-        'path': 'pjpersist_dot_tests_dot_test_serialize_dot_Top',
-        'tbl': 'Top'},
-       {'database': 'pjpersist_test',
+        'path': u'pjpersist_dot_tests_dot_test_serialize_dot_Top',
+        'tbl': u'Top'},
+       {'database': u'pjpersist_test',
         'doc_has_type': True,
-        'path': 'pjpersist_dot_tests_dot_test_serialize_dot_Top2',
-        'tbl': 'Top'}]
+        'path': u'pjpersist_dot_tests_dot_test_serialize_dot_Top2',
+        'tbl': u'Top'}]
 
       >>> getattr(top2, '_p_pj_store_type', None)
       True
@@ -291,24 +291,24 @@ def doctest_ObjectWriter_get_persistent_state():
       >>> pprint.pprint(writer.get_persistent_state(foo, []))
       {'_py_type': 'DBREF',
        'database': 'pjpersist_test',
-       'id': u'0e9a10a7-e2ec-4e78-9ec4-f3567daa5d7b',
+       'id': '0001020304050607080a0b0c0',
        'table': 'Foo'}
 
       >>> dm.commit(None)
       >>> foo._p_oid
-      DBRef('Foo', u'00000000-0000-0000-0000-000000000000', 'pjpersist_test')
+      DBRef('Foo', '0001020304050607080a0b0c0', 'pjpersist_test')
       >>> dumpTable('Foo')
-      [{'data': {}, 'id': '00000000-0000-0000-0000-000000000000'}]
+      [{'data': {}, 'id': u'0001020304050607080a0b0c0'}]
 
     The next time the object simply returns its reference:
 
       >>> pprint.pprint(writer.get_persistent_state(foo, []))
       {'_py_type': 'DBREF',
        'database': 'pjpersist_test',
-       'id': u'0e9a10a7-e2ec-4e78-9ec4-f3567daa5d7b',
+       'id': '0001020304050607080a0b0c0',
        'table': 'Foo'}
       >>> dumpTable('Foo')
-      [{'data': {}, 'id': 'e514c0df-3855-4f9c-90fd-a3146c07fb8a'}]
+      [{'data': {}, 'id': u'0001020304050607080a0b0c0'}]
     """
 
 
@@ -395,7 +395,7 @@ def doctest_ObjectWriter_get_state_Persistent():
 
       >>> top = Top()
       >>> writer.get_state(top)
-      {'id': u'00000000-0000-0000-0000-000000000000',
+      {'id': '0001020304050607080a0b0c',
        'table': 'Top',
        '_py_type': 'DBREF',
        'database': 'pjpersist_test'}
@@ -479,21 +479,21 @@ def doctest_ObjectWriter_store():
 
       >>> top = Top()
       >>> writer.store(top)
-      DBRef('Top', u'00000000-0000-0000-0000-000000000000', 'pjpersist_test')
+      DBRef('Top', '0001020304050607080a0b0c', 'pjpersist_test')
       >>> dm.commit(None)
       >>> dumpTable('Top')
-      [{'data': {}, 'id': '00000000-0000-0000-0000-000000000000'}]
+      [{'data': {}, 'id': u'0001020304050607080a0b0c'}]
 
     Now that we have an object, storing an object simply means updating the
     existing document:
 
       >>> top.name = 'top'
       >>> writer.store(top)
-      DBRef('Top', u'00000000-0000-0000-0000-000000000000', 'pjpersist_test')
+      DBRef('Top', '0001020304050607080a0b0c', 'pjpersist_test')
       >>> dm.commit(None)
       >>> dumpTable('Top')
       [{'data': {u'name': u'top'},
-        'id': '8e6fee43-bd3a-47b7-8fed-e36fd32ad717'}]
+        'id': u'0001020304050607080a0b0c'}]
     """
 
 def doctest_ObjectWriter_store_with_pj_store_type():
@@ -504,11 +504,11 @@ def doctest_ObjectWriter_store_with_pj_store_type():
       >>> top = Top()
       >>> top._p_pj_store_type = True
       >>> writer.store(top)
-      DBRef('Top', u'00000000-0000-0000-0000-000000000000', 'pjpersist_test')
+      DBRef('Top', '0001020304050607080a0b0c', 'pjpersist_test')
       >>> dm.commit(None)
       >>> dumpTable('Top')
       [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_serialize.Top'},
-        'id': '00000000-0000-0000-0000-000000000000'}]
+        'id': u'0001020304050607080a0b0c'}]
     """
 
 def doctest_ObjectWriter_store_with_new_object_references():
@@ -524,14 +524,14 @@ def doctest_ObjectWriter_store_with_new_object_references():
       >>> top.foo = Foo()
       >>> top.foo.top = top
       >>> writer.store(top)
-      DBRef('Top', u'00000000-0000-0000-0000-000000000000', 'pjpersist_test')
+      DBRef('Top', '0001020304050607080a0b0c', 'pjpersist_test')
       >>> dm.commit(None)
       >>> dumpTable('Top')
       [{'data': {u'foo': {u'_py_type': u'DBREF',
                           u'database': u'pjpersist_test',
-                          u'id': u'00000000-0000-0000-0000-000000000000',
+                          u'id': u'0001020304050607080a0b0c',
                           u'table': u'Foo'}},
-        'id': '00000000-0000-0000-0000-000000000000'}]
+        'id': u'0001020304050607080a0b0c'}]
     """
 
 def doctest_ObjectReader_simple_resolve():
@@ -636,11 +636,11 @@ def doctest_ObjectReader_resolve_lookup():
 
       >>> reader = serialize.ObjectReader(dm)
       >>> ref = serialize.DBRef(
-      ...     'Top', u'00000000-0000-0000-0000-000000000000', 'pjpersist_test')
+      ...     'Top', '0001020304050607080a0b0c', 'pjpersist_test')
       >>> reader.resolve(ref)
       Traceback (most recent call last):
       ...
-      ImportError: DBRef('Top', u'00000000-0000-0000-0000-000000000000', 'pjpersist_test')
+      ImportError: DBRef('Top', '0001020304050607080a0b0c', 'pjpersist_test')
 
     The lookup failed, because there is no map entry yet for the 'Top'
     table. The easiest way to create one is with the object writer:
@@ -664,10 +664,10 @@ def doctest_ObjectReader_resolve_lookup_with_multiple_maps():
       >>> writer = serialize.ObjectWriter(dm)
       >>> top = Top()
       >>> writer.store(top)
-      DBRef('Top', u'00000000-0000-0000-0000-000000000000', 'pjpersist_test')
+      DBRef('Top', '0001020304050607080a0b0c', 'pjpersist_test')
       >>> top2 = Top2()
       >>> writer.store(top2)
-      DBRef('Top', u'00000000-0000-0000-0000-000000000001', 'pjpersist_test')
+      DBRef('Top', '000000000000000000000001', 'pjpersist_test')
       >>> dm.commit(None)
 
       >>> reader = serialize.ObjectReader(dm)
@@ -678,10 +678,10 @@ def doctest_ObjectReader_resolve_lookup_with_multiple_maps():
 
       >>> dumpTable('Top')
       [{'data': {},
-        'id': '00000000-0000-0000-0000-000000000000'},
+        'id': u'0001020304050607080a0b0c'},
        {'data':
             {u'_py_persistent_type': u'pjpersist.tests.test_serialize.Top2'},
-        'id': '00000000-0000-0000-0000-000000000000'}]
+        'id': u'0001020304050607080a0b0c'}]
 
     If the DBRef does not have an object id, then an import error is raised:
 
@@ -701,10 +701,10 @@ def doctest_ObjectReader_resolve_lookup_with_multiple_maps_dont_read_full():
       >>> writer = serialize.ObjectWriter(dm)
       >>> top = Top()
       >>> writer.store(top)
-      DBRef('Top', u'00000000-0000-0000-0000-000000000000', 'pjpersist_test')
+      DBRef('Top', '0001020304050607080a0b0c0', 'pjpersist_test')
       >>> top2 = Top2()
       >>> writer.store(top2)
-      DBRef('Top', u'00000000-0000-0000-0000-000000000001', 'pjpersist_test')
+      DBRef('Top', '000000000000000000000001', 'pjpersist_test')
 
       >>> reader = serialize.ObjectReader(dm)
       >>> reader.resolve(top._p_oid)
@@ -814,7 +814,7 @@ def doctest_ObjectReader_get_object_dbref():
       >>> writer = serialize.ObjectWriter(dm)
       >>> top = Top()
       >>> writer.store(top)
-      DBRef('Top', u'00000000-0000-0000-0000-000000000000', 'pjpersist_test')
+      DBRef('Top', '0001020304050607080a0b0c', 'pjpersist_test')
 
     Database references load the ghost state of the object they represent:
 
@@ -899,7 +899,7 @@ def doctest_ObjectReader_get_ghost():
       >>> writer = serialize.ObjectWriter(dm)
       >>> top = Top()
       >>> writer.store(top)
-      DBRef('Top', u'00000000-0000-0000-0000-000000000000', 'pjpersist_test')
+      DBRef('Top', '0001020304050607080a0b0c', 'pjpersist_test')
 
     The ghost object is a shell without any loaded object state:
 
@@ -924,7 +924,7 @@ def doctest_ObjectReader_set_ghost_state():
       >>> top = Top()
       >>> top.name = 'top'
       >>> writer.store(top)
-      DBRef('Top', u'00000000-0000-0000-0000-000000000000', 'pjpersist_test')
+      DBRef('Top', '0001020304050607080a0b0c', 'pjpersist_test')
 
     The ghost object is a shell without any loaded object state:
 
@@ -945,7 +945,7 @@ def doctest_ObjectReader_set_ghost_state():
 
       >>> gobj._p_jar._original_states
       {DBRef('Top',
-             u'00000000-0000-0000-0000-000000000000',
+             '0001020304050607080a0b0c',
              'pjpersist_test'): {u'name': u'top'}}
 
     Note that it is important that the fully returned JSONB document is stored
@@ -982,14 +982,14 @@ def doctest_deserialize_persistent_references():
       >>> dumpTable('Top')
       [{'data': {u'foo': {u'_py_type': u'DBREF',
                           u'database': u'pjpersist_test',
-                          u'id': u'00000000-0000-0000-0000-000000000000',
+                          u'id': u'0001020304050607080a0b0c',
                           u'table': u'Foo'},
                  u'name': u'top'},
-        'id': '00000000-0000-0000-0000-000000000000'}]
+        'id': u'0001020304050607080a0b0c'}]
 
       >>> dumpTable('Foo')
       [{'data': {u'name': u'foo'},
-        'id': '00000000-0000-0000-0000-000000000000'}]
+        'id': u'0001020304050607080a0b0c'}]
 
     Now we access the objects objects again to see whether they got properly
     deserialized.

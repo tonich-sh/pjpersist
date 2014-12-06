@@ -83,7 +83,7 @@ def doctest_Root():
       >>> foo = Foo()
       >>> root['foo'] = foo
       >>> root.keys()
-      ['foo']
+      [u'foo']
       >>> root['foo'] == foo
       True
 
@@ -92,7 +92,7 @@ def doctest_Root():
       >>> foo2 = Foo()
       >>> root['foo'] = foo2
       >>> root.keys()
-      ['foo']
+      [u'foo']
       >>> root['foo'] == foo
       False
 
@@ -140,7 +140,7 @@ def doctest_PJDataManager_object_dump_load_reset():
       >>> foo = Foo()
       >>> dm.dump(foo)
       DBRef('pjpersist_dot_tests_dot_test_datamanager_dot_Foo',
-            u'00000000-0000-0000-0000-000000000000',
+            '0001020304050607080a0b0c',
             'pjpersist_test')
 
     When the object is modified, ``dump()`` will remove it from the list of
@@ -178,14 +178,13 @@ def doctest_PJDataManager_insertWithExplicitId():
     Objects can be inserted by specifying new object id explicitly.
 
       >>> foo = Foo('foo')
-      >>> foo_ref = dm.insert(foo, "00000000-0000-0000-0000-000000000001")
+      >>> foo_ref = dm.insert(foo, '000000000000000000000001')
       >>> dm.tpc_finish(None)
 
     Now, Foo object should be have the provided id
 
       >>> foo._p_oid.id
-      '00000000-0000-0000-0000-000000000001'
-
+      '000000000000000000000001'
   """
 
 
@@ -283,9 +282,9 @@ def doctest_PJDataManager_insert():
       >>> dm.flush()
       >>> dumpTable(dm._get_table_from_object(foo2)[1])
       [{'data': {u'name': u'foo'},
-        'id': 'd9c7ccfb-aa8e-42b8-a33e-f7c8636dbfec'},
+        'id': u'aa8e42b8a33ef7c8636dbfec'},
        {'data': {u'name': u'Foo 2'},
-        'id': 'c975b0f0-3385-4572-bdfb-5445858a8470'}]
+        'id': u'33854572bdfb5445858a8470'}]
     """
 
 
@@ -552,8 +551,8 @@ def doctest_PJDataManager_abort():
 
       >>> dbanme, table = dm._get_table_from_object(Foo())
       >>> dumpTable(table)
-      [{'data': {u'name': u'one'}, 'id': '00000000-0000-0000-0000-000000000000'},
-       {'data': {u'name': u'two'}, 'id': '00000000-0000-0000-0000-000000000000'}]
+      [{'data': {u'name': u'one'}, 'id': u'0001020304050607080a0b0c'},
+       {'data': {u'name': u'two'}, 'id': u'0001020304050607080a0b0c'}]
 
     Now, in a second transaction we modify the state of objects in all three
     ways:
@@ -572,10 +571,8 @@ def doctest_PJDataManager_abort():
 
       >>> dm.flush()
       >>> dumpTable(table)
-      [{'data': {u'name': u'1'},
-        'id': '13a75cb5-f404-42f6-870c-0b84d78b7dd8'},
-       {'data': {u'name': u'three'},
-        'id': 'c40e1dbb-cff2-4e7e-99b7-185fc9a98579'}]
+      [{'data': {u'name': u'1'}, 'id': u'f40442f6870c0b84d78b7dd8'},
+       {'data': {u'name': u'three'}, 'id': u'cff24e7e99b7185fc9a98579'}]
 
 
     Let's now abort the transaction and everything should be back to what it
@@ -583,8 +580,8 @@ def doctest_PJDataManager_abort():
 
       >>> dm.abort(transaction.get())
       >>> dumpTable(table)
-      [{'data': {u'name': u'one'}, 'id': '00000000-0000-0000-0000-000000000000'},
-       {'data': {u'name': u'two'}, 'id': '00000000-0000-0000-0000-000000000000'}]
+      [{'data': {u'name': u'one'}, 'id': u'0001020304050607080a0b0c'},
+       {'data': {u'name': u'two'}, 'id': u'0001020304050607080a0b0c'}]
     """
 
 
@@ -607,7 +604,7 @@ def doctest_PJDataManager_abort_subobjects():
           {u'_py_type': u'pjpersist.tests.test_datamanager.FooItem',
            u'bar': 6},
            u'name': u'complex'},
-        'id': '00000000-0000-0000-0000-000000000000'}]
+        'id': u'0001020304050607080a0b0c'}]
 
     2. Modify the item and flush it to database
 
@@ -621,7 +618,7 @@ def doctest_PJDataManager_abort_subobjects():
           {u'_py_type': u'pjpersist.tests.test_datamanager.FooItem',
            u'bar': 6},
            u'name': u'modified'},
-       'id': '00000000-0000-0000-0000-000000000000'}]
+       'id': u'0001020304050607080a0b0c'}]
 
     3. Abort the current transaction and expect original state is restored
 
@@ -632,7 +629,7 @@ def doctest_PJDataManager_abort_subobjects():
           {u'_py_type': u'pjpersist.tests.test_datamanager.FooItem',
            u'bar': 6},
            u'name': u'complex'},
-        'id': '00000000-0000-0000-0000-000000000000'}]
+        'id': u'0001020304050607080a0b0c'}]
     """
 
 def doctest_PJDataManager_tpc_begin():
@@ -790,9 +787,9 @@ def doctest_PJDataManager_complex_sub_objects():
       >>> cur.execute('SELECT tablename from pg_tables;')
       >>> sorted(e[0] for e in cur.fetchall()
       ...        if not e[0].startswith('pg_') and not e[0].startswith('sql_'))
-      ['persistence_name_map',
-       'persistence_root',
-       'pjpersist_dot_tests_dot_test_datamanager_dot_foo']
+      [u'persistence_name_map',
+       u'persistence_root',
+       u'pjpersist_dot_tests_dot_test_datamanager_dot_foo']
 
     Now, save foo first, and then add subobjects
 
@@ -815,9 +812,9 @@ def doctest_PJDataManager_complex_sub_objects():
       >>> cur.execute('SELECT tablename from pg_tables;')
       >>> sorted(e[0] for e in cur.fetchall()
       ...        if not e[0].startswith('pg_') and not e[0].startswith('sql_'))
-      ['persistence_name_map',
-       'persistence_root',
-       'pjpersist_dot_tests_dot_test_datamanager_dot_foo']
+      [u'persistence_name_map',
+       u'persistence_root',
+       u'pjpersist_dot_tests_dot_test_datamanager_dot_foo']
 
       >>> dm.root['two'].sup.bar
       <Bar second bar>
@@ -835,7 +832,7 @@ def doctest_PJDataManager_complex_sub_objects():
                                      u'pjpersist.tests.test_datamanager.Bar',
                              u'name': u'bar'},
                     u'name': u'super'}},
-      'id': '496ba7eb-7387-44b8-ae9d-a4ae92636fb1'}]
+      'id': u'738744b8ae9da4ae92636fb1'}]
 
     Now, make changes to the subobjects and then commit
 
@@ -863,9 +860,9 @@ def doctest_PJDataManager_complex_sub_objects():
       >>> cur.execute('SELECT tablename from pg_tables;')
       >>> sorted(e[0] for e in cur.fetchall()
       ...        if not e[0].startswith('pg_') and not e[0].startswith('sql_'))
-      ['persistence_name_map',
-       'persistence_root',
-       'pjpersist_dot_tests_dot_test_datamanager_dot_foo']
+      [u'persistence_name_map',
+       u'persistence_root',
+       u'pjpersist_dot_tests_dot_test_datamanager_dot_foo']
 
     Even if _p_pj_doc_object is pointed to subobject, subobject does not get
     saved to its own table:
@@ -878,9 +875,9 @@ def doctest_PJDataManager_complex_sub_objects():
       >>> cur.execute('SELECT tablename from pg_tables;')
       >>> sorted(e[0] for e in cur.fetchall()
       ...        if not e[0].startswith('pg_') and not e[0].startswith('sql_'))
-      ['persistence_name_map',
-       'persistence_root',
-       'pjpersist_dot_tests_dot_test_datamanager_dot_foo']
+      [u'persistence_name_map',
+       u'persistence_root',
+       u'pjpersist_dot_tests_dot_test_datamanager_dot_foo']
     """
 
 

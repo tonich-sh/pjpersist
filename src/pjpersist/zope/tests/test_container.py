@@ -304,10 +304,10 @@ def doctest_SimplePJContainer_basic():
            u'__parent__':
                {u'_py_type': u'DBREF',
                 u'database': u'pjpersist_test',
-                u'id': u'00000000-0000-0000-0000-000000000000',
+                u'id': u'0001020304050607080a0b0c0',
                 u'table': u'pjpersist_dot_zope_dot_container_dot_SimplePJContainer'},
            u'name': u'Stephan'},
-        'id': '00000000-0000-0000-0000-000000000000'}]
+        'id': '0001020304050607080a0b0c0'}]
 
       >>> dm.root['c'].keys()
       [u'stephan']
@@ -384,7 +384,7 @@ def doctest_PJContainer_basic():
 
       >>> dumpTable('pjpersist_dot_zope_dot_container_dot_PJContainer')
       [{'data': {u'_pj_table': u'person'},
-        'id': '00000000-0000-0000-0000-000000000000'}]
+        'id': '0001020304050607080a0b0c0'}]
 
     It is unfortunate that the '_pj_table' attribute is set. This is
     avoidable using a sub-class.
@@ -1356,12 +1356,8 @@ def doctest_firing_events_IdNamesPJContainer():
 checker = renormalizing.RENormalizing([
     (re.compile(r'datetime.datetime(.*)'),
      'datetime.datetime(2011, 10, 1, 9, 45)'),
-    (re.compile(r"'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'"),
-     "'00000000-0000-0000-0000-000000000000'"),
-    (re.compile(r"ObjectId\('[0-9a-f]{24}'\)"),
-     "ObjectId('4e7ddf12e138237403000000')"),
-    (re.compile(r"u'[0-9a-f]{24}'"),
-     "u'4e7ddf12e138237403000000'"),
+    (re.compile(r"'[0-9a-f]{24}'"),
+     "'0001020304050607080a0b0c0'"),
     (re.compile(r"object at 0x[0-9a-f]*>"),
      "object at 0x001122>"),
     (re.compile(r"zodb-[0-9a-f].*"),
