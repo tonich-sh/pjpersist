@@ -32,25 +32,11 @@ class Converter(object):
                 accessor = sb.JSON_GETITEM_TEXT(doc, key)
             else:
                 accessor = sb.JSON_PATH_TEXT(doc, key.split("."))
-
             if isinstance(value, dict):
                 if len(value) != 1:
                     raise ValueError("Too many elements: %r" % value)
-                comparison, val = value.items()[0]
-                if comparison == '$gt':
-                    clauses.append(accessor > val)
-                if comparison == '$lt':
-                    clauses.append(accessor < val)
-                if comparison == '$gte':
-                    clauses.append(accessor >= val)
-                if comparison == '$lte':
-                    clauses.append(accessor <= val)
-                if comparison == '$ne':
-                    clauses.append(accessor != val)
-                if comparison == '$in':
-                    clauses.append(sb.IN(accessor, val))
-                if comparison == '$nin':
-                    clauses.append(sb.NOT(sb.IN(accessor, val)))
+                operator, operand = value.items()[0]
+                clauses.append(self.operator_expr(operator, accessor, operand))
             else:
                 # Scalar -- equality or array membership
                 if self.simplified:
@@ -65,3 +51,19 @@ class Converter(object):
                         )
                     ))
         return sb.AND(*clauses)
+
+    def operator_expr(self, operator, op1, op2):
+        if operator == '$gt':
+            return op1 > op2
+        if operator == '$lt':
+            return op1 < op2
+        if operator == '$gte':
+            return op1 >= op2
+        if operator == '$lte':
+            return op1 <= op2
+        if operator == '$ne':
+            return op1 != op2
+        if operator == '$in':
+            return sb.IN(op1, op2)
+        if operator == '$nin':
+            return sb.NOT(sb.IN(op1, op2))
