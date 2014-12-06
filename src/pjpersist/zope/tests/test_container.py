@@ -377,7 +377,8 @@ def doctest_PJContainer_basic():
 
       >>> zope.component.provideHandler(handleObjectModifiedEvent)
 
-    This is because we have not told the system how to get a datamanager:
+    We have to tell the system how to get a datamanager, because the PG table
+    gets created on __init__:
 
       >>> class Provider(object):
       ...     zope.interface.implements(interfaces.IPJDataManagerProvider)
