@@ -320,8 +320,12 @@ class PJContainer(contained.Contained,
     def __contains__(self, key):
         if self._cache_complete:
             return key in self._cache
-        return self.raw_find_one(
-            {self._pj_mapping_key: key}, fields=()) is not None
+        datafld = sb.Field(self._pj_table, 'data')
+        fld = sb.JSON_GETITEM_TEXT(datafld, self._pj_mapping_key)
+        qry = (fld == key)
+        # XXX: inefficient: we want here to just count the rows
+        res = self.raw_find_one(qry)
+        return res[0] is not None
 
     def __iter__(self):
         # If the cache contains all objects, we can just return the cache keys.
@@ -348,18 +352,23 @@ class PJContainer(contained.Contained,
         # Return an iterator of the items.
         return iter(items)
 
+    def _get_sb_fields(self, fields):
+        if not fields:
+            res = sb.Field(self._pj_table, '*')
+        else:
+            datafld = sb.Field(self._pj_table, 'data')
+            res = []
+            for name in fields:
+                # XXX: handle functions later here
+                res.append(sb.ColumnAS(sb.JSON_GETITEM_TEXT(datafld, name), name))
+        return res
+
     def raw_find(self, qry, fields=()):
         qry = self._pj_add_items_filter(qry)
         qstr = qry.__sqlrepr__('postgres')
 
         with self._pj_jar.getCursor() as cur:
-            if not fields:
-                fields = sb.Field(self._pj_table, '*')
-            else:
-                datafld = sb.Field(self._pj_table, 'data')
-                fields = [sb.ColumnAS(sb.JSON_GETITEM_TEXT(datafld, name), name)
-                          for name in fields]
-            cur.execute(sb.Select(fields, qry))
+            cur.execute(sb.Select(self._get_sb_fields(fields), qry))
             return cur.fetchall()
 
     def find(self, qry):
