@@ -1,6 +1,7 @@
 ##############################################################################
 #
 # Copyright (c) 2011 Zope Foundation and Contributors.
+# Copyright (c) 2014 Shoobx, Inc.
 # All Rights Reserved.
 #
 # This software is subject to the provisions of the Zope Public License,
@@ -11,7 +12,7 @@
 # FOR A PARTICULAR PURPOSE.
 #
 ##############################################################################
-"""Zope Dublin Core Mongo Backend Storage"""
+"""Zope Dublin Core PJ Backend Storage"""
 from UserDict import DictMixin
 
 import zope.interface

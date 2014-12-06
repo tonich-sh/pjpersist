@@ -1,6 +1,7 @@
 ##############################################################################
 #
 # Copyright (c) 2013 Zope Foundation and Contributors.
+# Copyright (c) 2014 Shoobx, Inc.
 # All Rights Reserved.
 #
 # This software is subject to the provisions of the Zope Public License,
@@ -11,7 +12,7 @@
 # FOR A PARTICULAR PURPOSE.
 #
 ##############################################################################
-"""Mongo Annotations Implementation."""
+"""PostGreSQL/JSONB Annotations Implementation."""
 from persistent.dict import PersistentDict
 from zope import component, interface
 from zope.annotation import interfaces
@@ -21,7 +22,7 @@ try:
 except ImportError:
     from collections import MutableMapping as DictMixin
 
-class IMongoAttributeAnnotatable(interfaces.IAnnotatable):
+class IPJAttributeAnnotatable(interfaces.IAnnotatable):
     """Marker indicating that annotations can be stored on an attribute.
 
     This is a marker interface giving permission for an `IAnnotations`
@@ -33,7 +34,7 @@ def normalize_key(key):
     return key.replace('.', '_')
 
 @interface.implementer(interfaces.IAnnotations)
-@component.adapter(IMongoAttributeAnnotatable)
+@component.adapter(IPJAttributeAnnotatable)
 class AttributeAnnotations(DictMixin):
     """Store annotations on an object
 

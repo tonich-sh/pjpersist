@@ -1,6 +1,7 @@
 ##############################################################################
 #
 # Copyright (c) 2011 Zope Foundation and Contributors.
+# Copyright (c) 2014 Shoobx, Inc.
 # All Rights Reserved.
 #
 # This software is subject to the provisions of the Zope Public License,
@@ -11,69 +12,66 @@
 # FOR A PARTICULAR PURPOSE.
 #
 ##############################################################################
-"""Mongo Persistence Zope Containers"""
+"""PostGreSQL/JSONB Persistence Zope Containers"""
 import UserDict
 import persistent
 import transaction
-#import bson.dbref
-#import bson.objectid
 import zope.component
-#from bson.errors import InvalidId
 from rwproperty import getproperty, setproperty
 from zope.container import contained, sample
 from zope.container.interfaces import IContainer
 
-from pjpersist import interfaces
+from pjpersist import interfaces, serialize
 from pjpersist.zope import interfaces as zinterfaces
 
 USE_CONTAINER_CACHE = True
 
-class MongoContained(contained.Contained):
+class PJContained(contained.Contained):
 
     _v_name = None
-    _m_name_attr = None
-    _m_name_getter = None
-    _m_name_setter = None
+    _pj_name_attr = None
+    _pj_name_getter = None
+    _pj_name_setter = None
 
-    _m_parent_attr = None
-    _m_parent_getter = None
-    _m_parent_setter = None
+    _pj_parent_attr = None
+    _pj_parent_getter = None
+    _pj_parent_setter = None
     _v_parent = None
 
     @getproperty
     def __name__(self):
         if self._v_name is None:
-            if self._m_name_attr is not None:
-                self._v_name = getattr(self, self._m_name_attr, None)
-            elif self._m_name_getter is not None:
-                self._v_name = self._m_name_getter()
+            if self._pj_name_attr is not None:
+                self._v_name = getattr(self, self._pj_name_attr, None)
+            elif self._pj_name_getter is not None:
+                self._v_name = self._pj_name_getter()
         return self._v_name
     @setproperty
     def __name__(self, value):
-        if self._m_name_setter is not None:
-            self._m_name_setter(value)
+        if self._pj_name_setter is not None:
+            self._pj_name_setter(value)
         self._v_name = value
 
     @getproperty
     def __parent__(self):
         if self._v_parent is None:
-            if self._m_parent_attr is not None:
-                self._v_parent = getattr(self, self._m_parent_attr, None)
-            elif self._m_parent_getter is not None:
-                self._v_parent = self._m_parent_getter()
+            if self._pj_parent_attr is not None:
+                self._v_parent = getattr(self, self._pj_parent_attr, None)
+            elif self._pj_parent_getter is not None:
+                self._v_parent = self._pj_parent_getter()
         return self._v_parent
     @setproperty
     def __parent__(self, value):
-        if self._m_parent_setter is not None:
-            self._m_parent_setter(value)
+        if self._pj_parent_setter is not None:
+            self._pj_parent_setter(value)
         self._v_parent = value
 
 
-class SimpleMongoContainer(sample.SampleContainer, persistent.Persistent):
-    _m_remove_documents = True
+class SimplePJContainer(sample.SampleContainer, persistent.Persistent):
+    _pj_remove_documents = True
 
     def __getstate__(self):
-        state = super(SimpleMongoContainer, self).__getstate__()
+        state = super(SimplePJContainer, self).__getstate__()
         state['data'] = state.pop('_SampleContainer__data')
         return state
 
@@ -84,24 +82,24 @@ class SimpleMongoContainer(sample.SampleContainer, persistent.Persistent):
         # harm.
         state = dict(state)
         state['_SampleContainer__data'] = state.pop('data', {})
-        super(SimpleMongoContainer, self).__setstate__(state)
+        super(SimplePJContainer, self).__setstate__(state)
 
     def __getitem__(self, key):
-        obj = super(SimpleMongoContainer, self).__getitem__(key)
+        obj = super(SimplePJContainer, self).__getitem__(key)
         obj._v_name = key
         obj._v_parent = self
         return obj
 
     def get(self, key, default=None):
         '''See interface `IReadContainer`'''
-        obj = super(SimpleMongoContainer, self).get(key, default)
+        obj = super(SimplePJContainer, self).get(key, default)
         if obj is not default:
             obj._v_name = key
             obj._v_parent = self
         return obj
 
     def items(self):
-        items = super(SimpleMongoContainer, self).items()
+        items = super(SimplePJContainer, self).items()
         for key, obj in items:
             obj._v_name = key
             obj._v_parent = self
@@ -111,78 +109,71 @@ class SimpleMongoContainer(sample.SampleContainer, persistent.Persistent):
         return [v for k, v in self.items()]
 
     def __setitem__(self, key, obj):
-        super(SimpleMongoContainer, self).__setitem__(key, obj)
+        super(SimplePJContainer, self).__setitem__(key, obj)
         self._p_changed = True
 
     def __delitem__(self, key):
         obj = self[key]
-        super(SimpleMongoContainer, self).__delitem__(key)
-        if self._m_remove_documents:
+        super(SimplePJContainer, self).__delitem__(key)
+        if self._pj_remove_documents:
             self._p_jar.remove(obj)
         self._p_changed = True
 
 
-class MongoContainer(contained.Contained,
-                     persistent.Persistent,
-                     UserDict.DictMixin):
-    zope.interface.implements(IContainer, zinterfaces.IMongoContainer)
-    _m_database = None
-    _m_collection = None
-    _m_mapping_key = 'key'
-    _m_parent_key = 'parent'
-    _m_remove_documents = True
+class PJContainer(contained.Contained,
+                  persistent.Persistent,
+                  UserDict.DictMixin):
+    zope.interface.implements(IContainer, zinterfaces.IPJContainer)
+    _pj_table = None
+    _pj_mapping_key = 'key'
+    _pj_parent_key = 'parent'
+    _pj_remove_documents = True
 
-    def __init__(self, collection=None, database=None,
+    def __init__(self, table=None,
                  mapping_key=None, parent_key=None):
-        if collection:
-            self._m_collection = collection
-        if database:
-            self._m_database = database
+        if table:
+            self._pj_table = table
         if mapping_key is not None:
-            self._m_mapping_key = mapping_key
+            self._pj_mapping_key = mapping_key
         if parent_key is not None:
-            self._m_parent_key = parent_key
+            self._pj_parent_key = parent_key
 
     @property
-    def _m_jar(self):
+    def _pj_jar(self):
         if not hasattr(self, '_v_mdmp'):
-            # If the container is in a Mongo storage hierarchy, then getting
+            # If the container is in a PJ storage hierarchy, then getting
             # the datamanager is easy, otherwise we do an adapter lookup.
-            if interfaces.IMongoDataManager.providedBy(self._p_jar):
+            if interfaces.IPJDataManager.providedBy(self._p_jar):
                 return self._p_jar
 
             # cache result of expensive component lookup
             self._v_mdmp = zope.component.getUtility(
-                    interfaces.IMongoDataManagerProvider)
+                    interfaces.IPJDataManagerProvider)
 
         return self._v_mdmp.get()
 
-    def get_collection(self):
-        db_name = self._m_database or self._m_jar.default_database
-        return self._m_jar.get_collection(db_name, self._m_collection)
-
-    def _m_get_parent_key_value(self):
+    def _pj_get_parent_key_value(self):
         if getattr(self, '_p_jar', None) is None:
             raise ValueError('_p_jar not found.')
-        if interfaces.IMongoDataManager.providedBy(self._p_jar):
+        if interfaces.IPJDataManager.providedBy(self._p_jar):
             return self
         else:
             return 'zodb-'+''.join("%02x" % ord(x) for x in self._p_oid).strip()
 
-    def _m_get_items_filter(self):
+    def _pj_get_items_filter(self):
         filter = {}
         # Make sure that we only look through objects that have the mapping
         # key. Objects not having the mapping key cannot be part of the
-        # collection.
-        if self._m_mapping_key is not None:
-            filter[self._m_mapping_key] = {'$exists': True}
-        if self._m_parent_key is not None:
-            gs = self._m_jar._writer.get_state
-            filter[self._m_parent_key] = gs(self._m_get_parent_key_value())
+        # table.
+        if self._pj_mapping_key is not None:
+            filter[self._pj_mapping_key] = {'$exists': True}
+        if self._pj_parent_key is not None:
+            gs = self._pj_jar._writer.get_state
+            filter[self._pj_parent_key] = gs(self._pj_get_parent_key_value())
         return filter
 
-    def _m_add_items_filter(self, filter):
-        for key, value in self._m_get_items_filter().items():
+    def _pj_add_items_filter(self, filter):
+        for key, value in self._pj_get_items_filter().items():
             if key not in filter:
                 filter[key] = value
 
@@ -191,47 +182,46 @@ class MongoContainer(contained.Contained,
         if not USE_CONTAINER_CACHE:
             return {}
         txn = transaction.manager.get()
-        if not hasattr(txn, '_v_mongo_container_cache'):
-            txn._v_mongo_container_cache = {}
-        return txn._v_mongo_container_cache.setdefault(self, {})
+        if not hasattr(txn, '_v_pj_container_cache'):
+            txn._v_pj_container_cache = {}
+        return txn._v_pj_container_cache.setdefault(self, {})
 
     @property
     def _cache_complete(self):
         if not USE_CONTAINER_CACHE:
             return False
         txn = transaction.manager.get()
-        if not hasattr(txn, '_v_mongo_container_cache_complete'):
-            txn._v_mongo_container_cache_complete = {}
-        return txn._v_mongo_container_cache_complete.get(self, False)
+        if not hasattr(txn, '_v_pj_container_cache_complete'):
+            txn._v_pj_container_cache_complete = {}
+        return txn._v_pj_container_cache_complete.get(self, False)
 
     def _cache_mark_complete(self):
         txn = transaction.manager.get()
-        if not hasattr(txn, '_v_mongo_container_cache_complete'):
-            txn._v_mongo_container_cache_complete = {}
-        txn._v_mongo_container_cache_complete[self] = True
+        if not hasattr(txn, '_v_pj_container_cache_complete'):
+            txn._v_pj_container_cache_complete = {}
+        txn._v_pj_container_cache_complete[self] = True
 
     def _cache_get_key(self, doc):
-        return doc[self._m_mapping_key]
+        return doc[self._pj_mapping_key]
 
     def _locate(self, obj, doc):
         # Helper method that is only used when locating items that are already
-        # in the container and are simply loaded from Mongo.
+        # in the container and are simply loaded from PostGreSQL.
         if obj.__name__ is None:
-            obj._v_name = doc[self._m_mapping_key]
+            obj._v_name = doc[self._pj_mapping_key]
         if obj.__parent__ is None:
             obj._v_parent = self
 
-    def _load_one(self, doc):
+    def _load_one(self, id, doc):
         obj = self._cache.get(self._cache_get_key(doc))
         if obj is not None:
             return obj
         # Create a DBRef object and then load the full state of the object.
-        dbref = bson.dbref.DBRef(
-            self._m_collection, doc['_id'],
-            self._m_database or self._m_jar.default_database)
+        dbref = serialize.DBRef(
+            self._pj_table, doc['_id'], self._pj_jar.database)
         # Stick the doc into the _latest_states:
-        self._m_jar._latest_states[dbref] = doc
-        obj = self._m_jar.load(dbref)
+        self._pj_jar._latest_states[dbref] = doc
+        obj = self._pj_jar.load(dbref)
         self._locate(obj, doc)
         # Add the object into the local container cache.
         self._cache[obj.__name__] = obj
@@ -251,8 +241,8 @@ class MongoContainer(contained.Contained,
         if self._cache_complete:
             raise KeyError(key)
         # The cache cannot help, so the item is looked up in the database.
-        filter = self._m_get_items_filter()
-        filter[self._m_mapping_key] = key
+        filter = self._pj_get_items_filter()
+        filter[self._pj_mapping_key] = key
         obj = self.find_one(filter)
         if obj is None:
             raise KeyError(key)
@@ -262,26 +252,26 @@ class MongoContainer(contained.Contained,
         # Make sure the value is in the database, since we might want
         # to use its oid.
         if value._p_oid is None:
-            self._m_jar.insert(value)
+            self._pj_jar.insert(value)
 
         # This call by itself causes the state to change _p_changed to True.
-        if self._m_mapping_key is not None:
-            setattr(value, self._m_mapping_key, key)
-        if self._m_parent_key is not None:
-            setattr(value, self._m_parent_key, self._m_get_parent_key_value())
+        if self._pj_mapping_key is not None:
+            setattr(value, self._pj_mapping_key, key)
+        if self._pj_parent_key is not None:
+            setattr(value, self._pj_parent_key, self._pj_get_parent_key_value())
 
     def __setitem__(self, key, value):
         # When the key is None, we need to determine it.
         if key is None:
-            if self._m_mapping_key is None:
+            if self._pj_mapping_key is None:
                 # Make sure the value is in the database, since we might want
                 # to use its oid.
                 if value._p_oid is None:
-                    self._m_jar.insert(value)
+                    self._pj_jar.insert(value)
                 key = unicode(value._p_oid.id)
             else:
-                # we have _m_mapping_key, use that attribute
-                key = getattr(value, self._m_mapping_key)
+                # we have _pj_mapping_key, use that attribute
+                key = getattr(value, self._pj_mapping_key)
         # We want to be as close as possible to using the Zope semantics.
         contained.setitem(self, self._real_setitem, key, value)
         # Also add the item to the container cache.
@@ -296,21 +286,21 @@ class MongoContainer(contained.Contained,
     def __delitem__(self, key):
         value = self[key]
         # First remove the parent and name from the object.
-        if self._m_mapping_key is not None:
+        if self._pj_mapping_key is not None:
             try:
-                delattr(value, self._m_mapping_key)
+                delattr(value, self._pj_mapping_key)
             except AttributeError:
                 # Sometimes we do not control those attributes.
                 pass
-        if self._m_parent_key is not None:
+        if self._pj_parent_key is not None:
             try:
-                delattr(value, self._m_parent_key)
+                delattr(value, self._pj_parent_key)
             except AttributeError:
                 # Sometimes we do not control those attributes.
                 pass
         # Let's now remove the object from the database.
-        if self._m_remove_documents:
-            self._m_jar.remove(value)
+        if self._pj_remove_documents:
+            self._pj_jar.remove(value)
         # Remove the object from the container cache.
         if USE_CONTAINER_CACHE:
             del self._cache[key]
@@ -321,15 +311,15 @@ class MongoContainer(contained.Contained,
         if self._cache_complete:
             return key in self._cache
         return self.raw_find_one(
-            {self._m_mapping_key: key}, fields=()) is not None
+            {self._pj_mapping_key: key}, fields=()) is not None
 
     def __iter__(self):
         # If the cache contains all objects, we can just return the cache keys.
         if self._cache_complete:
             return iter(self._cache)
         result = self.raw_find(
-            {self._m_mapping_key: {'$ne': None}}, fields=(self._m_mapping_key,))
-        return iter(doc[self._m_mapping_key] for doc in result)
+            {self._pj_mapping_key: {'$ne': None}}, fields=(self._pj_mapping_key,))
+        return iter(doc[self._pj_mapping_key] for doc in result)
 
     def keys(self):
         return list(self.__iter__())
@@ -339,7 +329,7 @@ class MongoContainer(contained.Contained,
         if self._cache_complete:
             return self._cache.iteritems()
         result = self.raw_find()
-        items = [(doc[self._m_mapping_key], self._load_one(doc))
+        items = [(doc[self._pj_mapping_key], self._load_one(doc))
                  for doc in result]
         # Signal the container that the cache is now complete.
         self._cache_mark_complete()
@@ -349,8 +339,7 @@ class MongoContainer(contained.Contained,
     def raw_find(self, spec=None, *args, **kwargs):
         if spec is None:
             spec = {}
-        self._m_add_items_filter(spec)
-        coll = self.get_collection()
+        self._pj_add_items_filter(spec)
         return coll.find(spec, *args, **kwargs)
 
     def find(self, spec=None, *args, **kwargs):
@@ -365,8 +354,7 @@ class MongoContainer(contained.Contained,
             spec_or_id = {}
         if not isinstance(spec_or_id, dict):
             spec_or_id = {'_id': spec_or_id}
-        self._m_add_items_filter(spec_or_id)
-        coll = self.get_collection()
+        self._pj_add_items_filter(spec_or_id)
         return coll.find_one(spec_or_id, *args, **kwargs)
 
     def find_one(self, spec_or_id=None, *args, **kwargs):
@@ -380,16 +368,15 @@ class MongoContainer(contained.Contained,
             del self[key]
 
 
-class IdNamesMongoContainer(MongoContainer):
-    """A container that uses the Mongo ObjectId as the name/key."""
-    _m_mapping_key = None
+class IdNamesPJContainer(PJContainer):
+    """A container that uses the PostGreSQL table UID as the name/key."""
+    _pj_mapping_key = None
 
-    def __init__(self, collection=None, database=None, parent_key=None):
-        super(IdNamesMongoContainer, self).__init__(collection, database, parent_key)
-
+    def __init__(self, table=None, parent_key=None):
+        super(IdNamesPJContainer, self).__init__(table, parent_key)
 
     @property
-    def _m_remove_documents(self):
+    def _pj_remove_documents(self):
         # Objects must be removed, since removing the _id of a document is not
         # allowed.
         return True
@@ -409,13 +396,8 @@ class IdNamesMongoContainer(MongoContainer):
         if self._cache_complete:
             raise KeyError(key)
         # We do not have a cache entry, so we look up the object.
-        try:
-            id = bson.objectid.ObjectId(key)
-        except InvalidId:
-            raise KeyError(key)
-        filter = self._m_get_items_filter()
-        filter['_id'] = id
-        obj = self.find_one(filter)
+        filter = self._pj_get_items_filter()
+        obj = self.find_one(filter, id=key)
         if obj is None:
             raise KeyError(key)
         return obj
@@ -424,18 +406,14 @@ class IdNamesMongoContainer(MongoContainer):
         # If all objects are loaded, we can look in the local object cache.
         if self._cache_complete:
             return key in self._cache
-        # Look in Mongo.
-        try:
-            id = bson.objectid.ObjectId(key)
-        except InvalidId:
-            return False
-        return self.raw_find_one({'_id': id}, fields=()) is not None
+        # Look in PostGreSQL.
+        return self.raw_find_one(id=key) is not None
 
     def __iter__(self):
         # If the cache contains all objects, we can just return the cache keys.
         if self._cache_complete:
             return iter(self._cache)
-        # Look up all ids in Mongo.
+        # Look up all ids in PostGreSQL.
         result = self.raw_find(fields=None)
         return iter(unicode(doc['_id']) for doc in result)
 
@@ -453,17 +431,17 @@ class IdNamesMongoContainer(MongoContainer):
         return iter(items)
 
     def _real_setitem(self, key, value):
-        # We want mongo document ids to be our keys, so pass it to insert(), if
+        # We want JSONB document ids to be our keys, so pass it to insert(), if
         # key is provided
         if value._p_oid is None:
-            self._m_jar.insert(value, bson.objectid.ObjectId(key))
+            self._pj_jar.insert(value, key)
 
-        super(IdNamesMongoContainer, self)._real_setitem(key, value)
-
-
-class AllItemsMongoContainer(MongoContainer):
-    _m_parent_key = None
+        super(IdNamesPJContainer, self)._real_setitem(key, value)
 
 
-class SubDocumentMongoContainer(MongoContained, MongoContainer):
-    _p_mongo_sub_object = True
+class AllItemsPJContainer(PJContainer):
+    _pj_parent_key = None
+
+
+class SubDocumentPJContainer(PJContained, PJContainer):
+    _p_pj_sub_object = True

@@ -1,6 +1,7 @@
 ##############################################################################
 #
 # Copyright (c) 2011 Zope Foundation and Contributors.
+# Copyright (c) 2014 Shoobx, Inc.
 # All Rights Reserved.
 #
 # This software is subject to the provisions of the Zope Public License,
@@ -11,113 +12,108 @@
 # FOR A PARTICULAR PURPOSE.
 #
 ##############################################################################
-"""Mongo Persistence Zope Container Interfaces"""
+"""PostGreSQL/JSONB Persistence Zope Container Interfaces"""
 import zope.interface
 import zope.schema
 
 
-class IMongoContainer(zope.interface.Interface):
-    _m_database = zope.schema.ASCIILine(
-        title=u'Mongo Database',
-        description=(
-            u'Specifies the Mongo DB in which to store items. If ``None``, the '
-            u'default database will be used.'),
-        default=None)
+class IPJContainer(zope.interface.Interface):
 
-    _m_collection = zope.schema.ASCIILine(
-        title=u'Mongo Collection',
+    _pj_table = zope.schema.ASCIILine(
+        title=u'PostGreSQL Table',
         description=(
-            u'Specifies the Mongo collection in which to store items.')
+            u'Specifies the PostGreSQL table in which to store items.')
         )
 
-    _m_mapping_key = zope.schema.ASCIILine(
+    _pj_mapping_key = zope.schema.ASCIILine(
         title=u'Mapping Key',
         description=(
             u'Specifies the attribute name of the item that is used as the '
             u'mapping/dictionary/container key.'),
         default='key')
 
-    _m_parent_key = zope.schema.ASCIILine(
+    _pj_parent_key = zope.schema.ASCIILine(
         title=u'Parent Key',
         description=(
             u'Specifies the attribute name of the item that is used to store '
             u'the parent/container reference.'),
         default='parent')
 
-    _m_remove_documents = zope.schema.Bool(
+    _pj_remove_documents = zope.schema.Bool(
         title=u'Remove Documents',
         description=(
             u'A flag when set causes documents to be removed from the DB when '
             u'they are removed from the container.'),
         default=True)
 
-    def _m_get_parent_key_value():
+    def _pj_get_parent_key_value():
         """Returns the value that is used to specify a particular container as
         the parent of the item.
         """
 
-    def _m_get_items_filter():
+    def _pj_get_items_filter():
         """Returns a query spec representing a filter that only returns
         objects in this container."""
 
-    def _m_add_items_filter(filter):
+    def _pj_add_items_filter(filter):
         """Applies the item filter items to the provided filter.
 
         Keys that are already in the passed in filter are not overwritten.
         """
 
-    def get_collection():
-        """Get the Python representation of the collection.
+    def get_cursor():
+        """Get a psycopg cursor to the corrent database.
 
-        This can be useful to make custom queries against the collection.
+        This can be useful to make custom queries against the table.
         """
 
-    def raw_find(spec=None, *args, **kwargs):
-        """Return a raw Mongo result set for the specified query.
+    def raw_find(qry):
+        """Return a raw psycopg result cursor for the specified query.
 
-        The spec is updated to also contain the container's filter spec.
+        The qry is updated to also contain the container's filter condition.
 
-        See pymongo's documentation for details on *args and **kwargs.
+        Note: The user is responsible of closing the cursor after use.
         """
 
-    def find(spec=None, fields=None, *args, **kwargs):
+    def find(qry):
         """Return a Python object result set for the specified query.
 
-        By default only the Mongo Id and key attribute is requested and a
-        ghost is created. The rest of the data is only retrieved if needed.
+        The qry is updated to also contain the container's filter condition.
 
-        The spec is updated to also contain the container's filter spec.
-
-        See pymongo's documentation for details on *args and **kwargs.
+        Note: The user is responsible of closing the cursor after use.
         """
 
-    def raw_find_one(spec_or_id=None, *args, **kwargs):
-        """Return a raw Mongo document for the specified query.
+    def raw_find_one(qry=None, id=None):
+        """Return the id and a raw JSONB document for the specified query.
 
-        The spec is updated to also contain the container's filter spec.
+        At least one of the arguments must be specified.
 
-        See pymongo's documentation for details on *args and **kwargs.
+        The qry is updated to also contain the container's filter condition.
+
+        Note: The user is responsible of closing the cursor after use.
         """
 
-    def find_one(spec_or_id=None, fields=None, *args, **kwargs):
+    def find_one(qry=None, id=None):
         """Return a single Python object for the specified query.
 
-        The spec is updated to also contain the container's filter spec.
+        At least one of the arguments must be specified.
 
-        See pymongo's documentation for details on *args and **kwargs.
+        The qry is updated to also contain the container's filter condition.
+
+        Note: The user is responsible of closing the cursor after use.
         """
 
     def add(value, key=None):
         """Add an object without necessarily knowing the key of the object.
 
         Either pass in a valid key or the key will be:
-        - in case _m_mapping_key is None: the object's OID
-        - otherwise getattr(value, _m_mapping_key)
+        - in case ``_pj_mapping_key`` is ``None``: the object's OID
+        - otherwise ``getattr(value, _pj_mapping_key)``
         """
 
     def clear(self):
         """Delete all items from this container.
 
         Note, that this will not touch all items from the collection, but only
-        those, specified in _m_get_items_filter.
+        those, specified in ``_pj_get_items_filter``.
         """

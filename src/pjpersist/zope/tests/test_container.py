@@ -1,6 +1,7 @@
 ##############################################################################
 #
 # Copyright (c) 2011 Zope Foundation and Contributors.
+# Copyright (c) 2014 Shoobx, Inc.
 # All Rights Reserved.
 #
 # This software is subject to the provisions of the Zope Public License,
@@ -11,7 +12,7 @@
 # FOR A PARTICULAR PURPOSE.
 #
 ##############################################################################
-"""Mongo Persistence Doc Tests"""
+"""PostGreSQL/JSONB Persistence Zope Containers Tests"""
 import atexit
 import doctest
 import unittest
@@ -37,15 +38,15 @@ from pjpersist.zope import container
 DBNAME = 'pjpersist_container_test'
 
 
-class ApplicationRoot(container.SimpleMongoContainer):
-    _p_mongo_collection = 'root'
+class ApplicationRoot(container.SimplePJContainer):
+    _p_pj_collection = 'root'
 
     def __repr__(self):
         return '<ApplicationRoot>'
 
 
 class SimplePerson(contained.Contained, persistent.Persistent):
-    _p_mongo_collection = 'person'
+    _p_pj_collection = 'person'
 
     def __init__(self, name):
         self.name = name
@@ -57,27 +58,27 @@ class SimplePerson(contained.Contained, persistent.Persistent):
         return '<%s %s>' %(self.__class__.__name__, self)
 
 
-class Person(container.MongoContained, SimplePerson):
+class Person(container.PJContained, SimplePerson):
     pass
 
 
-def doctest_MongoContained_simple():
-    """MongoContained: simple use
+def doctest_PJContained_simple():
+    """PJContained: simple use
 
-    The simplest way to use MongoContained is to use it without any special
+    The simplest way to use PJContained is to use it without any special
     modification. In this case it is required that the container always sets
     the name and parent after loading the item. It can do so directly by
     setting ``_v_name`` and ``_v_parent`` so that the persistence mechanism
     does not kick in.
 
-      >>> class Simples(container.MongoContainer):
+      >>> class Simples(container.PJContainer):
       ...     def __init__(self, name):
       ...         super(Simples, self).__init__()
       ...         self.name = name
       ...     def __repr__(self):
       ...         return '<Simples %s>' %self.name
 
-      >>> class Simple(container.MongoContained, persistent.Persistent):
+      >>> class Simple(container.PJContained, persistent.Persistent):
       ...     pass
 
     Let's create a simple component and activate the persistence machinery:
@@ -113,26 +114,26 @@ def doctest_MongoContained_simple():
       True
     """
 
-def doctest_MongoContained_proxy_attr():
-    """MongoContained: proxy attributes
+def doctest_PJContained_proxy_attr():
+    """PJContained: proxy attributes
 
     It is also possible to use proxy attributes to reference the name and
-    parent. This allows you to have nice attribute names for storage in Mongo.
+    parent. This allows you to have nice attribute names for storage in PJ.
 
     The main benefit, though is the ability of the object to load its
     location, so that you can load the object without going through the
     container and get full location path.
 
-      >>> class Proxies(container.MongoContainer):
+      >>> class Proxies(container.PJContainer):
       ...     def __init__(self, name):
       ...         super(Proxies, self).__init__()
       ...         self.name = name
       ...     def __repr__(self):
       ...         return '<Proxies %s>' %self.name
 
-      >>> class Proxy(container.MongoContained, persistent.Persistent):
-      ...     _m_name_attr = 'name'
-      ...     _m_parent_attr = 'parent'
+      >>> class Proxy(container.PJContained, persistent.Persistent):
+      ...     _pj_name_attr = 'name'
+      ...     _pj_parent_attr = 'parent'
       ...     def __init__(self, name, parent):
       ...         self.name = name
       ...         self.parent = parent
@@ -164,30 +165,30 @@ def doctest_MongoContained_proxy_attr():
       <Proxies one>
 
     This behavior is intentional, so that containment machinery cannot mess
-    with the real attributes. Note that in practice, only MongoContainer sets
+    with the real attributes. Note that in practice, only PJContainer sets
     the ``__name__`` and ``__parent__`` and it should be always consistent
     with the referenced attributes.
 
     """
 
-def doctest_MongoContained_setter_getter():
-    """MongoContained: setter/getter functions
+def doctest_PJContained_setter_getter():
+    """PJContained: setter/getter functions
 
     If you need ultimate flexibility of where to get and store the name and
     parent, then you can define setters and getters.
 
-      >>> class Funcs(container.MongoContainer):
+      >>> class Funcs(container.PJContainer):
       ...     def __init__(self, name):
       ...         super(Funcs, self).__init__()
       ...         self.name = name
       ...     def __repr__(self):
       ...         return '<Funcs %s>' %self.name
 
-      >>> class Func(container.MongoContained, persistent.Persistent):
-      ...     _m_name_getter = lambda s: s.name
-      ...     _m_name_setter = lambda s, v: setattr(s, 'name', v)
-      ...     _m_parent_getter = lambda s: s.parent
-      ...     _m_parent_setter = lambda s, v: setattr(s, 'parent', v)
+      >>> class Func(container.PJContained, persistent.Persistent):
+      ...     _pj_name_getter = lambda s: s.name
+      ...     _pj_name_setter = lambda s, v: setattr(s, 'name', v)
+      ...     _pj_parent_getter = lambda s: s.parent
+      ...     _pj_parent_setter = lambda s, v: setattr(s, 'parent', v)
       ...     def __init__(self, name, parent):
       ...         self.name = name
       ...         self.parent = parent
@@ -219,8 +220,8 @@ def doctest_MongoContained_setter_getter():
     """
 
 
-def doctest_MongoContained_mixed():
-    """MongoContained: mixed usage
+def doctest_PJContained_mixed():
+    """PJContained: mixed usage
 
     When the container is stored in the ZODB or another persistence mechanism,
     a mixed usage of proxy attributes and getter/setter functions is the best
@@ -234,9 +235,9 @@ def doctest_MongoContained_mixed():
       ...         return '<Mixers %s>' %self.name
       >>> mixers = Mixers('one')
 
-      >>> class Mixer(container.MongoContained, persistent.Persistent):
-      ...     _m_name_attr = 'name'
-      ...     _m_parent_getter = lambda s: mixers
+      >>> class Mixer(container.PJContained, persistent.Persistent):
+      ...     _pj_name_attr = 'name'
+      ...     _pj_parent_getter = lambda s: mixers
       ...     def __init__(self, name):
       ...         self.name = name
 
@@ -254,10 +255,10 @@ def doctest_MongoContained_mixed():
     """
 
 
-def doctest_SimpleMongoContainer_basic():
-    """SimpleMongoContainer: basic
+def doctest_SimplePJContainer_basic():
+    """SimplePJContainer: basic
 
-      >>> cn = 'pjpersist.zope.container.SimpleMongoContainer'
+      >>> cn = 'pjpersist_dot_zope_dot_container_dot_SimplePJContainer'
 
     Let's make sure events are fired correctly:
 
@@ -266,23 +267,22 @@ def doctest_SimpleMongoContainer_basic():
     Let's add a container to the root:
 
       >>> dm.reset()
-      >>> dm.root['c'] = container.SimpleMongoContainer()
+      >>> dm.root['c'] = container.SimplePJContainer()
 
-      >>> db = dm._conn[DBNAME]
-      >>> pprint(list(db[cn].find()))
-      [{u'_id': ObjectId('4e7ea146e13823316f000000'), u'data': {}}]
+      >>> dumpTable(cn)
+      [{'data': {u'data': {}}, 'id': '87772716-c1e4-466d-8dfb-0ef8f7db3145'}]
 
     As you can see, the serialization is very clean. Next we add a person.
 
       >>> dm.root['c'][u'stephan'] = SimplePerson(u'Stephan')
-      ContainerModifiedEvent: <...SimpleMongoContainer ...>
+      ContainerModifiedEvent: <...SimplePJContainer ...>
       >>> dm.root['c'].keys()
       [u'stephan']
       >>> dm.root['c'][u'stephan']
       <SimplePerson Stephan>
 
       >>> dm.root['c']['stephan'].__parent__
-      <pjpersist.zope.container.SimpleMongoContainer object at 0x7fec50f86500>
+      <pjpersist.zope.container.SimplePJContainer object at 0x7fec50f86500>
       >>> dm.root['c']['stephan'].__name__
       u'stephan'
 
@@ -290,7 +290,7 @@ def doctest_SimpleMongoContainer_basic():
 
       >>> stephan = dm.root['c'].get(u'stephan')
       >>> stephan.__parent__
-      <pjpersist.zope.container.SimpleMongoContainer object at 0x7fec50f86500>
+      <pjpersist.zope.container.SimplePJContainer object at 0x7fec50f86500>
       >>> stephan.__name__
       u'stephan'
 
@@ -301,7 +301,7 @@ def doctest_SimpleMongoContainer_basic():
       >>> pprint(list(db['person'].find()))
       [{u'__name__': u'stephan',
         u'__parent__':
-            DBRef(u'pjpersist.zope.container.SimpleMongoContainer',
+            DBRef(u'pjpersist.zope.container.SimplePJContainer',
                   ObjectId('4e7ddf12e138237403000000'),
                   u'pjpersist_container_test'),
         u'_id': ObjectId('4e7ddf12e138237403000000'),
@@ -310,7 +310,7 @@ def doctest_SimpleMongoContainer_basic():
       >>> dm.root['c'].keys()
       [u'stephan']
       >>> dm.root['c']['stephan'].__parent__
-      <pjpersist.zope.container.SimpleMongoContainer object at 0x7fec50f86500>
+      <pjpersist.zope.container.SimplePJContainer object at 0x7fec50f86500>
       >>> dm.root['c']['stephan'].__name__
       u'stephan'
 
@@ -323,7 +323,7 @@ def doctest_SimpleMongoContainer_basic():
     Now remove the item:
 
       >>> del dm.root['c']['stephan']
-      ContainerModifiedEvent: <...SimpleMongoContainer ...>
+      ContainerModifiedEvent: <...SimplePJContainer ...>
 
     The changes are immediately visible.
 
@@ -340,7 +340,7 @@ def doctest_SimpleMongoContainer_basic():
       >>> dm.root['c'].keys()
       []
 
-    The object is also removed from Mongo:
+    The object is also removed from PJ:
 
       >>> pprint(list(db['person'].find()))
       []
@@ -348,11 +348,11 @@ def doctest_SimpleMongoContainer_basic():
     Check adding of more objects:
 
       >>> dm.root['c'][u'roy'] = SimplePerson(u'Roy')
-      ContainerModifiedEvent: <...SimpleMongoContainer ...>
+      ContainerModifiedEvent: <...SimplePJContainer ...>
       >>> dm.root['c'][u'adam'] = SimplePerson(u'Adam')
-      ContainerModifiedEvent: <...SimpleMongoContainer ...>
+      ContainerModifiedEvent: <...SimplePJContainer ...>
       >>> dm.root['c'][u'marius'] = SimplePerson(u'Marius')
-      ContainerModifiedEvent: <...SimpleMongoContainer ...>
+      ContainerModifiedEvent: <...SimplePJContainer ...>
 
       >>> sorted(dm.root['c'].keys())
       [u'adam', u'marius', u'roy']
@@ -360,8 +360,8 @@ def doctest_SimpleMongoContainer_basic():
     """
 
 
-def doctest_MongoContainer_basic():
-    """MongoContainer: basic
+def doctest_PJContainer_basic():
+    """PJContainer: basic
 
     Let's make sure events are fired correctly:
 
@@ -370,25 +370,24 @@ def doctest_MongoContainer_basic():
     Let's add a container to the root:
 
       >>> transaction.commit()
-      >>> dm.root['c'] = container.MongoContainer('person')
+      >>> dm.root['c'] = container.PJContainer('person')
 
-      >>> db = dm._conn[DBNAME]
-      >>> pprint(list(db['pjpersist.zope.container.MongoContainer'].find()))
+      >>> dumpTable('pjpersist_dot_zope_dot_container_dot_PJContainer')
       [{u'_id': ObjectId('4e7ddf12e138237403000000'),
-        u'_m_collection': u'person'}]
+        u'_pj_collection': u'person'}]
 
-    It is unfortunate that the '_m_collection' attribute is set. This is
+    It is unfortunate that the '_pj_collection' attribute is set. This is
     avoidable using a sub-class.
 
       >>> dm.root['c'][u'stephan'] = Person(u'Stephan')
-      ContainerModifiedEvent: <...MongoContainer ...>
+      ContainerModifiedEvent: <...PJContainer ...>
       >>> dm.root['c'].keys()
       [u'stephan']
       >>> dm.root['c'][u'stephan']
       <Person Stephan>
 
       >>> dm.root['c']['stephan'].__parent__
-      <pjpersist.zope.container.MongoContainer object at 0x7fec50f86500>
+      <pjpersist.zope.container.PJContainer object at 0x7fec50f86500>
       >>> dm.root['c']['stephan'].__name__
       u'stephan'
 
@@ -402,7 +401,7 @@ def doctest_MongoContainer_basic():
       [{u'_id': ObjectId('4e7e9d3ae138232d7b000003'),
         u'key': u'stephan',
         u'name': u'Stephan',
-        u'parent': DBRef(u'pjpersist.zope.container.MongoContainer',
+        u'parent': DBRef(u'pjpersist.zope.container.PJContainer',
                          ObjectId('4e7e9d3ae138232d7b000000'),
                          u'pjpersist_container_test')}]
 
@@ -411,7 +410,7 @@ def doctest_MongoContainer_basic():
       >>> dm.root['c'].keys()
       [u'stephan']
       >>> dm.root['c']['stephan'].__parent__
-      <pjpersist.zope.container.MongoContainer object at 0x7fec50f86500>
+      <pjpersist.zope.container.PJContainer object at 0x7fec50f86500>
       >>> dm.root['c']['stephan'].__name__
       u'stephan'
 
@@ -428,7 +427,7 @@ def doctest_MongoContainer_basic():
     Now remove the item:
 
       >>> del dm.root['c']['stephan']
-      ContainerModifiedEvent: <...MongoContainer ...>
+      ContainerModifiedEvent: <...PJContainer ...>
 
     The changes are immediately visible.
 
@@ -448,24 +447,24 @@ def doctest_MongoContainer_basic():
     Check adding of more objects:
 
       >>> dm.root['c'][u'roy'] = SimplePerson(u'Roy')
-      ContainerModifiedEvent: <...MongoContainer ...>
+      ContainerModifiedEvent: <...PJContainer ...>
       >>> dm.root['c'][u'adam'] = SimplePerson(u'Adam')
-      ContainerModifiedEvent: <...MongoContainer ...>
+      ContainerModifiedEvent: <...PJContainer ...>
       >>> dm.root['c'][u'marius'] = SimplePerson(u'Marius')
-      ContainerModifiedEvent: <...MongoContainer ...>
+      ContainerModifiedEvent: <...PJContainer ...>
 
       >>> sorted(dm.root['c'].keys())
       [u'adam', u'marius', u'roy']
     """
 
-def doctest_MongoContainer_constructor():
-    """MongoContainer: constructor
+def doctest_PJContainer_constructor():
+    """PJContainer: constructor
 
-    The constructor of the MongoContainer class has several advanced arguments
+    The constructor of the PJContainer class has several advanced arguments
     that allow customizing the storage options.
 
       >>> transaction.commit()
-      >>> c = container.MongoContainer(
+      >>> c = container.PJContainer(
       ...     'person',
       ...     database = 'testdb',
       ...     mapping_key = 'name',
@@ -474,35 +473,35 @@ def doctest_MongoContainer_constructor():
     The database allows you to specify a custom database in which the items
     are located. Otherwise the datamanager's default database is used.
 
-      >>> c._m_database
+      >>> c._pj_database
       'testdb'
 
     The mapping key is the key/attribute of the contained items in which their
     name/key within the mapping is stored.
 
-      >>> c._m_mapping_key
+      >>> c._pj_mapping_key
       'name'
 
     The parent key is the key/attribute in which the parent reference is
-    stored. This is used to suport multiple containers per Mongo collection.
+    stored. This is used to suport multiple containers per PJ collection.
 
-      >>> c._m_parent_key
+      >>> c._pj_parent_key
       'site'
     """
 
-def doctest_MongoContainer_m_parent_key_value():
-    r"""MongoContainer: _m_parent_key_value()
+def doctest_PJContainer_pj_parent_key_value():
+    r"""PJContainer: _pj_parent_key_value()
 
     This method is used to extract the parent reference for the item.
 
-      >>> c = container.MongoContainer('person')
+      >>> c = container.PJContainer('person')
 
     The default implementation requires the container to be in some sort of
-    persistent store, though it does not care whether this store is Mongo or a
-    classic ZODB. This feature allows one to mix and match ZODB and Mongo
+    persistent store, though it does not care whether this store is PJ or a
+    classic ZODB. This feature allows one to mix and match ZODB and PJ
     storage.
 
-      >>> c._m_get_parent_key_value()
+      >>> c._pj_get_parent_key_value()
       Traceback (most recent call last):
       ...
       ValueError: _p_jar not found.
@@ -511,27 +510,27 @@ def doctest_MongoContainer_m_parent_key_value():
 
       >>> c._p_jar = object()
       >>> c._p_oid = '\x00\x00\x00\x00\x00\x00\x00\x01'
-      >>> c._m_get_parent_key_value()
+      >>> c._pj_get_parent_key_value()
       'zodb-0000000000000001'
 
-    And finally the Mongo case:
+    And finally the PJ case:
 
       >>> c._p_jar = c._p_oid = None
       >>> dm.root['people'] = c
-      >>> c._m_get_parent_key_value()
-      <pjpersist.zope.container.MongoContainer object at 0x32deed8>
+      >>> c._pj_get_parent_key_value()
+      <pjpersist.zope.container.PJContainer object at 0x32deed8>
 
     In that final case, the container itself is returned, because upon
     serialization, we simply look up the dbref.
     """
 
-def doctest_MongoContainer_many_items():
-    """MongoContainer: many items
+def doctest_PJContainer_many_items():
+    """PJContainer: many items
 
     Let's create an interesting set of data:
 
       >>> transaction.commit()
-      >>> dm.root['people'] = container.MongoContainer('person')
+      >>> dm.root['people'] = container.PJContainer('person')
       >>> dm.root['people'][u'stephan'] = Person(u'Stephan')
       >>> dm.root['people'][u'roy'] = Person(u'Roy')
       >>> dm.root['people'][u'roger'] = Person(u'Roger')
@@ -553,13 +552,13 @@ def doctest_MongoContainer_many_items():
       <Person Adam>
 """
 
-def doctest_MongoContainer_setitem_with_no_key_MongoContainer():
-    """MongoContainer: __setitem__(None, obj)
+def doctest_PJContainer_setitem_with_no_key_PJContainer():
+    """PJContainer: __setitem__(None, obj)
 
-    Whenever an item is added with no key, getattr(obj, _m_mapping_key) is used.
+    Whenever an item is added with no key, getattr(obj, _pj_mapping_key) is used.
 
       >>> transaction.commit()
-      >>> dm.root['people'] = container.MongoContainer(
+      >>> dm.root['people'] = container.PJContainer(
       ...     'person', mapping_key='name')
       >>> dm.root['people'][None] = Person(u'Stephan')
 
@@ -572,13 +571,13 @@ def doctest_MongoContainer_setitem_with_no_key_MongoContainer():
       True
 """
 
-def doctest_MongoContainer_setitem_with_no_key_IdNamesMongoContainer():
-    """IdNamesMongoContainer: __setitem__(None, obj)
+def doctest_PJContainer_setitem_with_no_key_IdNamesPJContainer():
+    """IdNamesPJContainer: __setitem__(None, obj)
 
     Whenever an item is added with no key, the OID is used.
 
       >>> transaction.commit()
-      >>> dm.root['people'] = container.IdNamesMongoContainer('person')
+      >>> dm.root['people'] = container.IdNamesPJContainer('person')
       >>> dm.root['people'][None] = Person(u'Stephan')
 
     Let's now search and receive documents as result:
@@ -590,15 +589,15 @@ def doctest_MongoContainer_setitem_with_no_key_IdNamesMongoContainer():
       True
 """
 
-def doctest_MongoContainer_add_MongoContainer():
-    """MongoContainer: add(value, key=None)
+def doctest_PJContainer_add_PJContainer():
+    """PJContainer: add(value, key=None)
 
     Sometimes we just do not want to be responsible to determine the name of
     the object to be added. This method makes this optional. The default
-    implementation assigns getattr(obj, _m_mapping_key) as name:
+    implementation assigns getattr(obj, _pj_mapping_key) as name:
 
       >>> transaction.commit()
-      >>> dm.root['people'] = container.MongoContainer(
+      >>> dm.root['people'] = container.PJContainer(
       ...     'person', mapping_key='name')
       >>> dm.root['people'].add(Person(u'Stephan'))
 
@@ -611,15 +610,15 @@ def doctest_MongoContainer_add_MongoContainer():
       True
 """
 
-def doctest_MongoContainer_add_IdNamesMongoContainer():
-    """IdNamesMongoContainer: add(value, key=None)
+def doctest_PJContainer_add_IdNamesPJContainer():
+    """IdNamesPJContainer: add(value, key=None)
 
     Sometimes we just do not want to be responsible to determine the name of
     the object to be added. This method makes this optional. The default
     implementation assigns the OID as name:
 
       >>> transaction.commit()
-      >>> dm.root['people'] = container.IdNamesMongoContainer('person')
+      >>> dm.root['people'] = container.IdNamesPJContainer('person')
       >>> dm.root['people'].add(Person(u'Stephan'))
 
     Let's now search and receive documents as result:
@@ -631,17 +630,17 @@ def doctest_MongoContainer_add_IdNamesMongoContainer():
       True
 """
 
-def doctest_MongoContainer_find():
-    """MongoContainer: find
+def doctest_PJContainer_find():
+    """PJContainer: find
 
-    The Mongo Container supports direct Mongo queries. It does, however,
+    The PJ Container supports direct PJ queries. It does, however,
     insert the additional container filter arguments and can optionally
     convert the documents to objects.
 
     Let's create an interesting set of data:
 
       >>> transaction.commit()
-      >>> dm.root['people'] = container.MongoContainer('person')
+      >>> dm.root['people'] = container.PJContainer('person')
       >>> dm.root['people'][u'stephan'] = Person(u'Stephan')
       >>> dm.root['people'][u'roy'] = Person(u'Roy')
       >>> dm.root['people'][u'roger'] = Person(u'Roger')
@@ -660,13 +659,13 @@ def doctest_MongoContainer_find():
       [{u'_id': ObjectId('4e7eb152e138234158000004'),
         u'key': u'roy',
         u'name': u'Roy',
-        u'parent': DBRef(u'pjpersist.zope.container.MongoContainer',
+        u'parent': DBRef(u'pjpersist.zope.container.PJContainer',
                          ObjectId('4e7eb152e138234158000000'),
                          u'pjpersist_container_test')},
        {u'_id': ObjectId('4e7eb152e138234158000005'),
         u'key': u'roger',
         u'name': u'Roger',
-        u'parent': DBRef(u'pjpersist.zope.container.MongoContainer',
+        u'parent': DBRef(u'pjpersist.zope.container.PJContainer',
                          ObjectId('4e7eb152e138234158000000'),
                          u'pjpersist_container_test')}]
 
@@ -690,7 +689,7 @@ def doctest_MongoContainer_find():
       {u'_id': ObjectId('4e7eb259e138234289000003'),
        u'key': u'stephan',
        u'name': u'Stephan',
-       u'parent': DBRef(u'pjpersist.zope.container.MongoContainer',
+       u'parent': DBRef(u'pjpersist.zope.container.PJContainer',
                         ObjectId('4e7eb259e138234289000000'),
                         u'pjpersist_container_test')}
 
@@ -713,13 +712,13 @@ def doctest_MongoContainer_find():
       <Person Stephan>
     """
 
-def doctest_MongoContainer_cache_complete():
-    """MongoContainer: _cache_complete
+def doctest_PJContainer_cache_complete():
+    """PJContainer: _cache_complete
 
     Let's add a bunch of objects:
 
       >>> transaction.commit()
-      >>> ppl = dm.root['people'] = container.MongoContainer('person')
+      >>> ppl = dm.root['people'] = container.PJContainer('person')
       >>> ppl[u'stephan'] = Person(u'Stephan')
       >>> ppl[u'roy'] = Person(u'Roy')
       >>> ppl[u'roger'] = Person(u'Roger')
@@ -730,8 +729,8 @@ def doctest_MongoContainer_cache_complete():
     Clean the cache on the transaction:
 
       >>> txn = transaction.manager.get()
-      >>> if hasattr(txn, '_v_mongo_container_cache'):
-      ...     delattr(txn, '_v_mongo_container_cache')
+      >>> if hasattr(txn, '_v_pj_container_cache'):
+      ...     delattr(txn, '_v_pj_container_cache')
 
     The cache is not complete:
 
@@ -782,17 +781,17 @@ def doctest_MongoContainer_cache_complete():
 
     """
 
-def doctest_IdNamesMongoContainer_basic():
-    """IdNamesMongoContainer: basic
+def doctest_IdNamesPJContainer_basic():
+    """IdNamesPJContainer: basic
 
-    This container uses the Mongo ObjectId as the name for each object. Since
+    This container uses the PJ ObjectId as the name for each object. Since
     ObjectIds are required to be unique within a collection, this is actually
     a nice and cheap scenario.
 
     Let's add a container to the root:
 
       >>> transaction.commit()
-      >>> dm.root['c'] = container.IdNamesMongoContainer('person')
+      >>> dm.root['c'] = container.IdNamesPJContainer('person')
 
     Let's now add a new person:
 
@@ -808,7 +807,7 @@ def doctest_IdNamesMongoContainer_basic():
       [<Person Stephan>]
 
       >>> dm.root['c'][name].__parent__
-      <pjpersist.zope.container.IdNamesMongoContainer object at 0x7fec50f86500>
+      <pjpersist.zope.container.IdNamesPJContainer object at 0x7fec50f86500>
       >>> dm.root['c'][name].__name__
       u'4e7ddf12e138237403000003'
 
@@ -822,7 +821,7 @@ def doctest_IdNamesMongoContainer_basic():
       >>> pprint(list(db['person'].find()))
       [{u'_id': ObjectId('4e7e9d3ae138232d7b000003'),
         u'name': u'Stephan',
-        u'parent': DBRef(u'pjpersist.zope.container.IdNamesMongoContainer',
+        u'parent': DBRef(u'pjpersist.zope.container.IdNamesPJContainer',
                          ObjectId('4e7e9d3ae138232d7b000000'),
                          u'pjpersist_container_test')}]
 
@@ -865,8 +864,8 @@ def doctest_IdNamesMongoContainer_basic():
       []
     """
 
-def doctest_AllItemsMongoContainer_basic():
-    """AllItemsMongoContainer: basic
+def doctest_AllItemsPJContainer_basic():
+    """AllItemsPJContainer: basic
 
     This type of container returns all items of the collection without regard
     of a parenting hierarchy.
@@ -876,11 +875,11 @@ def doctest_AllItemsMongoContainer_basic():
 
       >>> transaction.commit()
 
-      >>> dm.root['friends'] = container.MongoContainer('person')
+      >>> dm.root['friends'] = container.PJContainer('person')
       >>> dm.root['friends'][u'roy'] = Person(u'Roy')
       >>> dm.root['friends'][u'roger'] = Person(u'Roger')
 
-      >>> dm.root['family'] = container.MongoContainer('person')
+      >>> dm.root['family'] = container.PJContainer('person')
       >>> dm.root['family'][u'anton'] = Person(u'Anton')
       >>> dm.root['family'][u'konrad'] = Person(u'Konrad')
 
@@ -893,19 +892,19 @@ def doctest_AllItemsMongoContainer_basic():
     Now we can create an all-items-container that allows us to view all
     people.
 
-      >>> dm.root['all-people'] = container.AllItemsMongoContainer('person')
+      >>> dm.root['all-people'] = container.AllItemsPJContainer('person')
       >>> sorted(dm.root['all-people'].keys())
       [u'anton', u'konrad', u'roger', u'roy']
     """
 
-def doctest_SubDocumentMongoContainer_basic():
-    r"""SubDocumentMongoContainer: basic
+def doctest_SubDocumentPJContainer_basic():
+    r"""SubDocumentPJContainer: basic
 
     Let's make sure events are fired correctly:
 
       >>> zope.component.provideHandler(handleObjectModifiedEvent)
 
-    Sub_document Mongo containers are useful, since they avoid the creation of
+    Sub_document PJ containers are useful, since they avoid the creation of
     a commonly trivial collections holding meta-data for the collection
     object. But they require a root document:
 
@@ -915,7 +914,7 @@ def doctest_SubDocumentMongoContainer_basic():
     Let's add a container to the app root:
 
       >>> dm.root['app_root']['people'] = \
-      ...     container.SubDocumentMongoContainer('person')
+      ...     container.SubDocumentPJContainer('person')
       ContainerModifiedEvent: <ApplicationRoot>
 
       >>> transaction.commit()
@@ -924,16 +923,16 @@ def doctest_SubDocumentMongoContainer_basic():
       [{u'_id': ObjectId('4e7ea67be138233711000001'),
         u'data':
          {u'people':
-          {u'_m_collection': u'person',
+          {u'_pj_collection': u'person',
            u'_py_persistent_type':
-               u'pjpersist.zope.container.SubDocumentMongoContainer'}}}]
+               u'pjpersist.zope.container.SubDocumentPJContainer'}}}]
 
-    It is unfortunate that the '_m_collection' attribute is set. This is
+    It is unfortunate that the '_pj_collection' attribute is set. This is
     avoidable using a sub-class. Let's make sure the container can be loaded
     correctly:
 
       >>> dm.root['app_root']['people']
-      <pjpersist.zope.container.SubDocumentMongoContainer ...>
+      <pjpersist.zope.container.SubDocumentPJContainer ...>
       >>> dm.root['app_root']['people'].__parent__
       <ApplicationRoot>
       >>> dm.root['app_root']['people'].__name__
@@ -942,7 +941,7 @@ def doctest_SubDocumentMongoContainer_basic():
     Let's add an item to the container:
 
       >>> dm.root['app_root']['people'][u'stephan'] = Person(u'Stephan')
-      ContainerModifiedEvent: <...SubDocumentMongoContainer ...>
+      ContainerModifiedEvent: <...SubDocumentPJContainer ...>
       >>> dm.root['app_root']['people'].keys()
       [u'stephan']
       >>> dm.root['app_root']['people'][u'stephan']
@@ -953,15 +952,15 @@ def doctest_SubDocumentMongoContainer_basic():
       [u'stephan']
     """
 
-def doctest_MongoContainer_with_ZODB():
-    r"""MongoContainer: with ZODB
+def doctest_PJContainer_with_ZODB():
+    r"""PJContainer: with ZODB
 
-    This test demonstrates how a Mongo Container lives inside a ZODB tree:
+    This test demonstrates how a PJ Container lives inside a ZODB tree:
 
       >>> zodb = ZODB.DB(ZODB.DemoStorage.DemoStorage())
       >>> root = zodb.open().root()
       >>> root['app'] = btree.BTreeContainer()
-      >>> root['app']['people'] = container.MongoContainer('person')
+      >>> root['app']['people'] = container.PJContainer('person')
 
     Let's now commit the transaction and make sure everything is cool.
 
@@ -970,7 +969,7 @@ def doctest_MongoContainer_with_ZODB():
       >>> root['app']
       <zope.container.btree.BTreeContainer object at 0x7fbb5842f578>
       >>> root['app']['people']
-      <pjpersist.zope.container.MongoContainer object at 0x7fd6e23555f0>
+      <pjpersist.zope.container.PJContainer object at 0x7fd6e23555f0>
 
     Trying accessing people fails:
 
@@ -978,12 +977,12 @@ def doctest_MongoContainer_with_ZODB():
       Traceback (most recent call last):
       ...
       ComponentLookupError:
-       (<InterfaceClass pjpersist.interfaces.IMongoDataManagerProvider>, '')
+       (<InterfaceClass pjpersist.interfaces.IPJDataManagerProvider>, '')
 
     This is because we have not told the system how to get a datamanager:
 
       >>> class Provider(object):
-      ...     zope.interface.implements(interfaces.IMongoDataManagerProvider)
+      ...     zope.interface.implements(interfaces.IPJDataManagerProvider)
       ...     def get(self):
       ...         return dm
       >>> zope.component.provideUtility(Provider())
@@ -1005,7 +1004,7 @@ def doctest_MongoContainer_with_ZODB():
       >>> stephan.__name__
       u'stephan'
       >>> stephan.__parent__
-      <pjpersist.zope.container.MongoContainer object at 0x7f6b6273b7d0>
+      <pjpersist.zope.container.PJContainer object at 0x7f6b6273b7d0>
 
       >>> pprint(list(dm._get_collection(DBNAME, 'person').find()))
       [{u'_id': ObjectId('4e7ed795e1382366a0000001'),
@@ -1018,8 +1017,8 @@ def doctest_MongoContainer_with_ZODB():
 
 
 # classes for doctest_Realworldish
-class Campaigns(container.MongoContainer):
-    _m_collection = 'campaigns'
+class Campaigns(container.PJContainer):
+    _pj_collection = 'campaigns'
 
     def __init__(self, name):
         self.name = name
@@ -1031,14 +1030,14 @@ class Campaigns(container.MongoContainer):
         return '<%s %s>' % (self.__class__.__name__, self.name)
 
 
-class MongoItem(container.MongoContained,
+class PJItem(container.PJContained,
                 persistent.Persistent):
     pass
 
 
-class Campaign(MongoItem, container.MongoContainer):
-    _m_collection = 'persons'
-    _p_mongo_collection = 'campaigns'
+class Campaign(PJItem, container.PJContainer):
+    _pj_collection = 'persons'
+    _p_pj_collection = 'campaigns'
 
     def __init__(self, name):
         self.name = name
@@ -1047,8 +1046,8 @@ class Campaign(MongoItem, container.MongoContainer):
         return '<%s %s>' % (self.__class__.__name__, self.name)
 
 
-class PersonItem(MongoItem):
-    _p_mongo_collection = 'persons'
+class PersonItem(PJItem):
+    _p_pj_collection = 'persons'
 
     def __init__(self, name):
         self.name = name
@@ -1077,7 +1076,7 @@ def doctest_Realworldish():
       [{u'_id': ObjectId('4e7ddf12e138237403000000'),
         u'name': u'foobar'}]
 
-    It is unfortunate that the '_m_collection' attribute is set. This is
+    It is unfortunate that the '_pj_collection' attribute is set. This is
     avoidable using a sub-class.
 
       >>> dm.root['c'][u'one'] = Campaign(u'one')
@@ -1178,22 +1177,22 @@ def doctest_Realworldish():
     """
 
 
-class People(container.AllItemsMongoContainer):
-    _m_mapping_key = 'name'
-    _p_mongo_collection = 'people'
-    _m_collection = 'person'
+class People(container.AllItemsPJContainer):
+    _pj_mapping_key = 'name'
+    _p_pj_collection = 'people'
+    _pj_collection = 'person'
 
 
 class Address(persistent.Persistent):
-    _p_mongo_collection = 'address'
+    _p_pj_collection = 'address'
 
     def __init__(self, city):
         self.city = city
 
 
-class PeoplePerson(persistent.Persistent, container.MongoContained):
-    _p_mongo_collection = 'person'
-    _p_mongo_store_type = True
+class PeoplePerson(persistent.Persistent, container.PJContained):
+    _p_pj_collection = 'person'
+    _p_pj_store_type = True
 
     def __init__(self, name, age):
         self.name = name
@@ -1238,8 +1237,8 @@ def doctest_load_does_not_set_p_changed():
     """
 
 
-def doctest_firing_events_MongoContainer():
-    """Events need to be fired when _m_mapping_key is already set on the object
+def doctest_firing_events_PJContainer():
+    """Events need to be fired when _pj_mapping_key is already set on the object
     and the object gets added to the container
 
       >>> @zope.component.adapter(zope.component.interfaces.IObjectEvent)
@@ -1289,12 +1288,12 @@ def doctest_firing_events_MongoContainer():
     """
 
 
-class PeopleWithIDKeys(container.IdNamesMongoContainer):
-    _p_mongo_collection = 'people'
-    _m_collection = 'person'
+class PeopleWithIDKeys(container.IdNamesPJContainer):
+    _p_pj_collection = 'people'
+    _pj_collection = 'person'
 
 
-def doctest_firing_events_IdNamesMongoContainer():
+def doctest_firing_events_IdNamesPJContainer():
     """Events need to be fired when the object gets added to the container
 
       >>> @zope.component.adapter(zope.component.interfaces.IObjectEvent)
@@ -1370,14 +1369,7 @@ def handleObjectModifiedEvent(object, event):
 
 def setUp(test):
     placelesssetup.setUp(test)
-    module.setUp(test)
-    test.globs['conn'] = testing.getConnection()
-    test.globs['DBNAME'] = DBNAME
-    testing.cleanDB(test.globs['conn'], test.globs['DBNAME'])
-    test.globs['dm'] = datamanager.MongoDataManager(
-        test.globs['conn'],
-        default_database=test.globs['DBNAME'],
-        root_database=test.globs['DBNAME'])
+    testing.setUp(test)
 
     # silence this, otherwise half-baked objects raise exceptions
     # on trying to __repr__ missing attributes
@@ -1390,19 +1382,16 @@ def noCacheSetUp(test):
     setUp(test)
 
 def tearDown(test):
+    testing.tearDown(test)
     placelesssetup.tearDown(test)
-    module.tearDown(test)
     try:
-        del Person._p_mongo_store_type
+        del Person._p_pj_store_type
     except AttributeError:
         pass
     try:
-        del SimplePerson._p_mongo_store_type
+        del SimplePerson._p_pj_store_type
     except AttributeError:
         pass
-    testing.cleanDB(test.globs['conn'], test.globs['DBNAME'])
-    test.globs['conn'].disconnect()
-    testing.resetCaches()
     exceptionformatter.DEBUG_EXCEPTION_FORMATTER = \
         test.orig_DEBUG_EXCEPTION_FORMATTER
 
@@ -1420,12 +1409,12 @@ def test_suite():
                              #|doctest.REPORT_NDIFF
                              )
                 ),
-        doctest.DocTestSuite(
-                setUp=noCacheSetUp, tearDown=noCacheTearDown, checker=checker,
-                optionflags=(doctest.NORMALIZE_WHITESPACE|
-                             doctest.ELLIPSIS|
-                             doctest.REPORT_ONLY_FIRST_FAILURE
-                             #|doctest.REPORT_NDIFF
-                             )
-                ),
+        #doctest.DocTestSuite(
+        #        setUp=noCacheSetUp, tearDown=noCacheTearDown, checker=checker,
+        #        optionflags=(doctest.NORMALIZE_WHITESPACE|
+        #                     doctest.ELLIPSIS|
+        #                     doctest.REPORT_ONLY_FIRST_FAILURE
+        #                     #|doctest.REPORT_NDIFF
+        #                     )
+        #        ),
         ))
