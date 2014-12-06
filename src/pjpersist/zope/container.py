@@ -367,7 +367,7 @@ class PJContainer(contained.Contained,
                 res.append(sb.ColumnAS(sb.JSON_GETITEM_TEXT(datafld, name), name))
         return res
 
-    def raw_find(self, qry, fields=()):
+    def raw_find(self, qry=None, fields=()):
         qry = self._pj_add_items_filter(qry)
         #qstr = qry.__sqlrepr__('postgres')
 
@@ -378,11 +378,11 @@ class PJContainer(contained.Contained,
                 cur.execute(sb.Select(self._get_sb_fields(fields), qry))
             return cur.fetchall()
 
-    def find(self, qry):
+    def find(self, qry=None):
         # Search for matching objects.
         result = self.raw_find(qry)
-        for doc in result:
-            obj = self._load_one(doc)
+        for row in result:
+            obj = self._load_one(row['id'], row['data'])
             yield obj
 
     def raw_find_one(self, qry=None, id=None):
@@ -406,10 +406,10 @@ class PJContainer(contained.Contained,
             return cur.fetchone()
 
     def find_one(self, qry=None, id=None):
-        id, doc = self.raw_find_one(qry, id)
-        if doc is None:
+        id, data = self.raw_find_one(qry, id)
+        if data is None:
             return None
-        return self._load_one(id, doc)
+        return self._load_one(id, data)
 
     def clear(self):
         for key in self.keys():
