@@ -88,5 +88,17 @@ class Converter(object):
             # Add test with a select against real data.
             operator2, op3 = op2.items()[0]
             return sb.NOT(self.operator_expr(operator2, op1, op3))
+        if operator == '$size':
+            # Get JSON instead of text
+            field = op1.expr1
+            key = op1.expr2
+            return sb.func.json_array_length(sb.JSON_GETITEM(field, key)) == op2
+        if operator == '$exists':
+            field = op1.expr1
+            key = op1.expr2
+            if op2:
+                return sb.JSONB_CONTAINS(field, key)
+            else:
+                return sb.NOT(sb.JSONB_CONTAINS(field, key))
         else:
             raise ValueError("Unrecognized operator %s" % operator)

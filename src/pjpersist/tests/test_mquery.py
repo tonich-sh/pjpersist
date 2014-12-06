@@ -87,6 +87,19 @@ def test_convert():
         >>> run(mq.convert({'quantity': {'$not': {'$gt': 20}}}))
         NOT (((Bar.data) ->> ('quantity')) > (20))
 
+    The $size operator:
+
+        >>> run(mq.convert({'quantities': {'$size': 3}}))
+        ((json_array_length(((Bar.data) -> ('quantities')))) = (3))
+
+    The $exists operator
+
+        >>> run(mq.convert({'quantities': {'$exists': True}}))
+        ((Bar.data) ? ('quantities'))
+
+        >>> run(mq.convert({'quantities': {'$exists': False}}))
+        NOT ((Bar.data) ? ('quantities'))
+
     """
 
 def test_convert_logical():
