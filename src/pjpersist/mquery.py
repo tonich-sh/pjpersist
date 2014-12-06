@@ -18,6 +18,8 @@ from pjpersist import sqlbuilder as sb
 
 class Converter(object):
 
+    simplified = False
+
     def __init__(self, table, field):
         self.table = table
         self.field = field
@@ -50,6 +52,16 @@ class Converter(object):
                 if comparison == '$nin':
                     clauses.append(sb.NOT(sb.IN(accessor, val)))
             else:
-                # Scalar -- equality
-                clauses.append(accessor == value)
+                # Scalar -- equality or array membership
+                if self.simplified:
+                    # Let's ignore the membership case for test clarity
+                    clauses.append(accessor == value)
+                else:
+                    clauses.append(sb.OR(
+                        accessor == value,
+                        sb.AND(
+                            sb.JSONB_SUBSET(sb.JSONB('[]'), accessor),
+                            sb.JSONB_CONTAINS(accessor, value)
+                        )
+                    ))
         return sb.AND(*clauses)

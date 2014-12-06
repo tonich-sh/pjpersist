@@ -29,6 +29,10 @@ def test_convert():
 
         >>> mq = mquery.Converter("Bar", "data")
 
+    Let's enable a mode that simplifies some crud for nicer tests:
+
+        >>> mq.simplified = True
+
     Now we can run a basic query:
 
         >>> mq.convert({'day': 'Friday', 'drink': 'whiskey', 'nr': 42})
@@ -38,6 +42,19 @@ def test_convert():
         ((((Bar.data) ->> ('day')) = ('Friday')) AND
          ((((Bar.data) ->> ('drink')) = ('whiskey')) AND
           (((Bar.data) ->> ('nr')) = (42))))
+
+    Actually, this is wrong, because in mongo the test could as well
+    mean checking for an member in an array:
+
+        >>> mq.simplified = False
+        >>> run(mq.convert({'nr': 42}))
+        ((((Bar.data) ->> ('nr')) = (42)) OR
+         ((('[]'::jsonb) <@ ((Bar.data) ->> ('nr'))) AND
+          (((Bar.data) ->> ('nr')) ? (42))))
+
+    Enough craziness:
+
+        >>> mq.simplified = True
 
     Keys can be dotted paths:
 
@@ -64,7 +81,6 @@ def test_convert():
         Traceback (most recent call last):
           ...
         ValueError: Too many elements: {'$eq': 1, 'foo': 'bar'}
-
 
     """
 
