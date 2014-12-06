@@ -42,12 +42,10 @@ class Converter(object):
                     '$nor': lambda *items: sb.NOT(sb.OR(*items))
                 }[key]
                 clauses.append(oper(*(self.convert(expr) for expr in value)))
-
             elif isinstance(value, dict):
-                if len(value) != 1:
-                    raise ValueError("Too many elements: %r" % value)
-                operator, operand = value.items()[0]
-                clauses.append(self.operator_expr(operator, accessor, operand))
+                for operator, operand in value.items():
+                    clauses.append(
+                        self.operator_expr(operator, accessor, operand))
             else:
                 # Scalar -- equality or array membership
                 if self.simplified:

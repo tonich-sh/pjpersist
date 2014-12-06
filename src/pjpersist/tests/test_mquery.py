@@ -75,13 +75,6 @@ def test_convert():
         >>> run(mq.convert({'quantity': {'$nin': [20, 30, 40]}}))
         NOT (((Bar.data) ->> ('quantity')) IN (20, 30, 40))
 
-    There can be just one element in this object:
-
-        >>> run(mq.convert({'quantity': {'$eq': 1, 'foo': 'bar'}}))
-        Traceback (most recent call last):
-          ...
-        ValueError: Too many elements: {'$eq': 1, 'foo': 'bar'}
-
     The $not operator:
 
         >>> run(mq.convert({'quantity': {'$not': {'$gt': 20}}}))
@@ -100,7 +93,13 @@ def test_convert():
         >>> run(mq.convert({'quantities': {'$exists': False}}))
         NOT ((Bar.data) ? ('quantities'))
 
+    There can be several operators in one dict:
+
+        >>> run(mq.convert({'qty': {'$exists': True, '$nin': [1, 2]}}))
+        (((Bar.data) ? ('qty')) AND (NOT (((Bar.data) ->> ('qty')) IN (1, 2))))
+
     """
+
 
 def test_convert_logical():
     """Test mquery.convert logical operators.
