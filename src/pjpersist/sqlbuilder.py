@@ -52,6 +52,11 @@ class JSONB(SQLExpression):
         return sqlrepr(self.arg, db) + self.cast
 
 
+class JSON(JSONB):
+    """Cast to JSON"""
+    cast = '::json'
+
+
 def JSON_GETITEM(json, key):
     return SQLOp("->", json, key)
 
