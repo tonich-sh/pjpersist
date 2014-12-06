@@ -216,8 +216,9 @@ class PJDataManager(object):
 
     def _create_doc_table(self, database, table):
         if self.database != database:
-            raise NotImplemented(
-                'Cannot store an object of a different database.')
+            raise NotImplementedError(
+                'Cannot store an object of a different database.',
+                self.database, database)
 
         if (database, table) in INITIALIZED_TABLES:
             return
