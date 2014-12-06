@@ -73,6 +73,16 @@ def dropDB():
     conn.commit()
     conn.close()
 
+
+def cleanDB(conn):
+    with conn.cursor() as cur:
+        cur.execute("""SELECT tablename FROM pg_tables
+                       WHERE tablename NOT LIKE 'pg%' AND
+                             tablename NOT LIKE 'sql%'""")
+        for res in cur.fetchall():
+            cur.execute('DROP TABLE ' + res[0])
+
+
 def setUp(test):
     module.setUp(test)
     serialize.SERIALIZERS = [serializers.DateTimeSerializer(),
