@@ -994,22 +994,6 @@ def doctest_PJContainer_with_ZODB():
       >>> root['app']['people']
       <pjpersist.zope.container.PJContainer object at 0x7fd6e23555f0>
 
-    Trying accessing people fails:
-
-      >>> root['app']['people'].keys()
-      Traceback (most recent call last):
-      ...
-      ComponentLookupError:
-       (<InterfaceClass pjpersist.interfaces.IPJDataManagerProvider>, '')
-
-    This is because we have not told the system how to get a datamanager:
-
-      >>> class Provider(object):
-      ...     zope.interface.implements(interfaces.IPJDataManagerProvider)
-      ...     def get(self):
-      ...         return dm
-      >>> zope.component.provideUtility(Provider())
-
     So let's try again:
 
       >>> root['app']['people'].keys()
@@ -1029,11 +1013,11 @@ def doctest_PJContainer_with_ZODB():
       >>> stephan.__parent__
       <pjpersist.zope.container.PJContainer object at 0x7f6b6273b7d0>
 
-      >>> pprint(list(dm._get_table(DBNAME, 'person').find()))
-      [{u'_id': ObjectId('4e7ed795e1382366a0000001'),
-        u'key': u'stephan',
-        u'name': u'Stephan',
-        u'parent': u'zodb-1058e89d27d8afd9'}]
+      >>> dumpTable('person')
+      [{'data': {u'key': u'stephan',
+                 u'name': u'Stephan',
+                 u'parent': u'zodb-04bc8095215afee7'},
+        'id': 'c24a00f9-46a0-4994-9c9b-a6eb139bfbde'}]
 
     Note that we produced a nice hex-presentation of the ZODB's OID.
     """
