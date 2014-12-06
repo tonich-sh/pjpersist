@@ -21,6 +21,7 @@ from rwproperty import getproperty, setproperty
 from zope.container import contained, sample
 from zope.container.interfaces import IContainer
 
+import pjpersist.sqlbuilder as sb
 from pjpersist import interfaces, serialize
 from pjpersist.zope import interfaces as zinterfaces
 
@@ -161,21 +162,25 @@ class PJContainer(contained.Contained,
             return 'zodb-'+''.join("%02x" % ord(x) for x in self._p_oid).strip()
 
     def _pj_get_items_filter(self):
-        filter = {}
+        queries = []
         # Make sure that we only look through objects that have the mapping
         # key. Objects not having the mapping key cannot be part of the
         # table.
         if self._pj_mapping_key is not None:
-            filter[self._pj_mapping_key] = {'$exists': True}
-        if self._pj_parent_key is not None:
-            gs = self._pj_jar._writer.get_state
-            filter[self._pj_parent_key] = gs(self._pj_get_parent_key_value())
-        return filter
+            queries.append(
+                sb.JSONB_CONTAINS_ALL('data', [self._pj_mapping_key]))
+        # XXX: Reactivate once we found a decent way of dealing with that.
+        #if self._pj_parent_key is not None:
+        #    gs = self._pj_jar._writer.get_state
+        #    # XXX: Urgently need support from alga to provide more query
+        #    # capabilities.
+        #    queries.append(
+        #        sb.JSONB_SUPERSET('data', """'{"%s": %r}'""" %(
+        #            self._pj_parent_key, gs(self._pj_get_parent_key_value()))
+        return sb.AND(*queries)
 
-    def _pj_add_items_filter(self, filter):
-        for key, value in self._pj_get_items_filter().items():
-            if key not in filter:
-                filter[key] = value
+    def _pj_add_items_filter(self, qry):
+        return qry & self._pj_get_items_filter()
 
     @property
     def _cache(self):
@@ -201,10 +206,10 @@ class PJContainer(contained.Contained,
             txn._v_pj_container_cache_complete = {}
         txn._v_pj_container_cache_complete[self] = True
 
-    def _cache_get_key(self, doc):
+    def _cache_get_key(self, id, doc):
         return doc[self._pj_mapping_key]
 
-    def _locate(self, obj, doc):
+    def _locate(self, obj, id, doc):
         # Helper method that is only used when locating items that are already
         # in the container and are simply loaded from PostGreSQL.
         if obj.__name__ is None:
@@ -213,16 +218,15 @@ class PJContainer(contained.Contained,
             obj._v_parent = self
 
     def _load_one(self, id, doc):
-        obj = self._cache.get(self._cache_get_key(doc))
+        obj = self._cache.get(self._cache_get_key(id, doc))
         if obj is not None:
             return obj
         # Create a DBRef object and then load the full state of the object.
-        dbref = serialize.DBRef(
-            self._pj_table, doc['_id'], self._pj_jar.database)
+        dbref = serialize.DBRef(self._pj_table, id, self._pj_jar.database)
         # Stick the doc into the _latest_states:
         self._pj_jar._latest_states[dbref] = doc
         obj = self._pj_jar.load(dbref)
-        self._locate(obj, doc)
+        self._locate(obj, id, doc)
         # Add the object into the local container cache.
         self._cache[obj.__name__] = obj
         return obj
@@ -241,9 +245,10 @@ class PJContainer(contained.Contained,
         if self._cache_complete:
             raise KeyError(key)
         # The cache cannot help, so the item is looked up in the database.
-        filter = self._pj_get_items_filter()
+        # XXX: BIG CONSTRUCTION ZONE, NEED EASY WAY TO GENERATE
+        #      '{"key": JSON_VALUE}'
         filter[self._pj_mapping_key] = key
-        obj = self.find_one(filter)
+        obj = self.find_one(sb)
         if obj is None:
             raise KeyError(key)
         return obj
@@ -349,19 +354,29 @@ class PJContainer(contained.Contained,
             obj = self._load_one(doc)
             yield obj
 
-    def raw_find_one(self, spec_or_id=None, *args, **kwargs):
-        if spec_or_id is None:
-            spec_or_id = {}
-        if not isinstance(spec_or_id, dict):
-            spec_or_id = {'_id': spec_or_id}
-        self._pj_add_items_filter(spec_or_id)
-        return coll.find_one(spec_or_id, *args, **kwargs)
+    def raw_find_one(self, qry=None, id=None):
+        if qry is None and id is None:
+            raise ValueError(
+                'Missing parameter, at least qry or id must be specified.')
+        tbl = sb.Table(self._pj_table)
+        if qry is None:
+            qry = (tbl.id == id)
+        elif id is not None:
+            qry = qry & (tbl.id == id)
+        self._pj_add_items_filter(qry)
+        with self._pj_jar.getCursor() as cur:
+            cur.execute(sb.Select(sb.Field(self._pj_table, '*'), qry))
+            if cur.rowcount == 0:
+                return None, None
+            if cur.rowcount > 1:
+                raise ValueError('Multiple results returned.')
+        return cur.fetchone()
 
-    def find_one(self, spec_or_id=None, *args, **kwargs):
-        doc = self.raw_find_one(spec_or_id, *args, **kwargs)
+    def find_one(self, qry=None, id=None):
+        id, doc = self.raw_find_one(qry, id)
         if doc is None:
             return None
-        return self._load_one(doc)
+        return self._load_one(id, doc)
 
     def clear(self):
         for key in self.keys():

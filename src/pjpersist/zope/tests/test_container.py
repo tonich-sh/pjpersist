@@ -39,14 +39,14 @@ DBNAME = 'pjpersist_container_test'
 
 
 class ApplicationRoot(container.SimplePJContainer):
-    _p_pj_collection = 'root'
+    _p_pj_table = 'root'
 
     def __repr__(self):
         return '<ApplicationRoot>'
 
 
 class SimplePerson(contained.Contained, persistent.Persistent):
-    _p_pj_collection = 'person'
+    _p_pj_table = 'person'
 
     def __init__(self, name):
         self.name = name
@@ -298,14 +298,16 @@ def doctest_SimplePJContainer_basic():
 
       >>> transaction.commit()
 
-      >>> pprint(list(db['person'].find()))
-      [{u'__name__': u'stephan',
-        u'__parent__':
-            DBRef(u'pjpersist.zope.container.SimplePJContainer',
-                  ObjectId('4e7ddf12e138237403000000'),
-                  u'pjpersist_container_test'),
-        u'_id': ObjectId('4e7ddf12e138237403000000'),
-        u'name': u'Stephan'}]
+      >>> dumpTable('person')
+      [{'data':
+          {u'__name__': u'stephan',
+           u'__parent__':
+               {u'_py_type': u'DBREF',
+                u'database': u'pjpersist_test',
+                u'id': u'00000000-0000-0000-0000-000000000000',
+                u'table': u'pjpersist_dot_zope_dot_container_dot_SimplePJContainer'},
+           u'name': u'Stephan'},
+        'id': '00000000-0000-0000-0000-000000000000'}]
 
       >>> dm.root['c'].keys()
       [u'stephan']
@@ -313,6 +315,14 @@ def doctest_SimplePJContainer_basic():
       <pjpersist.zope.container.SimplePJContainer object at 0x7fec50f86500>
       >>> dm.root['c']['stephan'].__name__
       u'stephan'
+
+      >>> dumpTable(cn)
+      [{'data': {u'data':
+          {u'stephan': {u'_py_type': u'DBREF',
+                        u'database': u'pjpersist_test',
+                        u'id': u'967d3248-2ac8-4254-bbea-e0c22b6f6039',
+                        u'table': u'person'}}},
+        'id': '6cf63e42-9e8f-4e63-8de7-3861cb6ce7d9'}]
 
       >>> dm.root['c'].items()
       [(u'stephan', <SimplePerson Stephan>)]
@@ -342,7 +352,7 @@ def doctest_SimplePJContainer_basic():
 
     The object is also removed from PJ:
 
-      >>> pprint(list(db['person'].find()))
+      >>> dumpTable('person')
       []
 
     Check adding of more objects:
@@ -373,10 +383,10 @@ def doctest_PJContainer_basic():
       >>> dm.root['c'] = container.PJContainer('person')
 
       >>> dumpTable('pjpersist_dot_zope_dot_container_dot_PJContainer')
-      [{u'_id': ObjectId('4e7ddf12e138237403000000'),
-        u'_pj_collection': u'person'}]
+      [{'data': {u'_pj_table': u'person'},
+        'id': '00000000-0000-0000-0000-000000000000'}]
 
-    It is unfortunate that the '_pj_collection' attribute is set. This is
+    It is unfortunate that the '_pj_table' attribute is set. This is
     avoidable using a sub-class.
 
       >>> dm.root['c'][u'stephan'] = Person(u'Stephan')
@@ -483,7 +493,7 @@ def doctest_PJContainer_constructor():
       'name'
 
     The parent key is the key/attribute in which the parent reference is
-    stored. This is used to suport multiple containers per PJ collection.
+    stored. This is used to suport multiple containers per PJ table.
 
       >>> c._pj_parent_key
       'site'
@@ -785,7 +795,7 @@ def doctest_IdNamesPJContainer_basic():
     """IdNamesPJContainer: basic
 
     This container uses the PJ ObjectId as the name for each object. Since
-    ObjectIds are required to be unique within a collection, this is actually
+    ObjectIds are required to be unique within a table, this is actually
     a nice and cheap scenario.
 
     Let's add a container to the root:
@@ -867,7 +877,7 @@ def doctest_IdNamesPJContainer_basic():
 def doctest_AllItemsPJContainer_basic():
     """AllItemsPJContainer: basic
 
-    This type of container returns all items of the collection without regard
+    This type of container returns all items of the table without regard
     of a parenting hierarchy.
 
     Let's start by creating two person containers that service different
@@ -905,7 +915,7 @@ def doctest_SubDocumentPJContainer_basic():
       >>> zope.component.provideHandler(handleObjectModifiedEvent)
 
     Sub_document PJ containers are useful, since they avoid the creation of
-    a commonly trivial collections holding meta-data for the collection
+    a commonly trivial tables holding meta-data for the table
     object. But they require a root document:
 
       >>> dm.reset()
@@ -923,11 +933,11 @@ def doctest_SubDocumentPJContainer_basic():
       [{u'_id': ObjectId('4e7ea67be138233711000001'),
         u'data':
          {u'people':
-          {u'_pj_collection': u'person',
+          {u'_pj_table': u'person',
            u'_py_persistent_type':
                u'pjpersist.zope.container.SubDocumentPJContainer'}}}]
 
-    It is unfortunate that the '_pj_collection' attribute is set. This is
+    It is unfortunate that the '_pj_table' attribute is set. This is
     avoidable using a sub-class. Let's make sure the container can be loaded
     correctly:
 
@@ -1006,7 +1016,7 @@ def doctest_PJContainer_with_ZODB():
       >>> stephan.__parent__
       <pjpersist.zope.container.PJContainer object at 0x7f6b6273b7d0>
 
-      >>> pprint(list(dm._get_collection(DBNAME, 'person').find()))
+      >>> pprint(list(dm._get_table(DBNAME, 'person').find()))
       [{u'_id': ObjectId('4e7ed795e1382366a0000001'),
         u'key': u'stephan',
         u'name': u'Stephan',
@@ -1018,7 +1028,7 @@ def doctest_PJContainer_with_ZODB():
 
 # classes for doctest_Realworldish
 class Campaigns(container.PJContainer):
-    _pj_collection = 'campaigns'
+    _pj_table = 'campaigns'
 
     def __init__(self, name):
         self.name = name
@@ -1036,8 +1046,8 @@ class PJItem(container.PJContained,
 
 
 class Campaign(PJItem, container.PJContainer):
-    _pj_collection = 'persons'
-    _p_pj_collection = 'campaigns'
+    _pj_table = 'persons'
+    _p_pj_table = 'campaigns'
 
     def __init__(self, name):
         self.name = name
@@ -1047,7 +1057,7 @@ class Campaign(PJItem, container.PJContainer):
 
 
 class PersonItem(PJItem):
-    _p_pj_collection = 'persons'
+    _p_pj_table = 'persons'
 
     def __init__(self, name):
         self.name = name
@@ -1076,7 +1086,7 @@ def doctest_Realworldish():
       [{u'_id': ObjectId('4e7ddf12e138237403000000'),
         u'name': u'foobar'}]
 
-    It is unfortunate that the '_pj_collection' attribute is set. This is
+    It is unfortunate that the '_pj_table' attribute is set. This is
     avoidable using a sub-class.
 
       >>> dm.root['c'][u'one'] = Campaign(u'one')
@@ -1179,19 +1189,19 @@ def doctest_Realworldish():
 
 class People(container.AllItemsPJContainer):
     _pj_mapping_key = 'name'
-    _p_pj_collection = 'people'
-    _pj_collection = 'person'
+    _p_pj_table = 'people'
+    _pj_table = 'person'
 
 
 class Address(persistent.Persistent):
-    _p_pj_collection = 'address'
+    _p_pj_table = 'address'
 
     def __init__(self, city):
         self.city = city
 
 
 class PeoplePerson(persistent.Persistent, container.PJContained):
-    _p_pj_collection = 'person'
+    _p_pj_table = 'person'
     _p_pj_store_type = True
 
     def __init__(self, name, age):
@@ -1289,8 +1299,8 @@ def doctest_firing_events_PJContainer():
 
 
 class PeopleWithIDKeys(container.IdNamesPJContainer):
-    _p_pj_collection = 'people'
-    _pj_collection = 'person'
+    _p_pj_table = 'people'
+    _pj_table = 'person'
 
 
 def doctest_firing_events_IdNamesPJContainer():
@@ -1349,6 +1359,8 @@ def doctest_firing_events_IdNamesPJContainer():
 checker = renormalizing.RENormalizing([
     (re.compile(r'datetime.datetime(.*)'),
      'datetime.datetime(2011, 10, 1, 9, 45)'),
+    (re.compile(r"'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'"),
+     "'00000000-0000-0000-0000-000000000000'"),
     (re.compile(r"ObjectId\('[0-9a-f]{24}'\)"),
      "ObjectId('4e7ddf12e138237403000000')"),
     (re.compile(r"u'[0-9a-f]{24}'"),
