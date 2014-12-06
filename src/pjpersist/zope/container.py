@@ -182,7 +182,13 @@ class PJContainer(contained.Contained,
         return sb.AND(*queries)
 
     def _pj_add_items_filter(self, qry):
-        return qry & self._pj_get_items_filter()
+        itemsqry = self._pj_get_items_filter()
+        if qry is not None:
+            if itemsqry is not None:
+                return qry & itemsqry
+            else:
+                return qry
+        return itemsqry
 
     @property
     def _cache(self):
@@ -366,10 +372,13 @@ class PJContainer(contained.Contained,
 
     def raw_find(self, qry, fields=()):
         qry = self._pj_add_items_filter(qry)
-        qstr = qry.__sqlrepr__('postgres')
+        #qstr = qry.__sqlrepr__('postgres')
 
         with self._pj_jar.getCursor() as cur:
-            cur.execute(sb.Select(self._get_sb_fields(fields), qry))
+            if qry is None:
+                cur.execute(sb.Select(self._get_sb_fields(fields)))
+            else:
+                cur.execute(sb.Select(self._get_sb_fields(fields), qry))
             return cur.fetchall()
 
     def find(self, qry):
