@@ -377,6 +377,14 @@ def doctest_PJContainer_basic():
 
       >>> zope.component.provideHandler(handleObjectModifiedEvent)
 
+    This is because we have not told the system how to get a datamanager:
+
+      >>> class Provider(object):
+      ...     zope.interface.implements(interfaces.IPJDataManagerProvider)
+      ...     def get(self):
+      ...         return dm
+      >>> zope.component.provideUtility(Provider())
+
     Let's add a container to the root:
 
       >>> transaction.commit()

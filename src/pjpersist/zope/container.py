@@ -138,6 +138,7 @@ class PJContainer(contained.Contained,
             self._pj_mapping_key = mapping_key
         if parent_key is not None:
             self._pj_parent_key = parent_key
+        self._pj_jar._create_doc_table(self._pj_jar.database, self._pj_table)
 
     @property
     def _pj_jar(self):
