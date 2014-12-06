@@ -632,7 +632,7 @@ def doctest_PJContainer_add_IdNamesPJContainer():
 """
 
 def doctest_PJContainer_find():
-    """PJContainer: find
+    r"""PJContainer: find
 
     The PJ Container supports direct PJ queries. It does, however,
     insert the additional container filter arguments and can optionally
@@ -655,24 +655,35 @@ def doctest_PJContainer_find():
 
     Let's now search and receive documents as result:
 
-      >>> res = dm.root['people'].raw_find({'name': {'$regex': '^Ro.*'}})
+      >>> import pjpersist.sqlbuilder as sb
+
+      >>> datafld = sb.Field('person', 'data')
+      >>> fld = sb.JSON_GETITEM_TEXT(datafld, 'name')
+      >>> qry = fld.startswith('Ro')
+
+      # >>> qry.__sqlrepr__('postgres')
+      # "(((person.data) ->> ('name')) LIKE ('Ro%') ESCAPE E'\\\\')"
+
+      >>> res = dm.root['people'].raw_find(qry)
       >>> pprint(list(res))
-      [{u'_id': ObjectId('4e7eb152e138234158000004'),
-        u'key': u'roy',
-        u'name': u'Roy',
-        u'parent': DBRef(u'pjpersist.zope.container.PJContainer',
-                         ObjectId('4e7eb152e138234158000000'),
-                         u'pjpersist_container_test')},
-       {u'_id': ObjectId('4e7eb152e138234158000005'),
-        u'key': u'roger',
-        u'name': u'Roger',
-        u'parent': DBRef(u'pjpersist.zope.container.PJContainer',
-                         ObjectId('4e7eb152e138234158000000'),
-                         u'pjpersist_container_test')}]
+      [['00000000-0000-0000-0000-000000000000',
+        {u'key': u'roy',
+         u'name': u'Roy',
+         u'parent': {u'_py_type': u'DBREF',
+                     u'database': u'pjpersist_test',
+                     u'id': u'00000000-0000-0000-0000-000000000000',
+                     u'table': u'pjpersist_dot_zope_dot_container_dot_PJContainer'}}],
+       ['00000000-0000-0000-0000-000000000000',
+        {u'key': u'roger',
+         u'name': u'Roger',
+         u'parent': {u'_py_type': u'DBREF',
+                     u'database': u'pjpersist_test',
+                     u'id': u'00000000-0000-0000-0000-000000000000',
+                     u'table': u'pjpersist_dot_zope_dot_container_dot_PJContainer'}}]]
 
     And now the same query, but this time with object results:
 
-      >>> res = dm.root['people'].find({'name': {'$regex': '^Ro.*'}})
+      >>> res = dm.root['people'].find(qry)
       >>> pprint(list(res))
       [<Person Roy>, <Person Roger>]
 
@@ -685,31 +696,36 @@ def doctest_PJContainer_find():
 
     You can also search for a single result:
 
-      >>> res = dm.root['people'].raw_find_one({'name': {'$regex': '^St.*'}})
+      >>> qry2 = fld.startswith('St')
+      >>> res = dm.root['people'].raw_find_one(qry2)
       >>> pprint(res)
-      {u'_id': ObjectId('4e7eb259e138234289000003'),
-       u'key': u'stephan',
-       u'name': u'Stephan',
-       u'parent': DBRef(u'pjpersist.zope.container.PJContainer',
-                        ObjectId('4e7eb259e138234289000000'),
-                        u'pjpersist_container_test')}
+      ['00000000-0000-0000-0000-000000000000',
+       {u'key': u'stephan',
+        u'name': u'Stephan',
+        u'parent': {u'_py_type': u'DBREF',
+                    u'database': u'pjpersist_test',
+                    u'id': u'00000000-0000-0000-0000-000000000000',
+                    u'table': u'pjpersist_dot_zope_dot_container_dot_PJContainer'}}]
 
-      >>> stephan = dm.root['people'].find_one({'name': {'$regex': '^St.*'}})
+      >>> stephan = dm.root['people'].find_one(qry2)
       >>> pprint(stephan)
       <Person Stephan>
 
     If no result is found, ``None`` is returned:
 
-      >>> dm.root['people'].find_one({'name': {'$regex': '^XXX.*'}})
+      >>> qry3 = fld.startswith('XXX')
+      >>> dm.root['people'].find_one(qry3)
 
-    If there is no spec, then simply the first item is returned:
+    A query or ID must be passed:
 
       >>> dm.root['people'].find_one()
-      <Person Stephan>
+      Traceback (most recent call last):
+      ...
+      ValueError: Missing parameter, at least qry or id must be specified.
 
     On the other hand, if the spec is an id, we look for it instead:
 
-      >>> dm.root['people'].find_one(stephan._p_oid.id)
+      >>> dm.root['people'].find_one(id=stephan._p_oid.id)
       <Person Stephan>
     """
 
