@@ -82,8 +82,36 @@ def test_convert():
           ...
         ValueError: Too many elements: {'$eq': 1, 'foo': 'bar'}
 
+    The $not operator:
+
+        >>> run(mq.convert({'quantity': {'$not': {'$gt': 20}}}))
+        NOT (((Bar.data) ->> ('quantity')) > (20))
+
     """
 
+def test_convert_logical():
+    """Test mquery.convert logical operators.
+
+    Setup:
+
+        >>> mq = mquery.Converter("Bar", "data")
+        >>> mq.simplified = True
+
+    There are three operators that aggregate  lists of queries:
+
+        >>> run(mq.convert({
+        ...     '$and': [{'mode': 1}, {'foo': 'bar'}]}))
+        ((((Bar.data) ->> ('mode')) = (1)) AND (((Bar.data) ->> ('foo')) = ('bar')))
+
+        >>> run(mq.convert({
+        ...     '$or': [{'mode': 1}, {'foo': 'bar'}]}))
+        ((((Bar.data) ->> ('mode')) = (1)) OR (((Bar.data) ->> ('foo')) = ('bar')))
+
+        >>> run(mq.convert({
+        ...     '$nor': [{'mode': 1}, {'foo': 'bar'}]}))
+        NOT ((((Bar.data) ->> ('mode')) = (1)) OR (((Bar.data) ->> ('foo')) = ('bar')))
+
+    """
 
 def test_suite():
     return doctest.DocTestSuite(

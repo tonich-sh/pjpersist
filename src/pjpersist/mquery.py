@@ -32,7 +32,18 @@ class Converter(object):
                 accessor = sb.JSON_GETITEM_TEXT(doc, key)
             else:
                 accessor = sb.JSON_PATH_TEXT(doc, key.split("."))
-            if isinstance(value, dict):
+
+            if key in ('$and', '$or', '$nor'):
+                if not isinstance(value, (list, tuple)):
+                    raise ValueError("Argument must be a list: %r" % value)
+                oper = {
+                    '$and': sb.AND,
+                    '$or': sb.OR,
+                    '$nor': lambda *items: sb.NOT(sb.OR(*items))
+                }[key]
+                clauses.append(oper(*(self.convert(expr) for expr in value)))
+
+            elif isinstance(value, dict):
                 if len(value) != 1:
                     raise ValueError("Too many elements: %r" % value)
                 operator, operand = value.items()[0]
@@ -67,3 +78,11 @@ class Converter(object):
             return sb.IN(op1, op2)
         if operator == '$nin':
             return sb.NOT(sb.IN(op1, op2))
+        if operator == '$not':
+            # MongoDB's rationalization for this operator:
+            # it matches when op1 does not pass the condition
+            # or when op1 is not set at all.
+            operator2, op3 = op2.items()[0]
+            return sb.NOT(self.operator_expr(operator2, op1, op3))
+        else:
+            raise ValueError("Unrecognized operator %s" % operator)
