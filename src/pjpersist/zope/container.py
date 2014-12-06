@@ -344,9 +344,10 @@ class PJContainer(contained.Contained,
         # If the cache contains all objects, we can just return the cache keys.
         if self._cache_complete:
             return self._cache.iteritems()
-        result = self.raw_find()
-        items = [(doc[self._pj_mapping_key], self._load_one(doc))
-                 for doc in result]
+        result = self.raw_find(self._pj_get_items_filter())
+        items = [(row['data'][self._pj_mapping_key],
+                  self._load_one(row['id'], row['data']))
+                 for row in result]
         # Signal the container that the cache is now complete.
         self._cache_mark_complete()
         # Return an iterator of the items.
@@ -463,9 +464,10 @@ class IdNamesPJContainer(PJContainer):
         if self._cache_complete:
             return self._cache.iteritems()
         # Load all objects from the database.
-        result = self.raw_find()
-        items = [(unicode(doc['_id']), self._load_one(doc))
-                 for doc in result]
+        result = self.raw_find(self._pj_get_items_filter())
+        items = [(row['data']['_id'],
+                  self._load_one(row['id'], row['data']))
+                 for row in result]
         # Signal the container that the cache is now complete.
         self._cache_mark_complete()
         # Return an iterator of the items.
