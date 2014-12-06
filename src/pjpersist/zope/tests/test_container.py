@@ -377,15 +377,6 @@ def doctest_PJContainer_basic():
 
       >>> zope.component.provideHandler(handleObjectModifiedEvent)
 
-    We have to tell the system how to get a datamanager, because the PG table
-    gets created on __init__:
-
-      >>> class Provider(object):
-      ...     zope.interface.implements(interfaces.IPJDataManagerProvider)
-      ...     def get(self):
-      ...         return dm
-      >>> zope.component.provideUtility(Provider())
-
     Let's add a container to the root:
 
       >>> transaction.commit()
@@ -486,18 +477,8 @@ def doctest_PJContainer_constructor():
       >>> transaction.commit()
       >>> c = container.PJContainer(
       ...     'person',
-      ...     database = 'testdb',
       ...     mapping_key = 'name',
       ...     parent_key = 'site')
-
-    The database allows you to specify a custom database in which the items
-    are located. Otherwise the datamanager's default database is used.
-
-      >>> c._pj_database
-      'testdb'
-
-    The mapping key is the key/attribute of the contained items in which their
-    name/key within the mapping is stored.
 
       >>> c._pj_mapping_key
       'name'
@@ -1392,6 +1373,14 @@ def handleObjectModifiedEvent(object, event):
 def setUp(test):
     placelesssetup.setUp(test)
     testing.setUp(test)
+
+    # since the table gets created in PJContainer.__init__ we need to provide
+    # a IPJDataManagerProvider
+    class Provider(object):
+        zope.interface.implements(interfaces.IPJDataManagerProvider)
+        def get(self):
+            return test.globs['dm']
+    zope.component.provideUtility(Provider())
 
     # silence this, otherwise half-baked objects raise exceptions
     # on trying to __repr__ missing attributes
