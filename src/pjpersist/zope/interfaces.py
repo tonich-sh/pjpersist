@@ -67,7 +67,7 @@ class IPJContainer(zope.interface.Interface):
         This can be useful to make custom queries against the table.
         """
 
-    def raw_find(qry):
+    def raw_find(qry, fields=()):
         """Return a raw psycopg result cursor for the specified query.
 
         The qry is updated to also contain the container's filter condition.
