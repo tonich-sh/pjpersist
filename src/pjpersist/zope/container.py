@@ -395,7 +395,7 @@ class PJContainer(contained.Contained,
         elif id is not None:
             qry = qry & (tbl.id == id)
         qry = self._pj_add_items_filter(qry)
-        qstr = qry.__sqlrepr__('postgres')
+        #qstr = qry.__sqlrepr__('postgres')
 
         with self._pj_jar.getCursor() as cur:
             cur.execute(sb.Select(sb.Field(self._pj_table, '*'), qry))
@@ -425,15 +425,15 @@ class IdNamesPJContainer(PJContainer):
 
     @property
     def _pj_remove_documents(self):
-        # Objects must be removed, since removing the _id of a document is not
+        # Objects must be removed, since removing the id of a document is not
         # allowed.
         return True
 
-    def _cache_get_key(self, doc):
-        return unicode(doc['_id'])
+    def _cache_get_key(self, id, doc):
+        return id
 
-    def _locate(self, obj, doc):
-        obj._v_name = unicode(doc['_id'])
+    def _locate(self, obj, id, doc):
+        obj._v_name = id
         obj._v_parent = self
 
     def __getitem__(self, key):
@@ -455,15 +455,15 @@ class IdNamesPJContainer(PJContainer):
         if self._cache_complete:
             return key in self._cache
         # Look in PostGreSQL.
-        return self.raw_find_one(id=key) is not None
+        return self.raw_find_one(id=key)[0] is not None
 
     def __iter__(self):
         # If the cache contains all objects, we can just return the cache keys.
         if self._cache_complete:
             return iter(self._cache)
         # Look up all ids in PostGreSQL.
-        result = self.raw_find(fields=None)
-        return iter(unicode(doc['_id']) for doc in result)
+        result = self.raw_find(None)
+        return iter(unicode(row['id']) for row in result)
 
     def iteritems(self):
         # If the cache contains all objects, we can just return the cache keys.
@@ -471,7 +471,7 @@ class IdNamesPJContainer(PJContainer):
             return self._cache.iteritems()
         # Load all objects from the database.
         result = self.raw_find(self._pj_get_items_filter())
-        items = [(row['data']['_id'],
+        items = [(row['id'],
                   self._load_one(row['id'], row['data']))
                  for row in result]
         # Signal the container that the cache is now complete.

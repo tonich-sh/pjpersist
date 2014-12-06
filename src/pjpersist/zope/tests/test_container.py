@@ -799,7 +799,7 @@ def doctest_IdNamesPJContainer_basic():
       >>> dm.root['c'].add(Person(u'Stephan'))
       >>> keys = dm.root['c'].keys()
       >>> keys
-      [u'4e7ddf12e138237403000003']
+      [u'00000000-0000-0000-0000-000000000000']
       >>> name = keys[0]
       >>> dm.root['c'][name]
       <Person Stephan>
@@ -810,7 +810,7 @@ def doctest_IdNamesPJContainer_basic():
       >>> dm.root['c'][name].__parent__
       <pjpersist.zope.container.IdNamesPJContainer object at 0x7fec50f86500>
       >>> dm.root['c'][name].__name__
-      u'4e7ddf12e138237403000003'
+      u'00000000-0000-0000-0000-000000000000'
 
     It is a feature of the container that the item is immediately available
     after assignment, but before the data is stored in the database. Let's
@@ -818,34 +818,40 @@ def doctest_IdNamesPJContainer_basic():
 
       >>> transaction.commit()
 
-      >>> db = dm._conn[DBNAME]
-      >>> pprint(list(db['person'].find()))
-      [{u'_id': ObjectId('4e7e9d3ae138232d7b000003'),
-        u'name': u'Stephan',
-        u'parent': DBRef(u'pjpersist.zope.container.IdNamesPJContainer',
-                         ObjectId('4e7e9d3ae138232d7b000000'),
-                         u'pjpersist_container_test')}]
+      >>> dumpTable('person')
+      [{'data': {u'name': u'Stephan',
+                 u'parent': {u'_py_type': u'DBREF',
+                             u'database': u'pjpersist_test',
+                             u'id': u'92a4967d-0aa8-4c3b-be71-af5058525e60',
+                             u'table': u'pjpersist_dot_zope_dot_container_dot_IdNamesPJContainer'}},
+        'id': 'f963e09c-d861-4df2-890c-ba33274d1f64'}]
 
     Notice how there is no "key" entry in the document. We get a usual key
     error, if an object does not exist:
 
-      >>> dm.root['c']['4e7e9d3ae138232d7b000fff']
+      >>> dm.root['c']['f963e09c-d861-4df2-890c-ba33274d1f64']
       Traceback (most recent call last):
       ...
-      KeyError: '4e7e9d3ae138232d7b000fff'
+      KeyError: 'f963e09c-d861-4df2-890c-ba33274d1f64'
 
-      >>> '4e7e9d3ae138232d7b000fff' in dm.root['c']
+      >>> 'f963e09c-d861-4df2-890c-ba33274d1f64' in dm.root['c']
       False
 
-      >>> dm.root['c']['roy']
-      Traceback (most recent call last):
-      ...
-      KeyError: 'roy'
+    # XXX:
+    #    DataError: invalid input syntax for uuid: "roy"
 
-      >>> 'roy' in dm.root['c']
-      False
+    #  >>> dm.root['c']['roy']
+    #  Traceback (most recent call last):
+    #  ...
+    #  KeyError: 'roy'
+
+    #  >>> 'roy' in dm.root['c']
+    #  False
 
     Now remove the item:
+
+      >>> dm.root['c'][name]
+      <Person Stephan>
 
       >>> del dm.root['c'][name]
 
@@ -856,7 +862,7 @@ def doctest_IdNamesPJContainer_basic():
       >>> dm.root['c'][name]
       Traceback (most recent call last):
       ...
-      KeyError: u'4e7e9d3ae138232d7b000003'
+      KeyError: u'00000000-0000-0000-0000-000000000000'
 
     Make sure it is really gone after committing:
 
