@@ -167,16 +167,17 @@ class PJContainer(contained.Contained,
         # Make sure that we only look through objects that have the mapping
         # key. Objects not having the mapping key cannot be part of the
         # table.
+        datafld = sb.Field(self._pj_table, 'data')
         if self._pj_mapping_key is not None:
             queries.append(
-                sb.JSONB_CONTAINS_ALL('data', [self._pj_mapping_key]))
+                sb.JSONB_CONTAINS(datafld, self._pj_mapping_key))
         # XXX: Reactivate once we found a decent way of dealing with that.
         #if self._pj_parent_key is not None:
         #    gs = self._pj_jar._writer.get_state
         #    # XXX: Urgently need support from alga to provide more query
         #    # capabilities.
         #    queries.append(
-        #        sb.JSONB_SUPERSET('data', """'{"%s": %r}'""" %(
+        #        sb.JSONB_SUPERSET(datafld, """'{"%s": %r}'""" %(
         #            self._pj_parent_key, gs(self._pj_get_parent_key_value()))
         return sb.AND(*queries)
 
@@ -248,8 +249,10 @@ class PJContainer(contained.Contained,
         # The cache cannot help, so the item is looked up in the database.
         # XXX: BIG CONSTRUCTION ZONE, NEED EASY WAY TO GENERATE
         #      '{"key": JSON_VALUE}'
-        filter[self._pj_mapping_key] = key
-        obj = self.find_one(sb)
+
+        fld = sb.JSON_GETITEM_TEXT(sb.Field(self._pj_table, 'data'), self._pj_mapping_key)
+        qry = (fld == key)
+        obj = self.find_one(qry)
         if obj is None:
             raise KeyError(key)
         return obj
@@ -364,7 +367,9 @@ class PJContainer(contained.Contained,
             qry = (tbl.id == id)
         elif id is not None:
             qry = qry & (tbl.id == id)
-        self._pj_add_items_filter(qry)
+        qry = self._pj_add_items_filter(qry)
+        qstr = qry.__sqlrepr__('postgres')
+
         with self._pj_jar.getCursor() as cur:
             cur.execute(sb.Select(sb.Field(self._pj_table, '*'), qry))
             if cur.rowcount == 0:
