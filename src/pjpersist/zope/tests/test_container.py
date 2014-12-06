@@ -415,13 +415,14 @@ def doctest_PJContainer_basic():
 
       >>> transaction.commit()
 
-      >>> pprint(list(db['person'].find()))
-      [{u'_id': ObjectId('4e7e9d3ae138232d7b000003'),
-        u'key': u'stephan',
-        u'name': u'Stephan',
-        u'parent': DBRef(u'pjpersist.zope.container.PJContainer',
-                         ObjectId('4e7e9d3ae138232d7b000000'),
-                         u'pjpersist_container_test')}]
+      >>> dumpTable('person')
+      [{'data': {u'key': u'stephan',
+                 u'name': u'Stephan',
+                 u'parent': {u'_py_type': u'DBREF',
+                             u'database': u'pjpersist_test',
+                             u'id': u'5a9a2d2c-807a-44fb-84a2-e4320df95c4e',
+                             u'table': u'pjpersist_dot_zope_dot_container_dot_PJContainer'}},
+        'id': '591d1116-56e7-4b5b-baec-d9e311de57e7'}]
 
       >>> 'stephan' in dm.root['c']
       True

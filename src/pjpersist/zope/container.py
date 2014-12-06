@@ -250,7 +250,8 @@ class PJContainer(contained.Contained,
         # XXX: BIG CONSTRUCTION ZONE, NEED EASY WAY TO GENERATE
         #      '{"key": JSON_VALUE}'
 
-        fld = sb.JSON_GETITEM_TEXT(sb.Field(self._pj_table, 'data'), self._pj_mapping_key)
+        datafld = sb.Field(self._pj_table, 'data')
+        fld = sb.JSON_GETITEM_TEXT(datafld, self._pj_mapping_key)
         qry = (fld == key)
         obj = self.find_one(qry)
         if obj is None:
@@ -326,8 +327,10 @@ class PJContainer(contained.Contained,
         # If the cache contains all objects, we can just return the cache keys.
         if self._cache_complete:
             return iter(self._cache)
-        result = self.raw_find(
-            {self._pj_mapping_key: {'$ne': None}}, fields=(self._pj_mapping_key,))
+        datafld = sb.Field(self._pj_table, 'data')
+        fld = sb.JSON_GETITEM_TEXT(datafld, self._pj_mapping_key)
+        qry = (fld != None)
+        result = self.raw_find(qry, fields=(self._pj_mapping_key,))
         return iter(doc[self._pj_mapping_key] for doc in result)
 
     def keys(self):
@@ -345,15 +348,23 @@ class PJContainer(contained.Contained,
         # Return an iterator of the items.
         return iter(items)
 
-    def raw_find(self, spec=None, *args, **kwargs):
-        if spec is None:
-            spec = {}
-        self._pj_add_items_filter(spec)
-        return coll.find(spec, *args, **kwargs)
+    def raw_find(self, qry, fields=()):
+        qry = self._pj_add_items_filter(qry)
+        qstr = qry.__sqlrepr__('postgres')
 
-    def find(self, spec=None, *args, **kwargs):
+        with self._pj_jar.getCursor() as cur:
+            if not fields:
+                fields = sb.Field(self._pj_table, '*')
+            else:
+                datafld = sb.Field(self._pj_table, 'data')
+                fields = [sb.ColumnAS(sb.JSON_GETITEM_TEXT(datafld, name), name)
+                          for name in fields]
+            cur.execute(sb.Select(fields, qry))
+            return cur.fetchall()
+
+    def find(self, qry):
         # Search for matching objects.
-        result = self.raw_find(spec, *args, **kwargs)
+        result = self.raw_find(qry)
         for doc in result:
             obj = self._load_one(doc)
             yield obj
@@ -376,7 +387,7 @@ class PJContainer(contained.Contained,
                 return None, None
             if cur.rowcount > 1:
                 raise ValueError('Multiple results returned.')
-        return cur.fetchone()
+            return cur.fetchone()
 
     def find_one(self, qry=None, id=None):
         id, doc = self.raw_find_one(qry, id)
