@@ -20,6 +20,7 @@ import psycopg2
 import psycopg2.extensions
 import psycopg2.extras
 import pjpersist.sqlbuilder as sb
+import re
 import sys
 import transaction
 import uuid
@@ -81,7 +82,31 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
         # XXX: Optimization opportunity to store returned JSONB docs in the
         # cache of the data manager. (SR)
 
-        return super(PJPersistCursor, self).execute(sql, args)
+        # XXX: need to set a savepoint, just in case the real execute
+        #      fails, it would take down all further commands
+        super(PJPersistCursor, self).execute("SAVEPOINT before_execute;")
+
+        try:
+            return super(PJPersistCursor, self).execute(sql, args)
+        except psycopg2.ProgrammingError, e:
+            # XXX: ugly: we're creating here missing tables on the fly
+            msg = e.message
+            # if the exception message matches
+            m = re.search('relation "(.*?)" does not exist', msg)
+            if m:
+                # need to rollback to the above savepoint, otherwise
+                # PG would just ignore any further command
+                super(PJPersistCursor, self).execute(
+                    "ROLLBACK TO SAVEPOINT before_execute;")
+
+                # we extract the tableName from the exception message
+                tableName = m.group(1)
+
+                self.datamanager._create_doc_table(
+                    self.datamanager.database, tableName)
+                return super(PJPersistCursor, self).execute(sql, args)
+            # otherwise let it fly away
+            raise
 
 
 class Root(UserDict.DictMixin):

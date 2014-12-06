@@ -1029,6 +1029,7 @@ class Campaigns(container.PJContainer):
 
     def __init__(self, name):
         self.name = name
+        super(Campaigns, self).__init__()
 
     def add(self, campaign):
         self[campaign.name] = campaign
@@ -1067,7 +1068,7 @@ class PersonItem(PJItem):
 
 
 def doctest_Realworldish():
-    """Let's see some real worldish hierarchic structure persisted
+    """Let's see some real worldish hierarchic structure is persisted
 
     Let's make sure events are fired correctly:
 
@@ -1078,10 +1079,8 @@ def doctest_Realworldish():
       >>> transaction.commit()
       >>> dm.root['c'] = Campaigns('foobar')
 
-      >>> db = dm._conn[DBNAME]
-      >>> pprint(list(db['pjpersist.zope.tests.test_container.Campaigns'].find()))
-      [{u'_id': ObjectId('4e7ddf12e138237403000000'),
-        u'name': u'foobar'}]
+      >>> dumpTable('pjpersist_dot_zope_dot_tests_dot_test_container_dot_Campaigns')
+      [{'data': {u'name': u'foobar'}, 'id': '3768d655-5564-45aa-810d-2ff0188463a7'}]
 
     It is unfortunate that the '_pj_table' attribute is set. This is
     avoidable using a sub-class.
@@ -1104,13 +1103,14 @@ def doctest_Realworldish():
 
       >>> transaction.commit()
 
-      >>> pprint(list(db['campaigns'].find()))
-      [{u'_id': ObjectId('4e7ddf12e138237403000000'),
-        u'key': u'one',
-        u'name': u'one',
-        u'parent': DBRef(u'pjpersist.zope.tests.test_container.Campaigns',
-            ObjectId('4e7ddf12e138237403000000'),
-            u'pjpersist_container_test')}]
+      >>> dumpTable(Campaigns._pj_table)
+      [{'data': {u'key': u'one',
+                 u'name': u'one',
+                 u'parent': {u'_py_type': u'DBREF',
+                             u'database': u'pjpersist_test',
+                             u'id': u'f76169c4-472e-4f0b-99e3-d5432a432051',
+                             u'table': u'pjpersist_dot_zope_dot_tests_dot_test_container_dot_Campaigns'}},
+        'id': '64c76abf-7a44-4f8b-8d50-25e162246835'}]
 
       >>> 'one' in dm.root['c']
       True
