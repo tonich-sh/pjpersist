@@ -29,6 +29,7 @@ import zope.lifecycleevent
 from pprint import pprint
 from zope.exceptions import exceptionformatter
 from zope.app.testing import placelesssetup
+from zope.container.interfaces import IContainer
 from zope.container import contained, btree
 from zope.interface.verify import verifyObject
 from zope.interface.verify import verifyClass
@@ -1369,11 +1370,9 @@ class PJContainedInterfaceTest(unittest.TestCase):
 class SimplePJContainerInterfaceTest(unittest.TestCase):
 
     def test_verifyClass(self):
-        from zope.container.interfaces import IContainer
         self.assertTrue(verifyClass(IContainer, container.SimplePJContainer))
 
     def test_verifyObject(self):
-        from zope.container.interfaces import IContainer
         self.assertTrue(verifyObject(IContainer, container.SimplePJContainer()))
 
 
@@ -1381,9 +1380,13 @@ class PJContainerInterfaceTest(unittest.TestCase):
 
     def test_verifyClass(self):
         self.assertTrue(
+            verifyClass(IContainer, container.PJContainer))
+        self.assertTrue(
             verifyClass(zinterfaces.IPJContainer, container.PJContainer))
 
     def test_verifyObject(self):
+        self.assertTrue(
+            verifyObject(IContainer, container.PJContainer()))
         self.assertTrue(
             verifyObject(zinterfaces.IPJContainer, container.PJContainer()))
 
@@ -1392,9 +1395,13 @@ class IdNamesPJContainerInterfaceTest(unittest.TestCase):
 
     def test_verifyClass(self):
         self.assertTrue(
+            verifyClass(IContainer, container.IdNamesPJContainer))
+        self.assertTrue(
             verifyClass(zinterfaces.IPJContainer, container.IdNamesPJContainer))
 
     def test_verifyObject(self):
+        self.assertTrue(
+            verifyObject(IContainer, container.IdNamesPJContainer()))
         self.assertTrue(
             verifyObject(zinterfaces.IPJContainer, container.IdNamesPJContainer()))
 
@@ -1403,9 +1410,13 @@ class AllItemsPJContainerInterfaceTest(unittest.TestCase):
 
     def test_verifyClass(self):
         self.assertTrue(
+            verifyClass(IContainer, container.AllItemsPJContainer))
+        self.assertTrue(
             verifyClass(zinterfaces.IPJContainer, container.AllItemsPJContainer))
 
     def test_verifyObject(self):
+        self.assertTrue(
+            verifyObject(IContainer, container.AllItemsPJContainer()))
         self.assertTrue(
             verifyObject(zinterfaces.IPJContainer, container.AllItemsPJContainer()))
 
@@ -1414,9 +1425,13 @@ class SubDocumentPJContainerInterfaceTest(unittest.TestCase):
 
     def test_verifyClass(self):
         self.assertTrue(
+            verifyClass(IContainer, container.SubDocumentPJContainer))
+        self.assertTrue(
             verifyClass(zinterfaces.IPJContainer, container.SubDocumentPJContainer))
 
     def test_verifyObject(self):
+        self.assertTrue(
+            verifyObject(IContainer, container.SubDocumentPJContainer()))
         self.assertTrue(
             verifyObject(zinterfaces.IPJContainer, container.SubDocumentPJContainer()))
 
