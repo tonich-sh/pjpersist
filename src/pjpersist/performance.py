@@ -11,12 +11,12 @@
 # FOR A PARTICULAR PURPOSE.
 #
 ##############################################################################
-"""Mongo Persistence Performance Test"""
+"""PJ Persistence Performance Test"""
 from __future__ import absolute_import
 import optparse
 import os
 import persistent
-import pymongo
+import psycopg2
 import random
 import sys
 import tempfile
@@ -25,7 +25,7 @@ import transaction
 import cPickle
 import cProfile
 
-from pjpersist import conflict, datamanager
+from pjpersist import datamanager
 from pjpersist.zope import container
 
 import zope.container
@@ -37,21 +37,20 @@ import ZODB.FileStorage
 MULTIPLE_CLASSES = True
 
 
-class People(container.AllItemsMongoContainer):
-    _p_mongo_collection = 'people'
-    _m_database = 'performance'
-    _m_collection = 'person'
-    _m_mapping_key = 'name'
+class People(container.AllItemsPJContainer):
+    _p_pj_table = 'people'
+    _pj_table = 'person'
+    _pj_mapping_key = 'name'
 
 class Address(persistent.Persistent):
-    _p_mongo_collection = 'address'
+    _p_pj_table = 'address'
 
     def __init__(self, city):
         self.city = city
 
-class Person(persistent.Persistent, container.MongoContained):
-    _p_mongo_collection = 'person'
-    _p_mongo_store_type = True
+class Person(persistent.Persistent, container.PJContained):
+    _p_pj_table = 'person'
+    _p_pj_store_type = True
 
     def __init__(self, name, age):
         self.name = name
@@ -190,19 +189,28 @@ class PerformanceBase(object):
             self.delete(people, peopleCnt)
 
 
-class PerformanceMongo(PerformanceBase):
+def getConnection(database=None):
+    return psycopg2.connect(
+        database=database or 'template1',
+        host='localhost', port=5433,
+        user='shoobx', password='shoobx')
+
+
+class PerformancePJ(PerformanceBase):
     personKlass = Person
     person2Klass = Person2
 
     def getPeople(self, options):
-        conn = pymongo.Connection('localhost', 27017, tz_aware=False)
-        dm = datamanager.MongoDataManager(
-            conn,
-            default_database='performance',
-            root_database='performance',
-            conflict_handler_factory=conflict.ResolvingSerialConflictHandler)
+        conn = getConnection()
+
+        dm = datamanager.PJDataManager(conn)
         if options.reload:
-            conn.drop_database('performance')
+            with conn.cursor() as cur:
+                cur.execute('END')
+                cur.execute('DROP DATABASE IF EXISTS performance')
+                cur.execute('CREATE DATABASE performance')
+            conn.commit()
+
             dm.root['people'] = people = People()
 
             # Profile inserts
@@ -318,7 +326,7 @@ def main(args=None):
         args = sys.argv[1:]
     options, args = parser.parse_args(args)
 
-    print 'MONGO ---------------'
-    PerformanceMongo().run_basic_crud(options)
+    print 'PJ ---------------'
+    PerformancePJ().run_basic_crud(options)
     print 'ZODB  ---------------'
     PerformanceZODB().run_basic_crud(options)
