@@ -67,9 +67,9 @@ def test_suite():
             setUp=setUp, tearDown=tearDown,
             checker=testing.checker,
             optionflags=testing.OPTIONFLAGS),
-        #doctest.DocFileSuite(
-        #    '../../../README.rst',
-        #    setUp=setUpRST, tearDown=tearDown,
-        #    checker=testing.checker,
-        #    optionflags=testing.OPTIONFLAGS),
+        doctest.DocFileSuite(
+            '../../../README.rst',
+            setUp=setUpRST, tearDown=tearDown,
+            checker=testing.checker,
+            optionflags=testing.OPTIONFLAGS),
         ))

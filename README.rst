@@ -3,7 +3,7 @@ pjpersist
 
 A Python PostGreSQL/JSONB Persistence Backend.
 
-Providing transparent persistence of python objects.
+Providing transparent persistence of Python objects.
 
 This document outlines the general capabilities of the ``pjpersist``
 package. ``pjpersist`` is a PostGreSQL/JSONB storage implementation for
@@ -35,7 +35,7 @@ Let's now define a simple persistent object:
   ...         self.visited = visited
   ...         self.phone = phone
   ...         self.birthday = birthday
-  ...         self.today = datetime.datetime.now()
+  ...         self.today = datetime.datetime(2014, 12, 4, 12, 30, 0)
   ...
   ...     def __str__(self):
   ...         return self.name
@@ -45,23 +45,26 @@ Let's create a new person and store it in PostGreSQL:
   >>> stephan = Person(u'Stephan')
   >>> dm.root['stephan'] = stephan
 
-By default, persistent objects are stored in a collection having the Python
-path of the class. Let's see what got stored in PostGreSQL:
+By default, persistent objects are stored in a tabke having the Python path of
+the class. Since table names cannot statewith an underscore and contain dots,
+we have to escpae the path a little bit. Let's see what got stored in
+PostGreSQL:
 
-  >>> dumpCollection('__main__.Person')
-  [{u'_id': ObjectId('51c0571eb25d2b2de8325726'),
-    u'address': None,
-    u'birthday': None,
-    u'friends': {},
-    u'name': u'Stephan',
-    u'phone': None,
-    u'today': datetime.datetime(2013, 6, 18, 14, 48, 30, 970000),
-    u'visited': []}]
+  >>> dumpTable('u__main___dot_Person')
+  [{'data': {u'address': None,
+             u'birthday': None,
+             u'friends': {},
+             u'name': u'Stephan',
+             u'phone': None,
+             u'today': {u'_py_type': u'datetime.datetime',
+                        u'components': [2014, 12, 4, 12, 30, 0]},
+             u'visited': []},
+    'id': u'0001020304050607080a0b0c0'}]
 
 Let's now add an address for Stephan. Addresses are also persistent objects:
 
   >>> class Address(persistent.Persistent, ReprMixin):
-  ...     _p_mongo_collection = 'address'
+  ...     _p_pj_table = 'address'
   ...
   ...     def __init__(self, city, zip):
   ...         self.city = city
@@ -76,23 +79,26 @@ We need to commit the transaction, to push the data to PostGreSQL:
 
   >>> transaction.commit()
 
-  >>> dumpCollection('address')
-  [{u'_id': ObjectId('51c05809b25d2b2e4f90cbdd'),
-    u'city': u'Maynard',
-    u'zip': u'01754'}]
+  >>> dumpTable('address')
+  [{'data': {u'city': u'Maynard', u'zip': u'01754'},
+    'id': u'0001020304050607080a0b0c0'}]
 
 As you can see, even the reference to the Address object looks nice and uses
 the standard PostGreSQL reference construct.
 
-  >>> dumpCollection('__main__.Person')
-  [{u'_id': ObjectId('51c05819b25d2b2ea58a4e55'),
-    u'address': DBRef(u'address', ObjectId('51c05819b25d2b2ea58a4e58'), u'pjpersist_test'),
-    u'birthday': None,
-    u'friends': {},
-    u'name': u'Stephan',
-    u'phone': None,
-    u'today': datetime.datetime(2013, 6, 18, 14, 52, 41, 133000),
-    u'visited': []}]
+  >>> dumpTable('u__main___dot_Person')
+  [{'data': {u'address': {u'_py_type': u'DBREF',
+                          u'database': u'pjpersist_test',
+                          u'id': u'0001020304050607080a0b0c0',
+                          u'table': u'address'},
+             u'birthday': None,
+             u'friends': {},
+             u'name': u'Stephan',
+             u'phone': None,
+             u'today': {u'_py_type': u'datetime.datetime',
+                        u'components': [2014, 12, 4, 12, 30, 0]},
+             u'visited': []},
+    'id': u'0001020304050607080a0b0c0'}]
 
 But what about arbitrary non-persistent, but picklable, objects?
 Well, let's create a phone number object for that:
@@ -111,18 +117,22 @@ Well, let's create a phone number object for that:
   >>> stephan.phone = Phone('+1', '978', '394-5124')
   >>> transaction.commit()
 
-  >>> dumpCollection('__main__.Person')
-  [{u'_id': ObjectId('51c059beb25d2b3157bf5adf'),
-    u'address': DBRef(u'address', ObjectId('51c059beb25d2b3157bf5ae2'), u'pjpersist_test'),
-    u'birthday': None,
-    u'friends': {},
-    u'name': u'Stephan',
-    u'phone': {u'_py_type': u'__main__.Phone',
-               u'area': u'978',
-               u'country': u'+1',
-               u'number': u'394-5124'},
-    u'today': datetime.datetime(2013, 6, 18, 14, 59, 42, 554000),
-    u'visited': []}]
+  >>> dumpTable('u__main___dot_Person')
+  [{'data': {u'address': {u'_py_type': u'DBREF',
+                          u'database': u'pjpersist_test',
+                          u'id': u'0001020304050607080a0b0c0',
+                          u'table': u'address'},
+             u'birthday': None,
+             u'friends': {},
+             u'name': u'Stephan',
+             u'phone': {u'_py_type': u'__main__.Phone',
+                        u'area': u'978',
+                        u'country': u'+1',
+                        u'number': u'394-5124'},
+             u'today': {u'_py_type': u'datetime.datetime',
+                        u'components': [2014, 12, 4, 12, 30, 0]},
+             u'visited': []},
+    'id': u'0001020304050607080a0b0c0'}]
 
 Let's now set various attributes:
 
@@ -134,27 +144,36 @@ Let's now set various attributes:
 Push the data to PostGreSQL, and dump the results:
 
   >>> transaction.commit()
-  >>> dumpCollection('__main__.Person')
-  [{u'_id': ObjectId('4e7ddf12e138237403000000'),
-    u'address': DBRef(u'address', ObjectId('4e7ddf12e138237403000000'), u'pjpersist_test'),
-    u'birthday': {u'_py_factory': u'datetime.date',
-                  u'_py_factory_args': [Binary('\x07\xbc\x01\x19', 0)]},
-    u'friends': {u'roy': DBRef(u'__main__.Person', ObjectId('4e7ddf12e138237403000000'), u'pjpersist_test')},
-    u'name': u'Stephan',
-    u'phone': {u'_py_type': u'__main__.Phone',
-               u'area': u'978',
-               u'country': u'+1',
-               u'number': u'394-5124'},
-    u'today': datetime.datetime(2011, 10, 1, 9, 45)
-    u'visited': [u'Germany', u'USA']},
-   {u'_id': ObjectId('4e7ddf12e138237403000000'),
-    u'address': None,
-    u'birthday': None,
-    u'friends': {},
-    u'name': u'Roy Mathew',
-    u'phone': None,
-    u'today': datetime.datetime(2011, 10, 1, 9, 45)
-    u'visited': []}]
+  >>> dumpTable('u__main___dot_Person')
+  [{'data': {u'address': {u'_py_type': u'DBREF',
+                          u'database': u'pjpersist_test',
+                          u'id': u'0001020304050607080a0b0c0',
+                          u'table': u'address'},
+             u'birthday': {u'_py_factory': u'datetime.date',
+                           u'_py_factory_args': [{u'_py_type': u'BINARY',
+                                                  u'data': u'B7wBGQ==\n'}]},
+             u'friends': {u'roy': {u'_py_type': u'DBREF',
+                                   u'database': u'pjpersist_test',
+                                   u'id': u'0001020304050607080a0b0c0',
+                                   u'table': u'u__main___dot_Person'}},
+             u'name': u'Stephan',
+             u'phone': {u'_py_type': u'__main__.Phone',
+                        u'area': u'978',
+                        u'country': u'+1',
+                        u'number': u'394-5124'},
+             u'today': {u'_py_type': u'datetime.datetime',
+                        u'components': [2014, 12, 4, 12, 30, 0]},
+             u'visited': [u'Germany', u'USA']},
+    'id': u'0001020304050607080a0b0c0'},
+   {'data': {u'address': None,
+             u'birthday': None,
+             u'friends': {},
+             u'name': u'Roy Mathew',
+             u'phone': None,
+             u'today': {u'_py_type': u'datetime.datetime',
+                        u'components': [2014, 12, 4, 12, 30, 0]},
+             u'visited': []},
+    'id': u'0001020304050607080a0b0c0'}]
 
 Of course all properties can be retrieved as python objects:
 
