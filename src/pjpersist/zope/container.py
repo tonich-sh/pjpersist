@@ -175,8 +175,7 @@ class PJContainer(contained.Contained,
         # container.
         if self._pj_parent_key is not None:
             pv = self._pj_jar._writer.get_state(self._pj_get_parent_key_value())
-            queries.append(
-                sb.JSON_GETITEM(datafld, self._pj_parent_key) == json.dumps(pv))
+            queries.append(sb.JGET(datafld, self._pj_parent_key) == pv)
         return sb.AND(*queries)
 
     def _pj_add_items_filter(self, qry):
