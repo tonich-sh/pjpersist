@@ -937,14 +937,14 @@ def doctest_SubDocumentPJContainer_basic():
       ContainerModifiedEvent: <ApplicationRoot>
 
       >>> transaction.commit()
-      >>> db = dm._conn[DBNAME]
-      >>> pprint(list(db['root'].find()))
-      [{u'_id': ObjectId('4e7ea67be138233711000001'),
-        u'data':
-         {u'people':
-          {u'_pj_table': u'person',
-           u'_py_persistent_type':
-               u'pjpersist.zope.container.SubDocumentPJContainer'}}}]
+      >>> dumpTable('root')
+      [{'data':
+          {u'data':
+              {u'people':
+                  {u'_pj_table': u'person',
+                   u'_py_persistent_type':
+                       u'pjpersist.zope.container.SubDocumentPJContainer'}}},
+      'id': u'0001020304050607080a0b0c0'}]
 
     It is unfortunate that the '_pj_table' attribute is set. This is
     avoidable using a sub-class. Let's make sure the container can be loaded
