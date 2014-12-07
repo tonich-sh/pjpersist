@@ -164,6 +164,7 @@ class PJContainer(contained.Contained,
             return 'zodb-'+''.join("%02x" % ord(x) for x in self._p_oid).strip()
 
     def _pj_get_items_filter(self):
+        """return a filter that selects the rows of the current container"""
         queries = []
         # Make sure that we only look through objects that have the mapping
         # key. Objects not having the mapping key cannot be part of the
@@ -218,14 +219,15 @@ class PJContainer(contained.Contained,
         return doc[self._pj_mapping_key]
 
     def _locate(self, obj, id, doc):
-        # Helper method that is only used when locating items that are already
-        # in the container and are simply loaded from PostGreSQL.
+        """Helper method that is only used when locating items that are already
+        in the container and are simply loaded from PostGreSQL."""
         if obj.__name__ is None:
             obj._v_name = doc[self._pj_mapping_key]
         if obj.__parent__ is None:
             obj._v_parent = self
 
     def _load_one(self, id, doc):
+        """Get the python object from the id/doc state"""
         obj = self._cache.get(self._cache_get_key(id, doc))
         if obj is not None:
             return obj
@@ -353,6 +355,8 @@ class PJContainer(contained.Contained,
         return iter(items)
 
     def _get_sb_fields(self, fields):
+        """Return sqlbuilder fields based on passed field names or * if no
+        fields are passed"""
         if not fields:
             res = sb.Field(self._pj_table, '*')
         else:
