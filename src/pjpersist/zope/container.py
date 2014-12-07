@@ -253,9 +253,6 @@ class PJContainer(contained.Contained,
         if self._cache_complete:
             raise KeyError(key)
         # The cache cannot help, so the item is looked up in the database.
-        # XXX: BIG CONSTRUCTION ZONE, NEED EASY WAY TO GENERATE
-        #      '{"key": JSON_VALUE}'
-
         datafld = sb.Field(self._pj_table, 'data')
         fld = sb.JSON_GETITEM_TEXT(datafld, self._pj_mapping_key)
         qry = (fld == key)
