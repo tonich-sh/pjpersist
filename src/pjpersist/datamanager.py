@@ -38,6 +38,8 @@ from pjpersist import interfaces, serialize
 PJ_ACCESS_LOGGING = False
 TABLE_LOG = logging.getLogger('pjpersist.table')
 
+PJ_AUTO_CREATE_TABLES = True
+
 LOG = logging.getLogger(__name__)
 
 psycopg2.extensions.register_type(psycopg2.extensions.UNICODE)
@@ -86,31 +88,35 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
         # XXX: Optimization opportunity to store returned JSONB docs in the
         # cache of the data manager. (SR)
 
-        # XXX: need to set a savepoint, just in case the real execute
-        #      fails, it would take down all further commands
-        super(PJPersistCursor, self).execute("SAVEPOINT before_execute;")
+        if PJ_AUTO_CREATE_TABLES:
+            # XXX: need to set a savepoint, just in case the real execute
+            #      fails, it would take down all further commands
+            super(PJPersistCursor, self).execute("SAVEPOINT before_execute;")
 
-        try:
-            return super(PJPersistCursor, self).execute(sql, args)
-        except psycopg2.ProgrammingError, e:
-            # XXX: ugly: we're creating here missing tables on the fly
-            msg = e.message
-            # if the exception message matches
-            m = re.search('relation "(.*?)" does not exist', msg)
-            if m:
-                # need to rollback to the above savepoint, otherwise
-                # PG would just ignore any further command
-                super(PJPersistCursor, self).execute(
-                    "ROLLBACK TO SAVEPOINT before_execute;")
-
-                # we extract the tableName from the exception message
-                tableName = m.group(1)
-
-                self.datamanager._create_doc_table(
-                    self.datamanager.database, tableName)
+            try:
                 return super(PJPersistCursor, self).execute(sql, args)
-            # otherwise let it fly away
-            raise
+            except psycopg2.ProgrammingError, e:
+                # XXX: ugly: we're creating here missing tables on the fly
+                msg = e.message
+                # if the exception message matches
+                m = re.search('relation "(.*?)" does not exist', msg)
+                if m:
+                    # need to rollback to the above savepoint, otherwise
+                    # PG would just ignore any further command
+                    super(PJPersistCursor, self).execute(
+                        "ROLLBACK TO SAVEPOINT before_execute;")
+
+                    # we extract the tableName from the exception message
+                    tableName = m.group(1)
+
+                    self.datamanager._create_doc_table(
+                        self.datamanager.database, tableName)
+                    return super(PJPersistCursor, self).execute(sql, args)
+                # otherwise let it fly away
+                raise
+        else:
+            # otherwise just execute the given sql
+            return super(PJPersistCursor, self).execute(sql, args)
 
 
 class Root(UserDict.DictMixin):
