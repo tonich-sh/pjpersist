@@ -61,12 +61,6 @@ class IPJContainer(zope.interface.Interface):
         Keys that are already in the passed in filter are not overwritten.
         """
 
-    def get_cursor():
-        """Get a psycopg cursor to the corrent database.
-
-        This can be useful to make custom queries against the table.
-        """
-
     def raw_find(qry, fields=()):
         """Return a raw psycopg result cursor for the specified query.
 
@@ -112,7 +106,7 @@ class IPJContainer(zope.interface.Interface):
         - otherwise ``getattr(value, _pj_mapping_key)``
         """
 
-    def clear(self):
+    def clear():
         """Delete all items from this container.
 
         Note, that this will not touch all items from the collection, but only

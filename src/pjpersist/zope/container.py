@@ -28,6 +28,7 @@ from pjpersist.zope import interfaces as zinterfaces
 
 USE_CONTAINER_CACHE = True
 
+
 class PJContained(contained.Contained):
 
     _v_name = None

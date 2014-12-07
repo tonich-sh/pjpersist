@@ -30,10 +30,13 @@ from pprint import pprint
 from zope.exceptions import exceptionformatter
 from zope.app.testing import placelesssetup
 from zope.container import contained, btree
+from zope.interface.verify import verifyObject
+from zope.interface.verify import verifyClass
 from zope.testing import cleanup, module, renormalizing
 
 from pjpersist import datamanager, interfaces, serialize, testing
 from pjpersist.zope import container
+from pjpersist.zope import interfaces as zinterfaces
 
 DBNAME = 'pjpersist_container_test'
 
@@ -1351,6 +1354,73 @@ def doctest_firing_events_IdNamesPJContainer():
 
     """
 
+
+class PJContainedInterfaceTest(unittest.TestCase):
+
+    def test_verifyClass(self):
+        from zope.location.interfaces import IContained
+        self.assertTrue(verifyClass(IContained, container.PJContained))
+
+    def test_verifyObject(self):
+        from zope.location.interfaces import IContained
+        self.assertTrue(verifyObject(IContained, container.PJContained()))
+
+
+class SimplePJContainerInterfaceTest(unittest.TestCase):
+
+    def test_verifyClass(self):
+        from zope.container.interfaces import IContainer
+        self.assertTrue(verifyClass(IContainer, container.SimplePJContainer))
+
+    def test_verifyObject(self):
+        from zope.container.interfaces import IContainer
+        self.assertTrue(verifyObject(IContainer, container.SimplePJContainer()))
+
+
+class PJContainerInterfaceTest(unittest.TestCase):
+
+    def test_verifyClass(self):
+        self.assertTrue(
+            verifyClass(zinterfaces.IPJContainer, container.PJContainer))
+
+    def test_verifyObject(self):
+        self.assertTrue(
+            verifyObject(zinterfaces.IPJContainer, container.PJContainer()))
+
+
+class IdNamesPJContainerInterfaceTest(unittest.TestCase):
+
+    def test_verifyClass(self):
+        self.assertTrue(
+            verifyClass(zinterfaces.IPJContainer, container.IdNamesPJContainer))
+
+    def test_verifyObject(self):
+        self.assertTrue(
+            verifyObject(zinterfaces.IPJContainer, container.IdNamesPJContainer()))
+
+
+class AllItemsPJContainerInterfaceTest(unittest.TestCase):
+
+    def test_verifyClass(self):
+        self.assertTrue(
+            verifyClass(zinterfaces.IPJContainer, container.AllItemsPJContainer))
+
+    def test_verifyObject(self):
+        self.assertTrue(
+            verifyObject(zinterfaces.IPJContainer, container.AllItemsPJContainer()))
+
+
+class SubDocumentPJContainerInterfaceTest(unittest.TestCase):
+
+    def test_verifyClass(self):
+        self.assertTrue(
+            verifyClass(zinterfaces.IPJContainer, container.SubDocumentPJContainer))
+
+    def test_verifyObject(self):
+        self.assertTrue(
+            verifyObject(zinterfaces.IPJContainer, container.SubDocumentPJContainer()))
+
+
 checker = renormalizing.RENormalizing([
     (re.compile(r'datetime.datetime(.*)'),
      'datetime.datetime(2011, 10, 1, 9, 45)'),
@@ -1428,4 +1498,10 @@ def test_suite():
         #                     #|doctest.REPORT_NDIFF
         #                     )
         #        ),
+        unittest.makeSuite(PJContainedInterfaceTest),
+        unittest.makeSuite(SimplePJContainerInterfaceTest),
+        unittest.makeSuite(PJContainerInterfaceTest),
+        unittest.makeSuite(IdNamesPJContainerInterfaceTest),
+        unittest.makeSuite(AllItemsPJContainerInterfaceTest),
+        unittest.makeSuite(SubDocumentPJContainerInterfaceTest),
         ))
