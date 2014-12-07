@@ -14,7 +14,6 @@
 ##############################################################################
 """PostGreSQL/JSONB Persistence Zope Containers"""
 import UserDict
-import uuid
 import persistent
 import transaction
 import zope.component
@@ -280,7 +279,7 @@ class PJContainer(contained.Contained,
         # When the key is None, we need to determine it.
         if key is None:
             if self._pj_mapping_key is None:
-                key = unicode(uuid.uuid4())
+                key = self._pj_jar.createId()
             else:
                 # we have _pj_mapping_key, use that attribute
                 key = getattr(value, self._pj_mapping_key)

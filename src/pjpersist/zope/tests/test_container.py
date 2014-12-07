@@ -270,7 +270,7 @@ def doctest_SimplePJContainer_basic():
       >>> dm.root['c'] = container.SimplePJContainer()
 
       >>> dumpTable(cn)
-      [{'data': {u'data': {}}, 'id': '87772716-c1e4-466d-8dfb-0ef8f7db3145'}]
+      [{'data': {u'data': {}}, 'id': u'0001020304050607080a0b0c0'}]
 
     As you can see, the serialization is very clean. Next we add a person.
 
@@ -307,7 +307,7 @@ def doctest_SimplePJContainer_basic():
                 u'id': u'0001020304050607080a0b0c0',
                 u'table': u'pjpersist_dot_zope_dot_container_dot_SimplePJContainer'},
            u'name': u'Stephan'},
-        'id': '0001020304050607080a0b0c0'}]
+        'id': u'0001020304050607080a0b0c0'}]
 
       >>> dm.root['c'].keys()
       [u'stephan']
@@ -320,9 +320,9 @@ def doctest_SimplePJContainer_basic():
       [{'data': {u'data':
           {u'stephan': {u'_py_type': u'DBREF',
                         u'database': u'pjpersist_test',
-                        u'id': u'967d3248-2ac8-4254-bbea-e0c22b6f6039',
+                        u'id': u'0001020304050607080a0b0c0',
                         u'table': u'person'}}},
-        'id': '6cf63e42-9e8f-4e63-8de7-3861cb6ce7d9'}]
+        'id': u'0001020304050607080a0b0c0'}]
 
       >>> dm.root['c'].items()
       [(u'stephan', <SimplePerson Stephan>)]
@@ -383,8 +383,7 @@ def doctest_PJContainer_basic():
       >>> dm.root['c'] = container.PJContainer('person')
 
       >>> dumpTable('pjpersist_dot_zope_dot_container_dot_PJContainer')
-      [{'data': {u'_pj_table': u'person'},
-        'id': '0001020304050607080a0b0c0'}]
+      [{'data': {u'_pj_table': u'person'}, 'id': u'0001020304050607080a0b0c0'}]
 
     It is unfortunate that the '_pj_table' attribute is set. This is
     avoidable using a sub-class.
@@ -412,9 +411,9 @@ def doctest_PJContainer_basic():
                  u'name': u'Stephan',
                  u'parent': {u'_py_type': u'DBREF',
                              u'database': u'pjpersist_test',
-                             u'id': u'5a9a2d2c-807a-44fb-84a2-e4320df95c4e',
+                             u'id': u'0001020304050607080a0b0c0',
                              u'table': u'pjpersist_dot_zope_dot_container_dot_PJContainer'}},
-        'id': '591d1116-56e7-4b5b-baec-d9e311de57e7'}]
+        'id': u'0001020304050607080a0b0c0'}]
 
       >>> 'stephan' in dm.root['c']
       True
@@ -666,19 +665,19 @@ def doctest_PJContainer_find():
 
       >>> res = dm.root['people'].raw_find(qry)
       >>> pprint(list(res))
-      [['00000000-0000-0000-0000-000000000000',
+      [[u'0001020304050607080a0b0c0',
         {u'key': u'roy',
          u'name': u'Roy',
          u'parent': {u'_py_type': u'DBREF',
                      u'database': u'pjpersist_test',
-                     u'id': u'00000000-0000-0000-0000-000000000000',
+                     u'id': u'0001020304050607080a0b0c0',
                      u'table': u'pjpersist_dot_zope_dot_container_dot_PJContainer'}}],
-       ['00000000-0000-0000-0000-000000000000',
+       [u'0001020304050607080a0b0c0',
         {u'key': u'roger',
          u'name': u'Roger',
          u'parent': {u'_py_type': u'DBREF',
                      u'database': u'pjpersist_test',
-                     u'id': u'00000000-0000-0000-0000-000000000000',
+                     u'id': u'0001020304050607080a0b0c0',
                      u'table': u'pjpersist_dot_zope_dot_container_dot_PJContainer'}}]]
 
     And now the same query, but this time with object results:
@@ -699,12 +698,12 @@ def doctest_PJContainer_find():
       >>> qry2 = fld.startswith('St')
       >>> res = dm.root['people'].raw_find_one(qry2)
       >>> pprint(res)
-      ['00000000-0000-0000-0000-000000000000',
+      [u'0001020304050607080a0b0c0',
        {u'key': u'stephan',
         u'name': u'Stephan',
         u'parent': {u'_py_type': u'DBREF',
                     u'database': u'pjpersist_test',
-                    u'id': u'00000000-0000-0000-0000-000000000000',
+                    u'id': u'0001020304050607080a0b0c0',
                     u'table': u'pjpersist_dot_zope_dot_container_dot_PJContainer'}}]
 
       >>> stephan = dm.root['people'].find_one(qry2)
@@ -815,7 +814,7 @@ def doctest_IdNamesPJContainer_basic():
       >>> dm.root['c'].add(Person(u'Stephan'))
       >>> keys = dm.root['c'].keys()
       >>> keys
-      [u'00000000-0000-0000-0000-000000000000']
+      [u'0001020304050607080a0b0c0']
       >>> name = keys[0]
       >>> dm.root['c'][name]
       <Person Stephan>
@@ -826,7 +825,7 @@ def doctest_IdNamesPJContainer_basic():
       >>> dm.root['c'][name].__parent__
       <pjpersist.zope.container.IdNamesPJContainer object at 0x7fec50f86500>
       >>> dm.root['c'][name].__name__
-      u'00000000-0000-0000-0000-000000000000'
+      u'0001020304050607080a0b0c0'
 
     It is a feature of the container that the item is immediately available
     after assignment, but before the data is stored in the database. Let's
@@ -838,31 +837,28 @@ def doctest_IdNamesPJContainer_basic():
       [{'data': {u'name': u'Stephan',
                  u'parent': {u'_py_type': u'DBREF',
                              u'database': u'pjpersist_test',
-                             u'id': u'92a4967d-0aa8-4c3b-be71-af5058525e60',
+                             u'id': u'0001020304050607080a0b0c0',
                              u'table': u'pjpersist_dot_zope_dot_container_dot_IdNamesPJContainer'}},
-        'id': 'f963e09c-d861-4df2-890c-ba33274d1f64'}]
+        'id': u'0001020304050607080a0b0c0'}]
 
     Notice how there is no "key" entry in the document. We get a usual key
     error, if an object does not exist:
 
-      >>> dm.root['c']['f963e09c-d861-4df2-890c-ba33274d1f64']
+      >>> dm.root['c']['0001020304050607080a0b0c0']
       Traceback (most recent call last):
       ...
-      KeyError: 'f963e09c-d861-4df2-890c-ba33274d1f64'
+      KeyError: '0001020304050607080a0b0c0'
 
-      >>> 'f963e09c-d861-4df2-890c-ba33274d1f64' in dm.root['c']
+      >>> '0001020304050607080a0b0c0' in dm.root['c']
       False
 
-    # XXX:
-    #    DataError: invalid input syntax for uuid: "roy"
+      >>> dm.root['c']['roy']
+      Traceback (most recent call last):
+      ...
+      KeyError: 'roy'
 
-    #  >>> dm.root['c']['roy']
-    #  Traceback (most recent call last):
-    #  ...
-    #  KeyError: 'roy'
-
-    #  >>> 'roy' in dm.root['c']
-    #  False
+      >>> 'roy' in dm.root['c']
+      False
 
     Now remove the item:
 
@@ -878,7 +874,7 @@ def doctest_IdNamesPJContainer_basic():
       >>> dm.root['c'][name]
       Traceback (most recent call last):
       ...
-      KeyError: u'00000000-0000-0000-0000-000000000000'
+      KeyError: u'0001020304050607080a0b0c0'
 
     Make sure it is really gone after committing:
 
@@ -1017,7 +1013,7 @@ def doctest_PJContainer_with_ZODB():
       [{'data': {u'key': u'stephan',
                  u'name': u'Stephan',
                  u'parent': u'zodb-04bc8095215afee7'},
-        'id': 'c24a00f9-46a0-4994-9c9b-a6eb139bfbde'}]
+        'id': u'46a049949c9ba6eb139bfbde'}]
 
     Note that we produced a nice hex-presentation of the ZODB's OID.
     """
@@ -1079,8 +1075,9 @@ def doctest_Realworldish():
       >>> transaction.commit()
       >>> dm.root['c'] = Campaigns('foobar')
 
-      >>> dumpTable('pjpersist_dot_zope_dot_tests_dot_test_container_dot_Campaigns')
-      [{'data': {u'name': u'foobar'}, 'id': '3768d655-5564-45aa-810d-2ff0188463a7'}]
+      >>> dumpTable(
+      ...     'pjpersist_dot_zope_dot_tests_dot_test_container_dot_Campaigns')
+      [{'data': {u'name': u'foobar'}, 'id': u'0001020304050607080a0b0c0'}]
 
     It is unfortunate that the '_pj_table' attribute is set. This is
     avoidable using a sub-class.
@@ -1108,9 +1105,9 @@ def doctest_Realworldish():
                  u'name': u'one',
                  u'parent': {u'_py_type': u'DBREF',
                              u'database': u'pjpersist_test',
-                             u'id': u'f76169c4-472e-4f0b-99e3-d5432a432051',
+                             u'id': u'0001020304050607080a0b0c0',
                              u'table': u'pjpersist_dot_zope_dot_tests_dot_test_container_dot_Campaigns'}},
-        'id': '64c76abf-7a44-4f8b-8d50-25e162246835'}]
+        'id': u'0001020304050607080a0b0c0'}]
 
       >>> 'one' in dm.root['c']
       True

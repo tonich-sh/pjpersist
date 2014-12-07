@@ -341,7 +341,7 @@ of another document:
   ...     fetchone(person_cn, """data @> '{"name": "Stephan Richter"}'""")))
   {'data': {u'address': {u'_py_type': u'DBREF',
                          u'database': u'pjpersist_test',
-                         u'id': u'0001020304050607080a0b0c',
+                         u'id': u'0001020304050607080a0b0c0',
                          u'table': u'address'},
             u'birthday': {u'_py_type': u'datetime.date', u'ordinal': 722839},
             u'car': {u'_py_persistent_type': u'__main__.Car',
@@ -350,7 +350,7 @@ of another document:
                      u'year': u'2005'},
             u'friends': {u'roy': {u'_py_type': u'DBREF',
                                   u'database': u'pjpersist_test',
-                                  u'id': u'0001020304050607080a0b0c',
+                                  u'id': u'0001020304050607080a0b0c0',
                                   u'table': u'u__main___dot_Person'}},
             u'name': u'Stephan Richter',
             u'phone': {u'_py_type': u'__main__.Phone',
@@ -360,7 +360,7 @@ of another document:
             u'today': {u'_py_type': u'datetime.datetime',
                        u'components': [2014, 5, 14, 12, 30, 0]},
             u'visited': [u'Germany', u'USA']},
-   'id': u'0001020304050607080a0b0c'}
+   'id': u'0001020304050607080a0b0c0'}
 
 
 The reason we want objects to be persistent is so that they pick up changes
