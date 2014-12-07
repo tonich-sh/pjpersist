@@ -14,6 +14,7 @@
 ##############################################################################
 """PostGreSQL/JSONB Persistence Zope Containers"""
 import UserDict
+import json
 import persistent
 import transaction
 import zope.component
@@ -170,14 +171,12 @@ class PJContainer(contained.Contained,
         if self._pj_mapping_key is not None:
             queries.append(
                 sb.JSONB_CONTAINS(datafld, self._pj_mapping_key))
-        # XXX: Reactivate once we found a decent way of dealing with that.
-        #if self._pj_parent_key is not None:
-        #    gs = self._pj_jar._writer.get_state
-        #    # XXX: Urgently need support from alga to provide more query
-        #    # capabilities.
-        #    queries.append(
-        #        sb.JSONB_SUPERSET(datafld, """'{"%s": %r}'""" %(
-        #            self._pj_parent_key, gs(self._pj_get_parent_key_value()))
+        # We also make want to make sure we separate the items properly by
+        # the container.
+        if self._pj_parent_key is not None:
+            pv = self._pj_jar._writer.get_state(self._pj_get_parent_key_value())
+            queries.append(
+                sb.JSON_GETITEM(datafld, self._pj_parent_key) == json.dumps(pv))
         return sb.AND(*queries)
 
     def _pj_add_items_filter(self, qry):

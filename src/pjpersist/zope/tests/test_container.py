@@ -892,7 +892,8 @@ def doctest_AllItemsPJContainer_basic():
     Let's start by creating two person containers that service different
     purposes:
 
-      >>> transaction.commit()
+      >>> transaction.abort()
+      >>> dm.reset()
 
       >>> dm.root['friends'] = container.PJContainer('person')
       >>> dm.root['friends'][u'roy'] = Person(u'Roy')
