@@ -141,7 +141,7 @@ class Root(UserDict.DictMixin):
                     id SERIAL PRIMARY KEY,
                     name TEXT,
                     dbref TEXT[])
-                ''' %self.table)
+                ''' % self.table)
 
     def __getitem__(self, key):
         with self._jar.getCursor(False) as cur:
@@ -160,7 +160,7 @@ class Root(UserDict.DictMixin):
             del self[key]
         with self._jar.getCursor(False) as cur:
             cur.execute(
-                'INSERT INTO %s (name, dbref) VALUES (%%s, %%s)' %self.table,
+                'INSERT INTO %s (name, dbref) VALUES (%%s, %%s)' % self.table,
                 (key, list(dbref.as_tuple()))
                 )
 
@@ -172,7 +172,6 @@ class Root(UserDict.DictMixin):
 
     def keys(self):
         with self._jar.getCursor(False) as cur:
-            tbl = sb.Table(self.table)
             cur.execute(sb.Select(sb.Field(self.table, 'name')))
             return [doc['name'] for doc in cur.fetchall()]
 
@@ -232,7 +231,7 @@ class PJDataManager(object):
     def _init_name_map_table(self):
         with self.getCursor(False) as cur:
             cur.execute(
-            "SELECT * FROM information_schema.tables where table_name=%s",
+                "SELECT * FROM information_schema.tables where table_name=%s",
                 (self.name_map_table,))
             if cur.rowcount:
                 return
@@ -274,7 +273,7 @@ class PJDataManager(object):
 
         with self.getCursor(False) as cur:
             cur.execute(
-            "SELECT * FROM information_schema.tables WHERE table_name=%s",
+                "SELECT * FROM information_schema.tables WHERE table_name=%s",
                 (table,))
             if not cur.rowcount:
                 cur.execute('''
@@ -289,7 +288,7 @@ class PJDataManager(object):
             id = self.createId()
         # Insert the document into the table.
         with self.getCursor() as cur:
-                cur.execute(
+            cur.execute(
                 "INSERT INTO " + table + " (id, data) VALUES (%s, %s)",
                 (id, psycopg2.extras.Json(doc))
                 )
@@ -400,7 +399,7 @@ class PJDataManager(object):
         # Now we remove the object from PostGreSQL.
         dbname, table = self._get_table_from_object(obj)
         with self.getCursor() as cur:
-            cur.execute('DELETE FROM %s WHERE id = %%s' %table, (obj._p_oid.id,))
+            cur.execute('DELETE FROM %s WHERE id = %%s' % table, (obj._p_oid.id,))
         if hash(obj._p_oid) in self._object_cache:
             del self._object_cache[hash(obj._p_oid)]
 
