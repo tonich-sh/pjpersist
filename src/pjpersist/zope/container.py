@@ -171,8 +171,8 @@ class PJContainer(contained.Contained,
         if self._pj_mapping_key is not None:
             queries.append(
                 sb.JSONB_CONTAINS(datafld, self._pj_mapping_key))
-        # We also make want to make sure we separate the items properly by
-        # the container.
+        # We also make want to make sure we separate the items properly by the
+        # container.
         if self._pj_parent_key is not None:
             pv = self._pj_jar._writer.get_state(self._pj_get_parent_key_value())
             queries.append(
