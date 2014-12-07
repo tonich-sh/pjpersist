@@ -12,6 +12,8 @@
 #
 ##############################################################################
 """SQLBuilder extensions"""
+import json
+
 from sqlobject.sqlbuilder import *
 
 
@@ -87,3 +89,81 @@ def JSONB_CONTAINS_ANY(jsonb, keys):
 def JSONB_CONTAINS_ALL(jsonb, keys):
     """keys is an SQL array"""
     return SQLOp("?&", jsonb, PGArray(keys))
+
+
+class JGET(object):
+    """JSON field getter that JSONifies the second argument of comparisons.
+
+    Normally it just gets a JSON key of a table field:
+
+       >>> print JGET("data", "key", table="Person").__sqlrepr__('postgres')
+       ((Person.data) -> ('key'))
+
+    We can also pass a field object and omit the table:
+
+       >>> print JGET(Field("Person", "data"), "key").__sqlrepr__('postgres')
+       ((Person.data) -> ('key'))
+
+    The right operand for comparison operators gets converted to JSON:
+
+       >>> print (JGET("data", "key", table="Person") == {'foo': 'bar'}
+       ...     ).__sqlrepr__('postgres')
+       (((Person.data) -> ('key')) = ('{"foo": "bar"}'))
+
+       >>> print (JGET("data", "key", table="Person") >= [True, False, None]
+       ...     ).__sqlrepr__('postgres')
+       (((Person.data) -> ('key')) >= ('[true, false, null]'))
+
+    But not always (is this a good idea?):
+
+       >>> print (JGET("data", "key", table="Person") == None
+       ...     ).__sqlrepr__('postgres')
+       (((Person.data) -> ('key')) IS NULL)
+
+       >>> print (JGET("data", "key", table="Person") != None
+       ...     ).__sqlrepr__('postgres')
+       (((Person.data) -> ('key')) IS NOT NULL)
+
+
+
+    """
+    def __init__(self, field, selector, table=None):
+        if table is not None:
+            self.field = Field(table, field)
+        else:
+            self.field = field
+        self.selector = selector
+
+    def __lt__(self, other):
+        return SQLOp("<", self, json.dumps(other))
+    def __le__(self, other):
+        return SQLOp("<=", self, json.dumps(other))
+    def __gt__(self, other):
+        return SQLOp(">", self, json.dumps(other))
+    def __ge__(self, other):
+        return SQLOp(">=", self, json.dumps(other))
+    def __eq__(self, other):
+        if other is None:
+            return ISNULL(self)
+        else:
+            return SQLOp("=", self, json.dumps(other))
+    def __ne__(self, other):
+        if other is None:
+            return ISNOTNULL(self)
+        else:
+            return SQLOp("<>", self, json.dumps(other))
+
+    def __and__(self, other):
+        return SQLOp("AND", self, json.dumps(other))
+    def __rand__(self, other):
+        return SQLOp("AND", json.dumps(other), self)
+    def __or__(self, other):
+        return SQLOp("OR", self, json.dumps(other))
+    def __ror__(self, other):
+        return SQLOp("OR", json.dumps(other), self)
+    def __invert__(self):
+        return SQLPrefix("NOT", self)
+
+    def __sqlrepr__(self, db):
+        expr = JSON_GETITEM(self.field, self.selector)
+        return sqlrepr(expr, db)

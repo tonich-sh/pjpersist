@@ -13,6 +13,8 @@
 #
 ##############################################################################
 import doctest
+import unittest
+
 from pjpersist import testing, sqlbuilder as sb
 
 
@@ -67,5 +69,10 @@ def doctest_sqlbuilder():
 
 
 def test_suite():
-    return doctest.DocTestSuite(
-        optionflags=testing.OPTIONFLAGS)
+    return unittest.TestSuite([
+        doctest.DocTestSuite(
+            optionflags=testing.OPTIONFLAGS),
+        doctest.DocTestSuite(
+            module=sb,
+            optionflags=testing.OPTIONFLAGS),
+        ])
