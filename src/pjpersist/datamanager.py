@@ -40,8 +40,6 @@ TABLE_LOG = logging.getLogger('pjpersist.table')
 
 LOG = logging.getLogger(__name__)
 
-INITIALIZED_TABLES = []
-
 psycopg2.extensions.register_type(psycopg2.extensions.UNICODE)
 psycopg2.extensions.register_type(psycopg2.extensions.UNICODEARRAY)
 
@@ -268,9 +266,6 @@ class PJDataManager(object):
                 'Cannot store an object of a different database.',
                 self.database, database)
 
-        if (database, table) in INITIALIZED_TABLES:
-            return
-
         with self.getCursor(False) as cur:
             cur.execute(
             "SELECT * FROM information_schema.tables WHERE table_name=%s",
@@ -281,10 +276,8 @@ class PJDataManager(object):
                         id VARCHAR(24) NOT NULL PRIMARY KEY,
                         data JSONB);
                     ''' % table)
-            INITIALIZED_TABLES.append((database, table))
 
     def _insert_doc(self, database, table, doc, id=None):
-        self._create_doc_table(database, table)
         # Create id if it is None.
         if id is None:
             id = self.createId()
@@ -306,7 +299,6 @@ class PJDataManager(object):
         return id
 
     def _get_doc(self, database, table, id):
-        self._create_doc_table(database, table)
         tbl = sb.Table(table)
         with self.getCursor() as cur:
             cur.execute(sb.Select(sb.Field(table, '*'), tbl.id == id))
@@ -317,7 +309,6 @@ class PJDataManager(object):
         return self._get_doc(dbref.database, dbref.table, dbref.id)
 
     def _get_doc_py_type(self, database, table, id):
-        self._create_doc_table(database, table)
         tbl = sb.Table(table)
         with self.getCursor() as cur:
             cur.execute(

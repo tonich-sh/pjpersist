@@ -88,7 +88,6 @@ def setUp(test):
     serialize.SERIALIZERS = [serializers.DateTimeSerializer(),
                              serializers.DateSerializer(),
                              serializers.TimeSerializer()]
-    del datamanager.INITIALIZED_TABLES[:]
     createDB()
     test.globs['conn'] = getConnection(DBNAME)
     test.globs['commit'] = transaction.commit
@@ -114,7 +113,6 @@ def setUp(test):
 def tearDown(test):
     module.tearDown(test)
     transaction.abort()
-    del datamanager.INITIALIZED_TABLES[:]
     test.globs['conn'].close()
     dropDB()
     resetCaches()
@@ -127,7 +125,6 @@ def resetCaches():
     serialize.TABLES_WITH_TYPE.__init__()
     serialize.AVAILABLE_NAME_MAPPINGS.__init__()
     serialize.PATH_RESOLVE_CACHE = {}
-    datamanager.INITIALIZED_TABLES = []
 
 cleanup.addCleanUp(resetCaches)
 atexit.register(dropDB)
