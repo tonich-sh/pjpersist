@@ -24,7 +24,6 @@ class PJTableMapping(UserDict.DictMixin, object):
 
     def __init__(self, jar):
         self._pj_jar = jar
-        jar._create_doc_table(jar.database, self.__pj_table__)
 
     def __pj_filter__(self):
         return 'true'
