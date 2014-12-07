@@ -179,6 +179,8 @@ class PJContainer(contained.Contained,
         return sb.AND(*queries)
 
     def _pj_add_items_filter(self, qry):
+        # need to work around here an <expr> AND None situation, which
+        # would become <sqlexpr> AND NULL
         itemsqry = self._pj_get_items_filter()
         if qry is not None:
             if itemsqry is not None:
