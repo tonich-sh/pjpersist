@@ -100,10 +100,6 @@ class Converter(object):
             # MongoDB's rationalization for this operator:
             # it matches when op1 does not pass the condition
             # or when op1 is not set at all.
-
-            # XXX Looks like the second case does not quite work here:
-            # missing json path automatically skips the row.
-            # Add test with a select against real data.
             operator2, op3 = op2.items()[0]
             return sb.OR(
                 sb.ISNULL(op1),
