@@ -1064,6 +1064,25 @@ def doctest_PJDataManager_sub_doc_multi_flush():
     """
 
 
+def doctest_get_database_name_from_dsn():
+    """Test dsn parsing
+
+      >>> from pjpersist.datamanager import get_database_name_from_dsn
+
+      >>> get_database_name_from_dsn("dbname=test user=postgres password=secret")
+      'test'
+
+      >>> get_database_name_from_dsn("dbname = test  user='postgres'")
+      'test'
+
+      >>> get_database_name_from_dsn("user='postgres' dbname = test")
+      'test'
+
+      >>> get_database_name_from_dsn("user='pg' dbname =test   password=pass")
+      'test'
+    """
+
+
 def test_suite():
     return doctest.DocTestSuite(
         setUp=testing.setUp, tearDown=testing.tearDown,

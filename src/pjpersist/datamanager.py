@@ -35,6 +35,7 @@ from zope.exceptions import exceptionformatter
 
 from pjpersist import interfaces, serialize
 
+
 PJ_ACCESS_LOGGING = False
 TABLE_LOG = logging.getLogger('pjpersist.table')
 
@@ -185,7 +186,7 @@ class PJDataManager(object):
 
     def __init__(self, conn, root_table=None, name_map_table=None):
         self._conn = conn
-        self.database = conn.dsn.split()[0][7:]
+        self.database = get_database_name_from_dsn(conn.dsn)
         self._reader = serialize.ObjectReader(self)
         self._writer = serialize.ObjectWriter(self)
         # All of the following object lists are keys by object id. This is
@@ -484,3 +485,13 @@ class PJDataManager(object):
 
     def sortKey(self):
         return ('PJDataManager', 0)
+
+
+def get_database_name_from_dsn(dsn):
+    import re
+    m = re.match(r'.*dbname *= *(.+?)( |$)', dsn)
+    if not m:
+        LOG.warning("Cannot determine database name from DSN '%s'" % dsn)
+        return None
+
+    return m.groups()[0]
