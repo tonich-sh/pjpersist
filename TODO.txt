@@ -1,0 +1,16 @@
+
+* get rid of the remaining conflict handler stuff
+
+* add some tests for interleaved transactions
+
+  - raise a specific Exception on a conflict (to be converted to Retry somewhere)
+
+* performance optimizations:
+
+  - now pjpersist does an INSERT and an UPDATE when adding an object,
+    bring it down to one INSERT
+
+    ( in cases of people[None] = Person(u"name") )
+
+  - think about how to batch SQL commands
+    e.g. in `PJDataManager._flush_objects`
