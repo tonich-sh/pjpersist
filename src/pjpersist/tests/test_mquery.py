@@ -75,10 +75,12 @@ def test_convert():
         >>> run(mq.convert({'quantity': {'$nin': [20, 30, 40]}}))
         NOT (((Bar.data) ->> ('quantity')) IN (20, 30, 40))
 
-    The $not operator:
+    The $not operator.  It matches if the field does not exist or
+    does not match the condition:
 
         >>> run(mq.convert({'quantity': {'$not': {'$gt': 20}}}))
-        NOT (((Bar.data) ->> ('quantity')) > (20))
+        ((((Bar.data) ->> ('quantity')) IS NULL) OR
+         (NOT (((Bar.data) ->> ('quantity')) > (20))))
 
     The $size operator:
 
@@ -110,7 +112,6 @@ def test_convert():
 
         >>> run(mq.convert({'some.quantities': {'$all': [1, 3]}}))
         (((Bar.data) #> (array['some', 'quantities'])) @> ('[1, 3]'))
-
 
     """
 

@@ -105,7 +105,12 @@ class Converter(object):
             # missing json path automatically skips the row.
             # Add test with a select against real data.
             operator2, op3 = op2.items()[0]
-            return sb.NOT(self.operator_expr(operator2, field, key, op3))
+            return sb.OR(
+                sb.ISNULL(op1),
+                sb.NOT(sb.AND(
+                    *(self.operator_expr(operator2, field, key, op3)
+                      for operator2, op3 in op2.items())
+                )))
         if operator == '$size':
             op1 = self.getField(field, key, json=True)
             return sb.func.json_array_length(op1) == op2
