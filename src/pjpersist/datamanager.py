@@ -36,14 +36,18 @@ from zope.exceptions import exceptionformatter
 
 from pjpersist import interfaces, serialize
 
-
 PJ_ACCESS_LOGGING = False
+PJ_AUTO_CREATE_TABLES = True
+
 TABLE_LOG = logging.getLogger('pjpersist.table')
 
 THREAD_NAMES = []
 THREAD_COUNTERS = {}
 
-PJ_AUTO_CREATE_TABLES = True
+mhash = hashlib.md5()
+mhash.update(socket.gethostname())
+HOSTNAME_HASH = mhash.digest()[:3]
+PID_HASH = struct.pack(">H", os.getpid() % 0xFFFF)
 
 LOG = logging.getLogger(__name__)
 
@@ -239,11 +243,9 @@ class PJDataManager(object):
         # 4 bytes current time
         id = struct.pack(">i", int(time.time()))
         # 3 bytes machine
-        mhash = hashlib.md5()
-        mhash.update(socket.gethostname())
-        id += mhash.digest()[:3]
+        id += HOSTNAME_HASH
         # 2 bytes pid
-        id += struct.pack(">H", os.getpid() % 0xFFFF)
+        id += PID_HASH
         # 1 byte thread id
         tname = threading.currentThread().name
         if tname not in THREAD_NAMES:
