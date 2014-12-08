@@ -51,6 +51,19 @@ psycopg2.extensions.register_type(psycopg2.extensions.UNICODE)
 psycopg2.extensions.register_type(psycopg2.extensions.UNICODEARRAY)
 
 
+class Json(psycopg2.extras.Json):
+    """In logs, we want to have the JSON value not just Json object at <>"""
+    def __repr__(self):
+        if PJ_ACCESS_LOGGING:
+            try:
+                s = self.dumps(self.adapted)
+            except:
+                s = 'exception'
+            return '<%s %s>' % (self.__class__.__name__, s)
+        else:
+            return '<%s>' % (self.__class__.__name__, )
+
+
 class PJPersistCursor(psycopg2.extras.DictCursor):
 
     ADD_TB = True
@@ -307,7 +320,7 @@ class PJDataManager(object):
         with self.getCursor() as cur:
             cur.execute(
                 "INSERT INTO " + table + " (id, data) VALUES (%s, %s)",
-                (id, psycopg2.extras.Json(doc))
+                (id, Json(doc))
                 )
         return id
 
@@ -316,7 +329,7 @@ class PJDataManager(object):
         with self.getCursor() as cur:
             cur.execute(
                 "UPDATE " + table + " SET data=%s WHERE id = %s",
-                (psycopg2.extras.Json(doc), id)
+                (Json(doc), id)
                 )
         return id
 
