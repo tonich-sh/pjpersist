@@ -334,6 +334,10 @@ class ObjectWriter(object):
             doc = {}
             # Make sure that the object gets saved fully later.
             self._jar.register(obj)
+
+            #doc_id = self._jar.createId()
+            #oid = DBRef(table_name, doc_id, db_name)
+            #return oid
         else:
             # XXX: Handle newargs; see ZODB.serialize.ObjectWriter.serialize
             # Go through each attribute and search for persistent references.
