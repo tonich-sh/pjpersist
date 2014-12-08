@@ -325,6 +325,11 @@ class PJDataManager(object):
                         id VARCHAR(24) NOT NULL PRIMARY KEY,
                         data JSONB);
                     ''' % table)
+                # this index helps a tiny bit with JSONB_CONTAINS queries
+                cur.execute('''
+                    CREATE INDEX %s_data_gin ON %s USING GIN (data);
+                    ''' % (table, table))
+
 
     def _insert_doc(self, database, table, doc, id=None):
         # Create id if it is None.
