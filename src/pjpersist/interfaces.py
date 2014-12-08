@@ -138,6 +138,10 @@ class IPJDataManager(persistent.interfaces.IPersistentDataManager):
     root = zope.interface.Attribute(
         """Get the root object, which is a mapping.""")
 
+    def create_tables(tables):
+        """Create passed tables and persistence_name_map, use this instead
+        of PJ_AUTO_CREATE_TABLES"""
+
     def get_table_of_object(obj):
         """Return the table name for an object."""
 

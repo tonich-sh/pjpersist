@@ -294,6 +294,18 @@ class PJDataManager(object):
                         'doc_has_type': doc_has_type})
                 )
 
+    def create_tables(self, tables):
+        self._init_name_map_table()
+
+        if isinstance(tables, basestring):
+            tables = [tables]
+
+        for tbl in tables:
+            self._create_doc_table(self.database, tbl)
+
+        with self.getCursor(False) as cur:
+            cur.connection.commit()
+
     def _create_doc_table(self, database, table):
         if self.database != database:
             raise NotImplementedError(
