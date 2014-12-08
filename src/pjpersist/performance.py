@@ -13,6 +13,7 @@
 ##############################################################################
 """PJ Persistence Performance Test"""
 from __future__ import absolute_import
+import logging
 import optparse
 import os
 import persistent
@@ -33,8 +34,12 @@ import zope.container.btree
 import ZODB
 import ZODB.FileStorage
 
+PJLOGGER = logging.getLogger('pjpersist.table')
+
 
 MULTIPLE_CLASSES = True
+PROFILE = False
+LOG_SQL = False
 
 
 class People(container.AllItemsPJContainer):
@@ -52,13 +57,17 @@ class Person(persistent.Persistent, container.PJContained):
     _p_pj_table = 'person'
     _p_pj_store_type = True
 
+    name = None
+    age = None
+    address = None
+
     def __init__(self, name, age):
         self.name = name
         self.age = age
         self.address = Address('Boston %i' %age)
 
     def __repr__(self):
-        return '<%s %s @ %i [%s]>' %(
+        return '<%s %s @ %s [%s]>' %(
             self.__class__.__name__, self.name, self.age, self.__name__)
 
 class Person2(Person):
@@ -78,6 +87,8 @@ class PerformanceBase(object):
 
         print '%-25s %.4f secs %s' % (text, dur, ops)
 
+        PJLOGGER.debug('=========== done: %s', text)
+
     def getPeople(self, options):
         pass
 
@@ -85,9 +96,11 @@ class PerformanceBase(object):
         # Profile slow read
         transaction.begin()
         t1 = time.time()
-        [people[name].name for name in people]
-        #cProfile.runctx(
-        #    '[people[name].name for name in people]', globals(), locals())
+        if PROFILE:
+            cProfile.runctx(
+                '[people[name].name for name in people]', globals(), locals())
+        else:
+            [people[name].name for name in people]
         t2 = time.time()
         transaction.commit()
         self.printResult('Slow Read', t1, t2, peopleCnt)
@@ -96,9 +109,11 @@ class PerformanceBase(object):
         # Profile fast read (values)
         transaction.begin()
         t1 = time.time()
-        [person.name for person in people.values()]
-        #cProfile.runctx(
-        #    '[person.name for person in people.find()]', globals(), locals())
+        if PROFILE:
+            cProfile.runctx(
+                '[person.name for person in people.find()]', globals(), locals())
+        else:
+            [person.name for person in people.values()]
         t2 = time.time()
         transaction.commit()
         self.printResult('Fast Read (values)', t1, t2, peopleCnt)
@@ -107,9 +122,11 @@ class PerformanceBase(object):
         # Profile fast read
         transaction.begin()
         t1 = time.time()
-        [person.name for person in people.find()]
-        #cProfile.runctx(
-        #    '[person.name for person in people.find()]', globals(), locals())
+        if PROFILE:
+            cProfile.runctx(
+                '[person.name for person in people.find()]', globals(), locals())
+        else:
+            [person.name for person in people.find()]
         t2 = time.time()
         transaction.commit()
         self.printResult('Fast Read (find)', t1, t2, peopleCnt)
@@ -157,9 +174,11 @@ class PerformanceBase(object):
                 person.name += 'X'
                 person.age += 1
             transaction.commit()
-        modify()
-        #cProfile.runctx(
-        #    'modify()', globals(), locals())
+        if PROFILE:
+            cProfile.runctx(
+                'modify()', globals(), locals())
+        else:
+            modify()
         t2 = time.time()
         self.printResult('Modification', t1, t2, peopleCnt)
 
@@ -167,7 +186,11 @@ class PerformanceBase(object):
         # Profile deletion
         t1 = time.time()
         for name in people.keys():
-            del people[name]
+            if PROFILE:
+                cProfile.runctx(
+                    'del people[name]', globals(), locals())
+            else:
+                del people[name]
         transaction.commit()
         t2 = time.time()
         self.printResult('Deletion', t1, t2, peopleCnt)
@@ -201,15 +224,24 @@ class PerformancePJ(PerformanceBase):
     person2Klass = Person2
 
     def getPeople(self, options):
-        conn = getConnection()
-
-        dm = datamanager.PJDataManager(conn)
         if options.reload:
-            with conn.cursor() as cur:
-                cur.execute('END')
-                cur.execute('DROP DATABASE IF EXISTS performance')
-                cur.execute('CREATE DATABASE performance')
-            conn.commit()
+            connroot = getConnection()
+            with connroot.cursor() as cur:
+                cur.execute('END;')
+                cur.execute('DROP DATABASE IF EXISTS performance;')
+                cur.execute('CREATE DATABASE performance;')
+            connroot.commit()
+
+            datamanager.PJ_AUTO_CREATE_TABLES = False
+            if LOG_SQL:
+                datamanager.PJ_ACCESS_LOGGING = True
+                #datamanager.PJPersistCursor.ADD_TB = False
+
+            conn = getConnection('performance')
+
+            dm = datamanager.PJDataManager(conn)
+
+            dm.create_tables(('people', 'person', 'address'))
 
             dm.root['people'] = people = People()
 
@@ -325,6 +357,15 @@ def main(args=None):
     if args is None:
         args = sys.argv[1:]
     options, args = parser.parse_args(args)
+
+    if LOG_SQL:
+        PJLOGGER.setLevel(logging.DEBUG)
+        fh = logging.FileHandler('/tmp/pjpersist.table.log')
+        fh.setLevel(logging.DEBUG)
+        formatter = logging.Formatter(
+            '%(name)s - %(levelname)s - %(message)s')
+        fh.setFormatter(formatter)
+        PJLOGGER.addHandler(fh)
 
     print 'PJ ---------------'
     PerformancePJ().run_basic_crud(options)
