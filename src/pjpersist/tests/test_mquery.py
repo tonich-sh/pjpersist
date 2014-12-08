@@ -113,6 +113,14 @@ def test_convert():
         >>> run(mq.convert({'some.quantities': {'$all': [1, 3]}}))
         (((Bar.data) #> (array['some', 'quantities'])) @> ('[1, 3]'))
 
+    $elemMatch is tricky:
+
+        >>> run(mq.convert({'nrs': {'$elemMatch': [{'$gt': 2}, {'$lte': 3}]}}))
+        EXISTS (SELECT values FROM jsonb_array_elements(((Bar.data) -> ('nrs')))
+                WHERE ((((Bar.data) ->> ('nrs')) > (2)) AND
+                       (((Bar.data) ->> ('nrs')) <= (3))))
+
+
     """
 
 

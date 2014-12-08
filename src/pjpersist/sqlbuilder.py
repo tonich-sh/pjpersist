@@ -167,3 +167,21 @@ class JGET(object):
     def __sqlrepr__(self, db):
         expr = JSON_GETITEM(self.field, self.selector)
         return sqlrepr(expr, db)
+
+
+class NoTables(SQLExpression):
+    """A dirty hack that fools the tablesUsedSet detection"""
+    def __init__(self, expr):
+        self.expr = expr
+
+    def __sqlrepr__(self, db):
+        return sqlrepr(self.expr, db)
+
+    def tablesUsedImmediate(self, db):
+        return []
+
+    def tablesUsedSet(self, db):
+        return set()
+
+    def tablesUsed(self, db):
+        return {}

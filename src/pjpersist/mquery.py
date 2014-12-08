@@ -116,5 +116,25 @@ class Converter(object):
         if operator == '$all':
             op1 = self.getField(field, key, json=True)
             return sb.JSONB_SUPERSET(op1, json.dumps(op2))
+        if operator == '$elemMatch':
+            op1 = sb.NoTables(self.getField(field, key, json=True))
+            # SELECT data FROM tbl WHERE EXISTS (
+            #          SELECT value
+            #          FROM jsonb_array_elements(data -> 'arr')
+            #          WHERE value < '3' AND value >= '2'
+            # );
+            return sb.EXISTS(
+                sb.Select(
+                    ['values'],
+                    staticTables=[sb.func.jsonb_array_elements(op1)],
+                    where=sb.NoTables(sb.AND(*(
+                        sb.AND(*(
+                            self.operator_expr(operator2, field, key, op3)
+                            for operator2, op3 in query.items()
+                        ))
+                        for query in op2
+                    )))
+                )
+            )
         else:
             raise ValueError("Unrecognized operator %s" % operator)
