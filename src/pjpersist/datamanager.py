@@ -28,6 +28,7 @@ import re
 import socket
 import struct
 import sys
+import threading
 import time
 import transaction
 import zope.interface
@@ -38,6 +39,9 @@ from pjpersist import interfaces, serialize
 
 PJ_ACCESS_LOGGING = False
 TABLE_LOG = logging.getLogger('pjpersist.table')
+
+THREAD_NAMES = []
+THREAD_COUNTERS = {}
 
 PJ_AUTO_CREATE_TABLES = True
 
@@ -227,8 +231,16 @@ class PJDataManager(object):
         id += mhash.digest()[:3]
         # 2 bytes pid
         id += struct.pack(">H", os.getpid() % 0xFFFF)
-        # 3 bytes inc
-        id += struct.pack(">i", random.randint(0, 0xFFFFFF))[1:4]
+        # 1 byte thread id
+        tname = threading.currentThread().name
+        if tname not in THREAD_NAMES:
+            THREAD_NAMES.append(tname)
+        tidx = THREAD_NAMES.index(tname)
+        id += struct.pack(">i", tidx)[-1]
+        # 2 bytes counter
+        THREAD_COUNTERS.setdefault(tidx, random.randint(0, 0xFFFF))
+        THREAD_COUNTERS[tidx] += 1 % 0xFFFF
+        id += struct.pack(">i", random.randint(0, THREAD_COUNTERS[tidx]))[-2:]
         return binascii.hexlify(id)
 
     def _init_name_map_table(self):
