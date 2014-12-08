@@ -330,7 +330,6 @@ class PJDataManager(object):
                     CREATE INDEX %s_data_gin ON %s USING GIN (data);
                     ''' % (table, table))
 
-
     def _insert_doc(self, database, table, doc, id=None):
         # Create id if it is None.
         if id is None:
