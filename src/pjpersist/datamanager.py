@@ -136,6 +136,8 @@ class Root(UserDict.DictMixin):
                 (self.table,))
             if cur.rowcount:
                 return
+
+            LOG.info("Creating table %s" % self.table)
             cur.execute('''
                 CREATE TABLE %s (
                     id SERIAL PRIMARY KEY,
@@ -235,6 +237,7 @@ class PJDataManager(object):
                 (self.name_map_table,))
             if cur.rowcount:
                 return
+            LOG.info("Creating name map table %s" % self.name_map_table)
             cur.execute('''
                 CREATE TABLE %s (
                     database varchar,
@@ -276,6 +279,7 @@ class PJDataManager(object):
                 "SELECT * FROM information_schema.tables WHERE table_name=%s",
                 (table,))
             if not cur.rowcount:
+                LOG.info("Creating data table %s" % table)
                 cur.execute('''
                     CREATE TABLE %s (
                         id VARCHAR(24) NOT NULL PRIMARY KEY,
