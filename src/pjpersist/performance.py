@@ -252,6 +252,12 @@ class PerformancePJ(PerformanceBase):
 
             dm.create_tables(('people', 'person', 'address'))
 
+            # this speeds up slow_read around TWICE
+            #with conn.cursor() as cur:
+            #    cur.execute('END;')
+            #    cur.execute(
+            #        "CREATE INDEX data_name ON person ((data->>('name')));")
+
             dm.root['people'] = people = People()
 
             # Profile inserts
