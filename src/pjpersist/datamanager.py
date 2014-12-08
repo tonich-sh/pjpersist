@@ -54,7 +54,7 @@ psycopg2.extensions.register_type(psycopg2.extensions.UNICODEARRAY)
 class PJPersistCursor(psycopg2.extras.DictCursor):
 
     ADD_TB = True
-    TB_LIMIT = 10  # 10 should be sufficient to figure
+    TB_LIMIT = 15  # 15 should be sufficient to figure
 
     def __init__(self, datamanager, flush, *args, **kwargs):
         super(PJPersistCursor, self).__init__(*args, **kwargs)
@@ -77,7 +77,7 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
         txn = '%i - %s' % (id(txn), txn.description),
 
         TABLE_LOG.debug(
-            "sql:%r,\n args:%r,\n TXN:%s,\n tb:\n%s", txn, sql, args, tb)
+            "sql:%r,\n args:%r,\n TXN:%s,\n tb:\n%s", sql, args, txn, tb)
 
     def execute(self, sql, args=None):
         # Convert SQLBuilder object to string
@@ -86,7 +86,7 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
         # Flush the data manager before any select.
         if self.flush and sql.strip().split()[0].lower() == 'select':
             self.datamanager.flush()
-        # Very useful logging of every SQL command with tracebakc to code.
+        # Very useful logging of every SQL command with traceback to code.
         if PJ_ACCESS_LOGGING:
             self.log_query(sql, args)
 
