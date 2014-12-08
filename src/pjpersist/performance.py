@@ -39,6 +39,7 @@ PJLOGGER = logging.getLogger('pjpersist.table')
 
 MULTIPLE_CLASSES = True
 PROFILE = False
+PROFILE_OUTPUT = '/tmp/cprofile'
 LOG_SQL = False
 
 
@@ -77,6 +78,7 @@ class Person2(Person):
 class PerformanceBase(object):
     personKlass = None
     person2Klass = None
+    profile_output = None
 
     def printResult(self, text, t1, t2, count=None):
         dur = t2-t1
@@ -98,7 +100,8 @@ class PerformanceBase(object):
         t1 = time.time()
         if PROFILE:
             cProfile.runctx(
-                '[people[name].name for name in people]', globals(), locals())
+                '[people[name].name for name in people]', globals(), locals(),
+                filename=self.profile_output+'_slow_read')
         else:
             [people[name].name for name in people]
         t2 = time.time()
@@ -111,7 +114,8 @@ class PerformanceBase(object):
         t1 = time.time()
         if PROFILE:
             cProfile.runctx(
-                '[person.name for person in people.find()]', globals(), locals())
+                '[person.name for person in people.values()]', globals(), locals(),
+                filename=self.profile_output+'_fast_read_values')
         else:
             [person.name for person in people.values()]
         t2 = time.time()
@@ -124,7 +128,8 @@ class PerformanceBase(object):
         t1 = time.time()
         if PROFILE:
             cProfile.runctx(
-                '[person.name for person in people.find()]', globals(), locals())
+                '[person.name for person in people.find()]', globals(), locals(),
+                filename=self.profile_output+'_fast_read')
         else:
             [person.name for person in people.find()]
         t2 = time.time()
@@ -176,7 +181,8 @@ class PerformanceBase(object):
             transaction.commit()
         if PROFILE:
             cProfile.runctx(
-                'modify()', globals(), locals())
+                'modify()', globals(), locals(),
+                filename=self.profile_output+'_modify')
         else:
             modify()
         t2 = time.time()
@@ -188,7 +194,8 @@ class PerformanceBase(object):
         for name in people.keys():
             if PROFILE:
                 cProfile.runctx(
-                    'del people[name]', globals(), locals())
+                    'del people[name]', globals(), locals(),
+                    filename=self.profile_output+'_delete')
             else:
                 del people[name]
         transaction.commit()
@@ -222,6 +229,8 @@ def getConnection(database=None):
 class PerformancePJ(PerformanceBase):
     personKlass = Person
     person2Klass = Person2
+
+    profile_output = PROFILE_OUTPUT + '_pj_'
 
     def getPeople(self, options):
         if options.reload:
@@ -288,6 +297,8 @@ class Person2Z(Person):
 class PerformanceZODB(PerformanceBase):
     personKlass = PersonZ
     person2Klass = Person2Z
+
+    profile_output = PROFILE_OUTPUT + '_zodb_'
 
     def getPeople(self, options):
         folder = tempfile.gettempdir()
