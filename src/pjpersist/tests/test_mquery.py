@@ -85,18 +85,32 @@ def test_convert():
         >>> run(mq.convert({'quantities': {'$size': 3}}))
         ((json_array_length(((Bar.data) -> ('quantities')))) = (3))
 
+        >>> run(mq.convert({'some.quantities': {'$size': 3}}))
+        ((json_array_length(((Bar.data) #> (array['some', 'quantities'])))) = (3))
+
     The $exists operator
 
         >>> run(mq.convert({'quantities': {'$exists': True}}))
-        ((Bar.data) ? ('quantities'))
+        (((Bar.data) -> ('quantities')) IS NOT NULL)
 
         >>> run(mq.convert({'quantities': {'$exists': False}}))
-        NOT ((Bar.data) ? ('quantities'))
+        (((Bar.data) -> ('quantities')) IS NULL)
+
+    With a dotted path the $exists is more complex:
+
+        >>> run(mq.convert({'foo.bar.baz': {'$exists': True}}))
+        (((Bar.data) #> (array['foo', 'bar', 'baz'])) IS NOT NULL)
 
     There can be several operators in one dict:
 
         >>> run(mq.convert({'qty': {'$exists': True, '$nin': [1, 2]}}))
-        (((Bar.data) ? ('qty')) AND (NOT (((Bar.data) ->> ('qty')) IN (1, 2))))
+        ((((Bar.data) -> ('qty')) IS NOT NULL) AND (NOT (((Bar.data) ->> ('qty')) IN (1, 2))))
+
+    The $all operator
+
+        >>> run(mq.convert({'some.quantities': {'$all': [1, 3]}}))
+        (((Bar.data) #> (array['some', 'quantities'])) @> ('[1, 3]'))
+
 
     """
 

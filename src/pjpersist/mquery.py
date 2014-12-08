@@ -13,10 +13,17 @@
 ##############################################################################
 """Mongo-like queries for PJ"""
 
+import json
 from pjpersist import sqlbuilder as sb
 
 
 class Converter(object):
+    """Translator for MongoDB queries -> sqlbuilder expressions.
+
+    The resultant expressions can be used as WHERE clauses in queries.
+
+    This implements only a subset of the query language.
+    """
 
     simplified = False
 
@@ -28,10 +35,7 @@ class Converter(object):
         clauses = []
         doc = sb.Field(self.table, self.field)
         for key, value in sorted(query.items()):
-            if '.' not in key:
-                accessor = sb.JSON_GETITEM_TEXT(doc, key)
-            else:
-                accessor = sb.JSON_PATH_TEXT(doc, key.split("."))
+            accessor = self.getField(doc, key)
 
             if key in ('$and', '$or', '$nor'):
                 if not isinstance(value, (list, tuple)):
@@ -45,7 +49,8 @@ class Converter(object):
             elif isinstance(value, dict):
                 for operator, operand in value.items():
                     clauses.append(
-                        self.operator_expr(operator, accessor, operand))
+                        self.operator_expr(
+                            operator, doc, key, operand))
             else:
                 # Scalar -- equality or array membership
                 if self.simplified:
@@ -61,7 +66,22 @@ class Converter(object):
                     ))
         return sb.AND(*clauses)
 
-    def operator_expr(self, operator, op1, op2):
+    def getField(self, field, key, json=False):
+        if json:
+            if '.' not in key:
+                accessor = sb.JSON_GETITEM(field, key)
+            else:
+                accessor = sb.JSON_PATH(field, key.split("."))
+        else:
+            if '.' not in key:
+                accessor = sb.JSON_GETITEM_TEXT(field, key)
+            else:
+                accessor = sb.JSON_PATH_TEXT(field, key.split("."))
+
+        return accessor
+
+    def operator_expr(self, operator, field, key, op2):
+        op1 = self.getField(field, key)
         if operator == '$gt':
             return op1 > op2
         if operator == '$lt':
@@ -85,18 +105,15 @@ class Converter(object):
             # missing json path automatically skips the row.
             # Add test with a select against real data.
             operator2, op3 = op2.items()[0]
-            return sb.NOT(self.operator_expr(operator2, op1, op3))
+            return sb.NOT(self.operator_expr(operator2, field, key, op3))
         if operator == '$size':
-            # Get JSON instead of text
-            field = op1.expr1
-            key = op1.expr2
-            return sb.func.json_array_length(sb.JSON_GETITEM(field, key)) == op2
+            op1 = self.getField(field, key, json=True)
+            return sb.func.json_array_length(op1) == op2
         if operator == '$exists':
-            field = op1.expr1
-            key = op1.expr2
-            if op2:
-                return sb.JSONB_CONTAINS(field, key)
-            else:
-                return sb.NOT(sb.JSONB_CONTAINS(field, key))
+            op1 = self.getField(field, key, json=True)
+            return sb.ISNOTNULL(op1) if op2 else sb.ISNULL(op1)
+        if operator == '$all':
+            op1 = self.getField(field, key, json=True)
+            return sb.JSONB_SUPERSET(op1, json.dumps(op2))
         else:
             raise ValueError("Unrecognized operator %s" % operator)
