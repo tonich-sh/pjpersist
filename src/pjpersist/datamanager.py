@@ -253,7 +253,7 @@ class PJDataManager(object):
         # 2 bytes counter
         THREAD_COUNTERS.setdefault(tidx, random.randint(0, 0xFFFF))
         THREAD_COUNTERS[tidx] += 1 % 0xFFFF
-        id += struct.pack(">i", random.randint(0, THREAD_COUNTERS[tidx]))[-2:]
+        id += struct.pack(">i", THREAD_COUNTERS[tidx])[-2:]
         return binascii.hexlify(id)
 
     def _init_name_map_table(self):
