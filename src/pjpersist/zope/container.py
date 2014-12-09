@@ -371,12 +371,15 @@ class PJContainer(contained.Contained,
         qry = self._pj_add_items_filter(qry)
         #qstr = qry.__sqlrepr__('postgres')
 
-        with self._pj_jar.getCursor() as cur:
-            if qry is None:
-                cur.execute(sb.Select(self._get_sb_fields(fields)))
-            else:
-                cur.execute(sb.Select(self._get_sb_fields(fields), qry))
-            return cur.fetchall()
+        # returning the cursor instead of fetchall at the cost of not closing it
+        # iterating over the cursor is better and this way we expose rowcount
+        # and friends
+        cur = self._pj_jar.getCursor()
+        if qry is None:
+            cur.execute(sb.Select(self._get_sb_fields(fields)))
+        else:
+            cur.execute(sb.Select(self._get_sb_fields(fields), qry))
+        return cur
 
     def find(self, qry=None):
         # Search for matching objects.
