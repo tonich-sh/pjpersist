@@ -49,8 +49,7 @@ def test_convert():
         >>> mq.simplified = False
         >>> run(mq.convert({'nr': 42}))
         ((((Bar.data) -> ('nr')) = ('42')) OR
-         ((('[]'::jsonb) <@ ((Bar.data) -> ('nr'))) AND
-          (((Bar.data) -> ('nr')) ? ('42'))))
+         (('[42]'::jsonb) <@ ((Bar.data) -> ('nr'))))
 
     Enough craziness:
 

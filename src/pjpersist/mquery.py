@@ -63,10 +63,7 @@ class Converter(object):
                 else:
                     clauses.append(sb.OR(
                         accessor == jvalue,
-                        sb.AND(
-                            sb.JSONB_SUBSET(sb.JSONB('[]'), accessor),
-                            sb.JSONB_CONTAINS(accessor, jvalue)
-                        )
+                        sb.JSONB_SUBSET(sb.JSONB(json.dumps([value])), accessor),
                     ))
         return sb.AND(*clauses)
 

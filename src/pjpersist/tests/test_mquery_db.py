@@ -59,12 +59,22 @@ def select(conn, query, print_sql=False):
 def doctest_operators():
     """Test simple selectors and comparisons:
 
+
+    We can do simple matches of strings:
+
        >>> select(conn, {'foo': 'bar'})
        {u'foo': u'bar'}
+
+    And numbers:
 
        >>> select(conn, {'nr': 42})
        {u'nr': 42}
        {u'nr': 42, u'drink': u'whiskey', u'day': u'Friday', u'plan': u'getdown'}
+
+    We can query for an element in the list:
+
+       >>> select(conn, {'some.numbers': 69})
+       {u'some': {u'numbers': [42, 69, 105]}}
 
        >>> select(conn, {'nr': {'$gt': 40}})
        {u'nr': 42}
