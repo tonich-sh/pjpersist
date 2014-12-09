@@ -1162,7 +1162,9 @@ def doctest_conflict2():
 
 
 def test_suite():
-    return doctest.DocTestSuite(
+    suite = doctest.DocTestSuite(
         setUp=testing.setUp, tearDown=testing.tearDown,
         checker=testing.checker,
         optionflags=testing.OPTIONFLAGS)
+    suite.layer = testing.db_layer
+    return suite

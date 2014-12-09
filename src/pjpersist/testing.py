@@ -76,13 +76,15 @@ def dropDB():
     conn.close()
 
 
-def cleanDB(conn):
+def cleanDB(conn=None):
+    if conn is None:
+        conn = getConnection(DBNAME)
     with conn.cursor() as cur:
-        cur.execute("""SELECT tablename FROM pg_tables
-                       WHERE tablename NOT LIKE 'pg%' AND
-                             tablename NOT LIKE 'sql%'""")
+        cur.execute("""SELECT tablename FROM pg_tables""")
         for res in cur.fetchall():
-            cur.execute('DROP TABLE ' + res[0])
+            if not res[0].startswith('pg_') and not res[0].startswith('sql_'):
+                cur.execute('DROP TABLE ' + res[0])
+    conn.commit()
 
 
 def setUp(test):
@@ -90,8 +92,9 @@ def setUp(test):
     serialize.SERIALIZERS = [serializers.DateTimeSerializer(),
                              serializers.DateSerializer(),
                              serializers.TimeSerializer()]
-    createDB()
+    #createDB()
     test.globs['conn'] = getConnection(DBNAME)
+    cleanDB(test.globs['conn'])
     test.globs['commit'] = transaction.commit
     test.globs['dm'] = datamanager.PJDataManager(test.globs['conn'])
 
@@ -115,10 +118,27 @@ def setUp(test):
 def tearDown(test):
     module.tearDown(test)
     transaction.abort()
+    cleanDB(test.globs['conn'])
     test.globs['conn'].close()
-    dropDB()
+    #dropDB()
     resetCaches()
     serialize.SERIALIZERS = []
+
+
+class DatabaseLayer(object):
+    __bases__ = ()
+
+    def __init__(self, name):
+        self.__name__ = name
+
+    def setUp(self):
+        createDB()
+
+    def tearDown(self):
+        dropDB()
+
+
+db_layer = DatabaseLayer("db_layer")
 
 
 def resetCaches():

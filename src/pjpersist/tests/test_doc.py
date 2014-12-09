@@ -61,7 +61,7 @@ def setUpRST(test):
 
 
 def test_suite():
-    return unittest.TestSuite((
+    suite = unittest.TestSuite((
         doctest.DocFileSuite(
             '../README.txt',
             setUp=setUp, tearDown=tearDown,
@@ -73,3 +73,5 @@ def test_suite():
             checker=testing.checker,
             optionflags=testing.OPTIONFLAGS),
         ))
+    suite.layer = testing.db_layer
+    return suite

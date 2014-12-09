@@ -1496,15 +1496,18 @@ def noCacheTearDown(test):
     tearDown(test)
 
 def test_suite():
-    return unittest.TestSuite((
-        doctest.DocTestSuite(
+    dt = doctest.DocTestSuite(
                 setUp=setUp, tearDown=tearDown, checker=checker,
                 optionflags=(doctest.NORMALIZE_WHITESPACE|
                              doctest.ELLIPSIS|
                              doctest.REPORT_ONLY_FIRST_FAILURE
                              #|doctest.REPORT_NDIFF
-                             )
-                ),
+                             ),
+                )
+    dt.layer = testing.db_layer
+
+    return unittest.TestSuite((
+        dt,
         #doctest.DocTestSuite(
         #        setUp=noCacheSetUp, tearDown=noCacheTearDown, checker=checker,
         #        optionflags=(doctest.NORMALIZE_WHITESPACE|
