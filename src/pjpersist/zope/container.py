@@ -25,6 +25,7 @@ from zope.container.interfaces import IContainer
 import pjpersist.sqlbuilder as sb
 from pjpersist import interfaces, serialize
 from pjpersist.zope import interfaces as zinterfaces
+from pjpersist.mquery import Converter
 
 USE_CONTAINER_CACHE = True
 
@@ -366,6 +367,15 @@ class PJContainer(contained.Contained,
                 # XXX: handle functions later here
                 res.append(sb.ColumnAS(sb.JSON_GETITEM_TEXT(datafld, name), name))
         return res
+
+    # BBB: providing support for mongo style queries
+    #      anything further is just a pain, like figuring fields
+    #      and keeping return values unchanged
+    #      (in the means of returning the same dict)
+    def convert_mongo_query(self, spec):
+        c = Converter(self._pj_table, 'data')
+        qry = c.convert(spec)
+        return qry
 
     def raw_find(self, qry=None, fields=()):
         qry = self._pj_add_items_filter(qry)

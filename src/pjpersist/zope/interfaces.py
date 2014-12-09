@@ -61,6 +61,9 @@ class IPJContainer(zope.interface.Interface):
         Keys that are already in the passed in filter are not overwritten.
         """
 
+    def convert_mongo_query(spec):
+        """BBB: providing support for mongo style queries"""
+
     def raw_find(qry, fields=()):
         """Return a raw psycopg result cursor for the specified query.
 
