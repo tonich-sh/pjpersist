@@ -1083,6 +1083,84 @@ def doctest_get_database_name_from_dsn():
     """
 
 
+def doctest_conflict1():
+    """Check conflict detection. We modify the same object in different
+    transactions, simulating separate processes.
+
+      >>> foo = Foo('foo-first')
+      >>> dm.root['foo'] = foo
+
+      >>> dm.tpc_finish(None)
+
+      >>> conn1 = testing.getConnection(testing.DBNAME)
+      >>> dm1 = datamanager.PJDataManager(conn1)
+
+      >>> dm1.root['foo']
+      <Foo foo-first>
+      >>> dm1.root['foo'].name = 'foo-second'
+
+      >>> conn2 = testing.getConnection(testing.DBNAME)
+      >>> dm2 = datamanager.PJDataManager(conn2)
+
+      >>> dm2.root['foo']
+      <Foo foo-first>
+      >>> dm2.root['foo'].name = 'foo-third'
+
+    Finish in order 2 - 1
+
+      >>> dm2.tpc_finish(None)
+      >>> dm1.tpc_finish(None)
+      Traceback (most recent call last):
+      ...
+      TransactionRollbackError: could not serialize access due to concurrent update
+
+      >>> transaction.abort()
+
+      >>> conn2.close()
+      >>> conn1.close()
+
+    """
+
+
+def doctest_conflict2():
+    """Check conflict detection. We modify the same object in different
+    transactions, simulating separate processes.
+
+      >>> foo = Foo('foo-first')
+      >>> dm.root['foo'] = foo
+
+      >>> dm.tpc_finish(None)
+
+      >>> conn1 = testing.getConnection(testing.DBNAME)
+      >>> dm1 = datamanager.PJDataManager(conn1)
+
+      >>> dm1.root['foo']
+      <Foo foo-first>
+      >>> dm1.root['foo'].name = 'foo-second'
+
+      >>> conn2 = testing.getConnection(testing.DBNAME)
+      >>> dm2 = datamanager.PJDataManager(conn2)
+
+      >>> dm2.root['foo']
+      <Foo foo-first>
+      >>> dm2.root['foo'].name = 'foo-third'
+
+    Finish in order 1 - 2
+
+      >>> dm1.tpc_finish(None)
+      >>> dm2.tpc_finish(None)
+      Traceback (most recent call last):
+      ...
+      TransactionRollbackError: could not serialize access due to concurrent update
+
+      >>> transaction.abort()
+
+      >>> conn2.close()
+      >>> conn1.close()
+
+    """
+
+
 def test_suite():
     return doctest.DocTestSuite(
         setUp=testing.setUp, tearDown=testing.tearDown,
