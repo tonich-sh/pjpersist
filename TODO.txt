@@ -14,3 +14,7 @@
 
   - think about how to batch SQL commands
     e.g. in `PJDataManager._flush_objects`
+
+  - think about implementing an object cache per connection and providing
+    invalidation messages as ZEO (and maybe relstorage? does)
+    see ZODB / collaborations.txt
