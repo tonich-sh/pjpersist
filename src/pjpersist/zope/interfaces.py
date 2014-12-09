@@ -64,18 +64,20 @@ class IPJContainer(zope.interface.Interface):
     def convert_mongo_query(spec):
         """BBB: providing support for mongo style queries"""
 
-    def raw_find(qry, fields=()):
+    def raw_find(qry, fields=(), **kwargs):
         """Return a raw psycopg result cursor for the specified query.
 
         The qry is updated to also contain the container's filter condition.
+        ``kwargs`` allows you to pass parameters to sqlbuilder.Select
 
         Note: The user is responsible of closing the cursor after use.
         """
 
-    def find(qry):
+    def find(qry, **kwargs):
         """Return a Python object result set for the specified query.
 
         The qry is updated to also contain the container's filter condition.
+        ``kwargs`` allows you to pass parameters to sqlbuilder.Select
 
         Note: The user is responsible of closing the cursor after use.
         """

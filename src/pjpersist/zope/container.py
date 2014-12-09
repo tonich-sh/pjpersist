@@ -377,7 +377,7 @@ class PJContainer(contained.Contained,
         qry = c.convert(spec)
         return qry
 
-    def raw_find(self, qry=None, fields=()):
+    def raw_find(self, qry=None, fields=(), **kwargs):
         qry = self._pj_add_items_filter(qry)
         #qstr = qry.__sqlrepr__('postgres')
 
@@ -386,14 +386,14 @@ class PJContainer(contained.Contained,
         # and friends
         cur = self._pj_jar.getCursor()
         if qry is None:
-            cur.execute(sb.Select(self._get_sb_fields(fields)))
+            cur.execute(sb.Select(self._get_sb_fields(fields)), **kwargs)
         else:
-            cur.execute(sb.Select(self._get_sb_fields(fields), qry))
+            cur.execute(sb.Select(self._get_sb_fields(fields), qry), **kwargs)
         return cur
 
-    def find(self, qry=None):
+    def find(self, qry=None, **kwargs):
         # Search for matching objects.
-        result = self.raw_find(qry)
+        result = self.raw_find(qry, **kwargs)
         for row in result:
             obj = self._load_one(row['id'], row['data'])
             yield obj
