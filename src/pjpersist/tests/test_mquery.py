@@ -148,7 +148,27 @@ def test_convert_logical():
 
     """
 
+
+def test_convert_id():
+    """Test mquery.convert _id handling.
+
+    Setup:
+
+        >>> mq = mquery.Converter("Bar", "data")
+        >>> mq.simplified = True
+
+    Fields named _id are translated to query the id column directly on
+    the table:
+
+        >>> run(mq.convert({'_id': '3334444555', "lastname": "Getinthechopper"}))
+        (((Bar.id) = ('3334444555')) AND
+         (((Bar.data) ->> ('lastname')) = ('Getinthechopper')))
+
+        >>> run(mq.convert({'_id': {'$exists': True}}))
+        ((Bar.id) IS NOT NULL)
+
+    """
+
 def test_suite():
     return doctest.DocTestSuite(
         optionflags=testing.OPTIONFLAGS)
-

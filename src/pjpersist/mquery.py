@@ -67,7 +67,9 @@ class Converter(object):
         return sb.AND(*clauses)
 
     def getField(self, field, key, json=False):
-        if json:
+        if key == '_id':
+            accessor = sb.Field(self.table, 'id')
+        elif json:
             if '.' not in key:
                 accessor = sb.JSON_GETITEM(field, key)
             else:
