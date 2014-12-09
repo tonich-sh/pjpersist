@@ -689,6 +689,33 @@ def doctest_PJDataManager_tpc_abort():
       0
     """
 
+
+def doctest_PJDataManager_transaction_abort_after_query():
+    r"""
+
+    When we perform illegal sql, connection is set to "aborted" state, and you
+    cannot execute any more queries on it. However, after you abort the
+    transaction, you can continue.
+
+    Let's execute bad SQL
+
+      >>> foo = Foo()
+      >>> cur = dm.getCursor()
+      >>> try:
+      ...     cur.execute("SELECT 1/0")
+      ...     cur.fetchall()
+      ... except:
+      ...     transaction.abort()
+
+    We aborted transaction and now we can continue doing stuff
+      >>> cur = dm.getCursor()
+      >>> cur.execute("SELECT 1")
+      >>> cur.fetchall()
+      [1]
+
+    """
+
+
 def doctest_PJDataManager_sortKey():
     r"""PJDataManager: sortKey()
 
