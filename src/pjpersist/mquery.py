@@ -35,7 +35,11 @@ class Converter(object):
         clauses = []
         doc = sb.Field(self.table, self.field)
         for key, value in sorted(query.items()):
-            accessor = self.getField(doc, key)
+            accessor = self.getField(doc, key, json=True)
+            jvalue = json.dumps(value)
+
+            if key == '_id':
+                jvalue = value
 
             if key in ('$and', '$or', '$nor'):
                 if not isinstance(value, (list, tuple)):
@@ -53,21 +57,24 @@ class Converter(object):
                             operator, doc, key, operand))
             else:
                 # Scalar -- equality or array membership
-                if self.simplified:
+                if self.simplified or key == '_id':
                     # Let's ignore the membership case for test clarity
-                    clauses.append(accessor == value)
+                    clauses.append(accessor == jvalue)
                 else:
                     clauses.append(sb.OR(
-                        accessor == value,
+                        accessor == jvalue,
                         sb.AND(
                             sb.JSONB_SUBSET(sb.JSONB('[]'), accessor),
-                            sb.JSONB_CONTAINS(accessor, value)
+                            sb.JSONB_CONTAINS(accessor, jvalue)
                         )
                     ))
         return sb.AND(*clauses)
 
     def getField(self, field, key, json=False):
-        if key == '_id':
+        if isinstance(field, sb.SQLConstant):
+            # hack for $elemMatch
+            accessor = field
+        elif key == '_id':
             accessor = sb.Field(self.table, 'id')
         elif json:
             if '.' not in key:
@@ -83,26 +90,30 @@ class Converter(object):
         return accessor
 
     def operator_expr(self, operator, field, key, op2):
-        op1 = self.getField(field, key)
+        op1 = self.getField(field, key, json=True)
+        op2j = json.dumps(op2)
+
+        if key == '_id':
+            op2j = op2
+
         if operator == '$gt':
-            return op1 > op2
+            return op1 > op2j
         if operator == '$lt':
-            return op1 < op2
+            return op1 < op2j
         if operator == '$gte':
-            return op1 >= op2
+            return op1 >= op2j
         if operator == '$lte':
-            return op1 <= op2
+            return op1 <= op2j
         if operator == '$ne':
-            return op1 != op2
+            return op1 != op2j
         if operator == '$in':
-            return sb.IN(op1, op2)
+            return sb.IN(op1, [json.dumps(el) for el in op2])
         if operator == '$nin':
-            return sb.NOT(sb.IN(op1, op2))
+            return sb.NOT(sb.IN(op1, [json.dumps(el) for el in op2]))
         if operator == '$not':
             # MongoDB's rationalization for this operator:
             # it matches when op1 does not pass the condition
             # or when op1 is not set at all.
-            operator2, op3 = op2.items()[0]
             return sb.OR(
                 sb.ISNULL(op1),
                 sb.NOT(sb.AND(
@@ -110,16 +121,13 @@ class Converter(object):
                       for operator2, op3 in op2.items())
                 )))
         if operator == '$size':
-            op1 = self.getField(field, key, json=True)
-            return sb.func.json_array_length(op1) == op2
+            return sb.func.jsonb_array_length(op1) == op2
         if operator == '$exists':
-            op1 = self.getField(field, key, json=True)
             return sb.ISNOTNULL(op1) if op2 else sb.ISNULL(op1)
         if operator == '$all':
-            op1 = self.getField(field, key, json=True)
-            return sb.JSONB_SUPERSET(op1, json.dumps(op2))
+            return sb.JSONB_SUPERSET(op1, op2j)
         if operator == '$elemMatch':
-            op1 = sb.NoTables(self.getField(field, key, json=True))
+            op1 = sb.NoTables(op1)
             # SELECT data FROM tbl WHERE EXISTS (
             #          SELECT value
             #          FROM jsonb_array_elements(data -> 'arr')
@@ -127,11 +135,11 @@ class Converter(object):
             # );
             return sb.EXISTS(
                 sb.Select(
-                    ['values'],
+                    ['value'],
                     staticTables=[sb.func.jsonb_array_elements(op1)],
                     where=sb.NoTables(sb.AND(*(
                         sb.AND(*(
-                            self.operator_expr(operator2, field, key, op3)
+                            self.operator_expr(operator2, sb.SQLConstant('value'), key, op3)
                             for operator2, op3 in query.items()
                         ))
                         for query in op2
