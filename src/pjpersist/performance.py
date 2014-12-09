@@ -27,6 +27,7 @@ import cPickle
 import cProfile
 
 from pjpersist import datamanager
+from pjpersist import testing
 from pjpersist.zope import container
 
 import zope.container
@@ -273,8 +274,7 @@ class PerformancePJ(PerformanceBase):
 
             datamanager.PJ_AUTO_CREATE_TABLES = False
             if LOG_SQL:
-                datamanager.PJ_ACCESS_LOGGING = True
-                #datamanager.PJPersistCursor.ADD_TB = False
+                testing.log_sql_to_file('/tmp/pjpersist.table.log')
 
             conn = getConnection('performance')
 
@@ -404,15 +404,6 @@ def main(args=None):
     if args is None:
         args = sys.argv[1:]
     options, args = parser.parse_args(args)
-
-    if LOG_SQL:
-        PJLOGGER.setLevel(logging.DEBUG)
-        fh = logging.FileHandler('/tmp/pjpersist.table.log')
-        fh.setLevel(logging.DEBUG)
-        formatter = logging.Formatter(
-            '%(name)s - %(levelname)s - %(message)s')
-        fh.setFormatter(formatter)
-        PJLOGGER.addHandler(fh)
 
     print 'PJ ---------------'
     PerformancePJ().run_basic_crud(options)

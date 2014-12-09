@@ -128,5 +128,22 @@ def resetCaches():
     serialize.AVAILABLE_NAME_MAPPINGS.__init__()
     serialize.PATH_RESOLVE_CACHE = {}
 
+
+def log_sql_to_file(fname, add_tb=True, tb_limit=15):
+    import logging
+
+    datamanager.PJ_ACCESS_LOGGING = True
+    datamanager.LOG.setLevel(logging.DEBUG)
+    datamanager.PJPersistCursor.ADD_TB = add_tb
+    datamanager.PJPersistCursor.TB_LIMIT = tb_limit
+
+    fh = logging.FileHandler(fname)
+    fh.setLevel(logging.DEBUG)
+    formatter = logging.Formatter(
+        '%(name)s - %(levelname)s - %(message)s')
+    fh.setFormatter(formatter)
+    datamanager.LOG.addHandler(fh)
+
+
 cleanup.addCleanUp(resetCaches)
 atexit.register(dropDB)
