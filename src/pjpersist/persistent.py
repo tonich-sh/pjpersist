@@ -12,13 +12,14 @@
 #
 ##############################################################################
 """Persistent Object Support"""
+from __future__ import absolute_import
 import persistent
 import zope.interface
 
 from pjpersist import interfaces
 
 class PersistentSerializationHooks(persistent.Persistent):
-    zope.interface.implements(IPersistentSerializationHooks)
+    zope.interface.implements(interfaces.IPersistentSerializationHooks)
 
     def _pj_after_store_hook(self, conn):
         return None
@@ -28,7 +29,7 @@ class PersistentSerializationHooks(persistent.Persistent):
 
 
 class SimpleColumnSerialization(persistent.Persistent):
-    zope.interface.implements(IColumnSerialization)
+    zope.interface.implements(interfaces.IColumnSerialization)
 
     _pj_column_fields = ()
 

@@ -420,6 +420,38 @@ When loading the addresses, they should be of the right type:
   <ExtendedAddress Arnsdorf (01945) in Germany>
 
 
+Persistent Serialization Hooks
+------------------------------
+
+When persistent components implement the ``IPersistentSerializationHooks`, it
+is possible for the object to conduct some custom storage function.
+
+
+  >>> from pjpersist.persistent import PersistentSerializationHooks
+  >>> class Usernames(PersistentSerializationHooks):
+  ...     _p_pj_table = 'usernames'
+  ...     format = 'email'
+  ...
+  ...     def _pj_after_store_hook(self, conn):
+  ...         print 'After Store Hook'
+  ...
+  ...     def _pj_after_load_hook(self, conn):
+  ...         print 'After Load Hook'
+
+When we store the object, the hook is called:
+
+  >>> dm.root['stephan'].usernames = Usernames()
+  >>> transaction.commit()
+  After Store Hook
+  After Store Hook
+
+When loading, the same happens:
+
+  >>> dm.root['stephan'].usernames.format
+  After Load Hook
+  'email'
+
+
 Tricky Cases
 ------------
 
