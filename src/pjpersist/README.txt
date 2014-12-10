@@ -423,7 +423,7 @@ When loading the addresses, they should be of the right type:
 Persistent Serialization Hooks
 ------------------------------
 
-When persistent components implement the ``IPersistentSerializationHooks`, it
+When persistent components implement the ``IPersistentSerializationHooks``, it
 is possible for the object to conduct some custom storage function.
 
 
@@ -439,6 +439,7 @@ is possible for the object to conduct some custom storage function.
   ...         print 'After Load Hook'
 
 When we store the object, the hook is called:
+(actually twice, because this is a new object)
 
   >>> dm.root['stephan'].usernames = Usernames()
   >>> transaction.commit()
@@ -451,12 +452,21 @@ When loading, the same happens:
   After Load Hook
   'email'
 
+The store hook fires just once if the object is not new:
+
+  >>> dm.root['stephan'].usernames.format = 'snailmail'
+  >>> transaction.commit()
+  After Store Hook
+
 
 Column Serialization
 --------------------
 
 pjpersist also allows for the object to specify values, usually attributes or
 properties, to be stored as columns on the object's storage table.
+
+Note that we support only a one-way transformation, because object state
+will be always deserialized from the ``data`` jsonb field.
 
   >>> import zope.schema
   >>> class IPerson(zope.interface.Interface):
@@ -471,17 +481,32 @@ Initially, we are storing only the name in a column:
   >>> from pjpersist.persistent import SimpleColumnSerialization, select_fields
   >>> class ColumnPerson(SimpleColumnSerialization, Person):
   ...     zope.interface.implements(IPerson)
-  ...     _pj_table = 'cperson'
+  ...     _p_pj_table = 'cperson'
   ...     _pj_column_fields = select_fields(IPerson, 'name')
+
+We have to create the table and custom column ourselves:
+
+  >>> dm.create_tables('cperson')
+  >>> cur = dm.getCursor(False)
+  >>> cur.execute("ALTER TABLE cperson ADD COLUMN name text")
 
 So once I create such a person and commit the transaction, the person table is
 extended to store the attribute and the person is added to the table:
 
-##  >>> dm.root['anton'] = anton = ColumnPerson(u'Anton')
-##  >>> transaction.commit()
-##
-##  >>> dumpTable('cperson')
+  >>> dm.root['anton'] = anton = ColumnPerson(u'Anton')
+  >>> transaction.commit()
 
+  >>> dumpTable('cperson')
+  [{'data': {u'address': None,
+             u'birthday': None,
+             u'friends': {},
+             u'name': u'Anton',
+             u'phone': None,
+             u'today': {u'_py_type': u'datetime.datetime',
+                        u'components': [2014, 5, 14, 12, 30, 0]},
+             u'visited': []},
+    'id': u'0001020304050607080a0b0c0',
+    'name': u'Anton'}]
 
 
 Tricky Cases

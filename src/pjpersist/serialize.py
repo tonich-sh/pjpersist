@@ -347,10 +347,13 @@ class ObjectWriter(object):
             doc[interfaces.PY_TYPE_ATTR_NAME] = get_dotted_name(obj.__class__)
 
         stored = False
+        if interfaces.IColumnSerialization.providedBy(obj):
+            column_data = obj._pj_get_column_fields()
+        else:
+            column_data = None
         if obj._p_oid is None:
-            doc_id = self._jar._insert_doc(db_name, table_name, doc, id)
-            if interfaces.IPersistentSerializationHooks.providedBy(obj):
-                obj._pj_after_store_hook(self._jar._conn)
+            doc_id = self._jar._insert_doc(
+                db_name, table_name, doc, id, column_data)
             stored = True
             obj._p_jar = self._jar
             obj._p_oid = DBRef(table_name, doc_id, db_name)
@@ -358,10 +361,12 @@ class ObjectWriter(object):
             # session, gets the same instance.
             self._jar._object_cache[hash(obj._p_oid)] = obj
         else:
-            self._jar._update_doc(db_name, table_name, doc, obj._p_oid.id)
-            if interfaces.IPersistentSerializationHooks.providedBy(obj):
-                obj._pj_after_store_hook(self._jar._conn)
+            self._jar._update_doc(
+                db_name, table_name, doc, obj._p_oid.id, column_data)
             stored = True
+        # let's call the hook here, to always have _p_jar and _p_oid set
+        if interfaces.IPersistentSerializationHooks.providedBy(obj):
+            obj._pj_after_store_hook(self._jar._conn)
 
         if stored:
             # Make sure that the doc is added to the latest states.

@@ -363,8 +363,13 @@ class PJContainer(contained.Contained,
         else:
             datafld = sb.Field(self._pj_table, 'data')
             res = []
+            first_class_fields = {'id', 'data'}
+            # prefer sql columns over json fields
+            if interfaces.IColumnSerialization.providedBy(self):
+                for field in self._pj_column_fields:
+                    first_class_fields.add(field.__name__)
             for name in fields:
-                if name == 'id':
+                if name in first_class_fields:
                     res.append(sb.Field(self._pj_table, name))
                 else:
                     res.append(sb.ColumnAS(sb.JSON_GETITEM(datafld, name), name))

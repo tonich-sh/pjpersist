@@ -350,25 +350,49 @@ class PJDataManager(object):
                     CREATE INDEX %s_data_gin ON %s USING GIN (data);
                     ''' % (table, table))
 
-    def _insert_doc(self, database, table, doc, id=None):
+    def _insert_doc(self, database, table, doc, id=None, column_data=None):
         # Create id if it is None.
         if id is None:
             id = self.createId()
         # Insert the document into the table.
         with self.getCursor() as cur:
-            cur.execute(
-                "INSERT INTO " + table + " (id, data) VALUES (%s, %s)",
-                (id, Json(doc))
-                )
+            builtins = dict(id=id, data=Json(doc))
+            if column_data is None:
+                column_data = builtins
+            else:
+                column_data.update(builtins)
+
+            columns = []
+            values = []
+            for colname, value in column_data.items():
+                columns.append(colname)
+                values.append(value)
+            placeholders = ', '.join(['%s'] * len(columns))
+            columns = ', '.join(columns)
+            sql = "INSERT INTO %s (%s) VALUES (%s)" % (
+                table, columns, placeholders)
+
+            cur.execute(sql, tuple(values))
         return id
 
-    def _update_doc(self, database, table, doc, id):
+    def _update_doc(self, database, table, doc, id, column_data=None):
         # Insert the document into the table.
         with self.getCursor() as cur:
-            cur.execute(
-                "UPDATE " + table + " SET data=%s WHERE id = %s",
-                (Json(doc), id)
-                )
+            builtins = dict(data=Json(doc))
+            if column_data is None:
+                column_data = builtins
+            else:
+                column_data.update(builtins)
+
+            columns = []
+            values = []
+            for colname, value in column_data.items():
+                columns.append(colname+'=%s')
+                values.append(value)
+            columns = ', '.join(columns)
+            sql = "UPDATE %s SET %s WHERE id = %%s" % (table, columns)
+
+            cur.execute(sql, tuple(values) + (id,))
         return id
 
     def _get_doc(self, database, table, id):

@@ -18,6 +18,7 @@ import zope.interface
 
 from pjpersist import interfaces
 
+
 class PersistentSerializationHooks(persistent.Persistent):
     zope.interface.implements(interfaces.IPersistentSerializationHooks)
 
@@ -39,5 +40,6 @@ class SimpleColumnSerialization(object):
             for field in self._pj_column_fields}
 
 
+# XXX: extend later to a z3c.form'ish Fields to have `omit` too
 def select_fields(schema, *fieldnames):
     return tuple(schema[fname] for fname in fieldnames)
