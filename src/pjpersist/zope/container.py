@@ -257,7 +257,7 @@ class PJContainer(contained.Contained,
             raise KeyError(key)
         # The cache cannot help, so the item is looked up in the database.
         datafld = sb.Field(self._pj_table, 'data')
-        fld = sb.JSON_GETITEM_TEXT(datafld, self._pj_mapping_key)
+        fld = sb.JGET(datafld, self._pj_mapping_key)
         qry = (fld == key)
         obj = self.find_one(qry)
         if obj is None:
@@ -323,8 +323,9 @@ class PJContainer(contained.Contained,
         if self._cache_complete:
             return key in self._cache
         datafld = sb.Field(self._pj_table, 'data')
-        fld = sb.JSON_GETITEM_TEXT(datafld, self._pj_mapping_key)
+        fld = sb.JGET(datafld, self._pj_mapping_key)
         qry = (fld == key)
+
         # XXX: inefficient: we want here to just count the rows
         res = self.raw_find_one(qry)
         return res[0] is not None
@@ -334,7 +335,7 @@ class PJContainer(contained.Contained,
         if self._cache_complete:
             return iter(self._cache)
         datafld = sb.Field(self._pj_table, 'data')
-        fld = sb.JSON_GETITEM_TEXT(datafld, self._pj_mapping_key)
+        fld = sb.JGET(datafld, self._pj_mapping_key)
         qry = (fld != None)
         result = self.raw_find(qry, fields=(self._pj_mapping_key,))
         return iter(doc[self._pj_mapping_key] for doc in result)
@@ -365,7 +366,7 @@ class PJContainer(contained.Contained,
             res = []
             for name in fields:
                 # XXX: handle functions later here
-                res.append(sb.ColumnAS(sb.JSON_GETITEM_TEXT(datafld, name), name))
+                res.append(sb.ColumnAS(sb.JSON_GETITEM(datafld, name), name))
         return res
 
     # BBB: providing support for mongo style queries
