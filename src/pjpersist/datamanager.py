@@ -37,7 +37,15 @@ from zope.exceptions import exceptionformatter
 from pjpersist import interfaces, serialize
 
 PJ_ACCESS_LOGGING = False
+# set to True to automatically create tables if they don't exist
+# it is relatively expensive, so create your tables with a schema.sql
+# and turn this off for production
 PJ_AUTO_CREATE_TABLES = True
+
+# set to True to automatically create IColumnSerialization columns
+# will also create tables regardless of the PJ_AUTO_CREATE_TABLES setting
+# so this is super expensive
+PJ_AUTO_CREATE_COLUMNS = True
 
 TABLE_LOG = logging.getLogger('pjpersist.table')
 
@@ -328,7 +336,7 @@ class PJDataManager(object):
         with self.getCursor(False) as cur:
             cur.connection.commit()
 
-    def _create_doc_table(self, database, table):
+    def _create_doc_table(self, database, table, extra_columns=''):
         if self.database != database:
             raise NotImplementedError(
                 'Cannot store an object of a different database.',
@@ -340,15 +348,35 @@ class PJDataManager(object):
                 (table,))
             if not cur.rowcount:
                 LOG.info("Creating data table %s" % table)
+                if extra_columns:
+                    extra_columns += ', '
                 cur.execute('''
                     CREATE TABLE %s (
-                        id VARCHAR(24) NOT NULL PRIMARY KEY,
-                        data JSONB);
-                    ''' % table)
+                        id VARCHAR(24) NOT NULL PRIMARY KEY, %s
+                        data JSONB)''' % (table, extra_columns))
                 # this index helps a tiny bit with JSONB_CONTAINS queries
                 cur.execute('''
                     CREATE INDEX %s_data_gin ON %s USING GIN (data);
                     ''' % (table, table))
+
+    def _ensure_sql_columns(self, obj, table):
+        # create the table required for the object, with the necessary
+        # _pj_column_fields translated to SQL types
+        if PJ_AUTO_CREATE_COLUMNS:
+            if interfaces.IColumnSerialization.providedBy(obj):
+                # XXX: exercise for later, not just create but check
+                #      the columns
+                # SELECT column_name
+                #  FROM INFORMATION_SCHEMA.COLUMNS
+                #  WHERE table_name = '<name of table>';
+                columns = []
+                for field in obj._pj_column_fields:
+                    pgtype = serialize.PYTHON_TO_PG_TYPES[field._type]
+                    columns.append("%s %s" % (field.__name__, pgtype))
+
+                columns = ', '.join(columns)
+
+                self._create_doc_table(self.database, table, columns)
 
     def _insert_doc(self, database, table, doc, id=None, column_data=None):
         # Create id if it is None.

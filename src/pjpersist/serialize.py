@@ -16,6 +16,7 @@
 from __future__ import absolute_import
 import copy
 import copy_reg
+import datetime
 
 import persistent.interfaces
 import persistent.dict
@@ -34,6 +35,22 @@ OID_CLASS_LRU = repoze.lru.LRUCache(20000)
 TABLES_WITH_TYPE = set()
 AVAILABLE_NAME_MAPPINGS = set()
 PATH_RESOLVE_CACHE = {}
+
+# actually we should extract this somehow from psycopg2
+PYTHON_TO_PG_TYPES = {
+    unicode: "text",
+    str: "text",
+    bool: "bool",
+    float: "double",
+    int: "integer",
+    long: "bigint",
+    #Decimal: "number",
+    datetime.date: "date",
+    datetime.time: "time",
+    datetime.datetime: "timestamptz",
+    datetime.timedelta: "interval",
+    list: "array",
+}
 
 
 def get_dotted_name(obj, escape=False):
@@ -348,6 +365,7 @@ class ObjectWriter(object):
 
         stored = False
         if interfaces.IColumnSerialization.providedBy(obj):
+            self._jar._ensure_sql_columns(obj, table_name)
             column_data = obj._pj_get_column_fields()
         else:
             column_data = None

@@ -484,12 +484,6 @@ Initially, we are storing only the name in a column:
   ...     _p_pj_table = 'cperson'
   ...     _pj_column_fields = select_fields(IPerson, 'name')
 
-We have to create the table and custom column ourselves:
-
-  >>> dm.create_tables('cperson')
-  >>> cur = dm.getCursor(False)
-  >>> cur.execute("ALTER TABLE cperson ADD COLUMN name text")
-
 So once I create such a person and commit the transaction, the person table is
 extended to store the attribute and the person is added to the table:
 
