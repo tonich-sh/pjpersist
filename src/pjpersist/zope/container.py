@@ -326,9 +326,8 @@ class PJContainer(contained.Contained,
         fld = sb.JGET(datafld, self._pj_mapping_key)
         qry = (fld == key)
 
-        # XXX: inefficient: we want here to just count the rows
-        res = self.raw_find_one(qry)
-        return res[0] is not None
+        res = self.raw_find(qry, fields=('id',), limit=1)
+        return (res.rowcount > 0)
 
     def __iter__(self):
         # If the cache contains all objects, we can just return the cache keys.
@@ -416,7 +415,7 @@ class PJContainer(contained.Contained,
         #qstr = qry.__sqlrepr__('postgres')
 
         with self._pj_jar.getCursor() as cur:
-            cur.execute(sb.Select(sb.Field(self._pj_table, '*'), qry))
+            cur.execute(sb.Select(sb.Field(self._pj_table, '*'), qry, limit=2))
             if cur.rowcount == 0:
                 return None, None
             if cur.rowcount > 1:
