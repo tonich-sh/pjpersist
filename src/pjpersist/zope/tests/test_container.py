@@ -697,6 +697,79 @@ def doctest_PJContainer_find():
       [<Person Stephan>, <Person Roy>, <Person Roger>, <Person Adam>,
        <Person Albertas>, <Person Russ>]
 
+
+    Let's see some sqlbuilder parameters (passed along as kwargs):
+
+      >>> res = dm.root['people'].raw_find(orderBy=["(data->'name')"])
+      >>> pprint(list(res))
+      [[u'0001020304050607080a0b0c0',
+        {u'key': u'adam',
+         u'name': u'Adam',
+         u'parent': {u'_py_type': u'DBREF',
+                     u'database': u'pjpersist_test',
+                     u'id': u'0001020304050607080a0b0c0',
+                     u'table': u'pjpersist_dot_zope_dot_container_dot_PJContainer'}}],
+       [u'0001020304050607080a0b0c0',
+        {u'key': u'albertas',
+         u'name': u'Albertas',
+         u'parent': {u'_py_type': u'DBREF',
+                     u'database': u'pjpersist_test',
+                     u'id': u'0001020304050607080a0b0c0',
+                     u'table': u'pjpersist_dot_zope_dot_container_dot_PJContainer'}}],
+       [u'0001020304050607080a0b0c0',
+        {u'key': u'roger',
+         u'name': u'Roger',
+         u'parent': {u'_py_type': u'DBREF',
+                     u'database': u'pjpersist_test',
+                     u'id': u'0001020304050607080a0b0c0',
+                     u'table': u'pjpersist_dot_zope_dot_container_dot_PJContainer'}}],
+       [u'0001020304050607080a0b0c0',
+        {u'key': u'roy',
+         u'name': u'Roy',
+         u'parent': {u'_py_type': u'DBREF',
+                     u'database': u'pjpersist_test',
+                     u'id': u'0001020304050607080a0b0c0',
+                     u'table': u'pjpersist_dot_zope_dot_container_dot_PJContainer'}}],
+       [u'0001020304050607080a0b0c0',
+        {u'key': u'russ',
+         u'name': u'Russ',
+         u'parent': {u'_py_type': u'DBREF',
+                     u'database': u'pjpersist_test',
+                     u'id': u'0001020304050607080a0b0c0',
+                     u'table': u'pjpersist_dot_zope_dot_container_dot_PJContainer'}}],
+       [u'0001020304050607080a0b0c0',
+        {u'key': u'stephan',
+         u'name': u'Stephan',
+         u'parent': {u'_py_type': u'DBREF',
+                     u'database': u'pjpersist_test',
+                     u'id': u'0001020304050607080a0b0c0',
+                     u'table': u'pjpersist_dot_zope_dot_container_dot_PJContainer'}}]]
+
+      >>> res = dm.root['people'].raw_find(orderBy=["(data->'name') DESC"], limit=1)
+      >>> pprint(list(res))
+      [[u'0001020304050607080a0b0c0',
+        {u'key': u'stephan',
+         u'name': u'Stephan',
+         u'parent': {u'_py_type': u'DBREF',
+                     u'database': u'pjpersist_test',
+                     u'id': u'0001020304050607080a0b0c0',
+                     u'table': u'pjpersist_dot_zope_dot_container_dot_PJContainer'}}]]
+
+
+      >>> res = dm.root['people'].find(orderBy=["(data->'name')"])
+      >>> pprint(list(res))
+      [<Person Adam>,
+       <Person Albertas>,
+       <Person Roger>,
+       <Person Roy>,
+       <Person Russ>,
+       <Person Stephan>]
+
+      >>> res = dm.root['people'].find(orderBy=["(data->'name') DESC"], limit=1)
+      >>> pprint(list(res))
+      [<Person Stephan>]
+
+
     You can also search for a single result:
 
       >>> qry2 = fld.startswith('St')

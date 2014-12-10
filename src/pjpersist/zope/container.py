@@ -386,9 +386,9 @@ class PJContainer(contained.Contained,
         # and friends
         cur = self._pj_jar.getCursor()
         if qry is None:
-            cur.execute(sb.Select(self._get_sb_fields(fields)), **kwargs)
+            cur.execute(sb.Select(self._get_sb_fields(fields), **kwargs))
         else:
-            cur.execute(sb.Select(self._get_sb_fields(fields), qry), **kwargs)
+            cur.execute(sb.Select(self._get_sb_fields(fields), qry, **kwargs))
         return cur
 
     def find(self, qry=None, **kwargs):
