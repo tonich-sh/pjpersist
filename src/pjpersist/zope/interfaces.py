@@ -83,10 +83,10 @@ class IPJContainer(zope.interface.Interface):
         """
 
     def raw_find_one(qry=None, id=None):
-        """Return the id and a raw JSONB document for the specified query.
+        """Return the record for the specified query.
 
         At least one of the arguments must be specified. If no document was
-        found, returns (None, None).
+        found, returns None.
 
         The qry is updated to also contain the container's filter condition.
 

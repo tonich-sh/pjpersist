@@ -422,16 +422,16 @@ class PJContainer(contained.Contained,
         with self._pj_jar.getCursor() as cur:
             cur.execute(sb.Select(sb.Field(self._pj_table, '*'), qry, limit=2))
             if cur.rowcount == 0:
-                return None, None
+                return None
             if cur.rowcount > 1:
                 raise ValueError('Multiple results returned.')
             return cur.fetchone()
 
     def find_one(self, qry=None, id=None):
-        id, data = self.raw_find_one(qry, id)
-        if data is None:
+        res = self.raw_find_one(qry, id)
+        if res is None:
             return None
-        return self._load_one(id, data)
+        return self._load_one(res['id'], res['data'])
 
     def clear(self):
         for key in self.keys():
@@ -477,7 +477,7 @@ class IdNamesPJContainer(PJContainer):
         if self._cache_complete:
             return key in self._cache
         # Look in PostGreSQL.
-        return self.raw_find_one(id=key)[0] is not None
+        return self.raw_find_one(id=key) is not None
 
     def __iter__(self):
         # If the cache contains all objects, we can just return the cache keys.
