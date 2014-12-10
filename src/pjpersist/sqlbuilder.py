@@ -108,11 +108,11 @@ class JGET(object):
 
        >>> print (JGET("data", "key", table="Person") == {'foo': 'bar'}
        ...     ).__sqlrepr__('postgres')
-       (((Person.data) -> ('key')) = ('{"foo": "bar"}'))
+       (((Person.data) -> ('key')) = ('{"foo": "bar"}'::jsonb))
 
        >>> print (JGET("data", "key", table="Person") >= [True, False, None]
        ...     ).__sqlrepr__('postgres')
-       (((Person.data) -> ('key')) >= ('[true, false, null]'))
+       (((Person.data) -> ('key')) >= ('[true, false, null]'::jsonb))
 
     But not always (is this a good idea?):
 
@@ -135,32 +135,32 @@ class JGET(object):
         self.selector = selector
 
     def __lt__(self, other):
-        return SQLOp("<", self, json.dumps(other))
+        return SQLOp("<", self, JSONB(json.dumps(other)))
     def __le__(self, other):
-        return SQLOp("<=", self, json.dumps(other))
+        return SQLOp("<=", self, JSONB(json.dumps(other)))
     def __gt__(self, other):
-        return SQLOp(">", self, json.dumps(other))
+        return SQLOp(">", self, JSONB(json.dumps(other)))
     def __ge__(self, other):
-        return SQLOp(">=", self, json.dumps(other))
+        return SQLOp(">=", self, JSONB(json.dumps(other)))
     def __eq__(self, other):
         if other is None:
             return ISNULL(self)
         else:
-            return SQLOp("=", self, json.dumps(other))
+            return SQLOp("=", self, JSONB(json.dumps(other)))
     def __ne__(self, other):
         if other is None:
             return ISNOTNULL(self)
         else:
-            return SQLOp("<>", self, json.dumps(other))
+            return SQLOp("<>", self, JSONB(json.dumps(other)))
 
     def __and__(self, other):
-        return SQLOp("AND", self, json.dumps(other))
+        return SQLOp("AND", self, JSONB(json.dumps(other)))
     def __rand__(self, other):
-        return SQLOp("AND", json.dumps(other), self)
+        return SQLOp("AND", JSONB(json.dumps(other), self))
     def __or__(self, other):
-        return SQLOp("OR", self, json.dumps(other))
+        return SQLOp("OR", self, JSONB(json.dumps(other)))
     def __ror__(self, other):
-        return SQLOp("OR", json.dumps(other), self)
+        return SQLOp("OR", JSONB(json.dumps(other), self))
     def __invert__(self):
         return SQLPrefix("NOT", self)
 
