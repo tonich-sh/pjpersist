@@ -35,30 +35,6 @@ DOC_OBJECT_ATTR_NAME = '_p_pj_doc_object'
 STATE_ATTR_NAME = '_p_pj_state'
 PY_TYPE_ATTR_NAME = '_py_persistent_type'
 
-class ConflictError(transaction.interfaces.TransientError):
-    """An error raised when a write conflict is detected."""
-
-    def __init__(self, message=None, object=None,
-                 orig_state=None, cur_state=None, new_state=None):
-        self.message = message or "database conflict error"
-        self.object = object
-        self.orig_state = orig_state
-        self.cur_state = cur_state
-        self.new_state = new_state
-
-    def __str__(self):
-        extras = [
-            'oid %s' % self.object._p_oid if self.object else '',
-            'class %s' % self.object.__class__.__name__ if self.object
-            else '']
-        return "%s (%s)" % (self.message, ", ".join(extras))
-
-    def __unicode__(self):
-        return unicode(self.__str__())
-
-    def __repr__(self):
-        return '%s: %s' % (self.__class__.__name__, self)
-
 
 class CircularReferenceError(Exception):
     pass
@@ -184,3 +160,51 @@ class IPJDataManagerProvider(zope.interface.Interface):
 
     def get(database):
         """Return a PJ data manager for the given database."""
+
+
+class IPersistentSerializationHooks(zope.interface.Interface):
+    """Persistent Serialization Hooks
+
+    Persistent objects implementing this interface will be given the
+    opportunity during storage proceedings to consuct some custom
+    serialization tasks.
+    """
+
+    def _pj_after_store_hook(conn):
+        """Custom store hook.
+
+        This method is called after the object has been stored in the
+        database. The ``conn`` attribute is a connection to the database.
+
+        You should not manage the connection within this ethod, ie. abort or
+        commit the transaction.
+        """
+
+    def _pj_after_load_hook(conn):
+        """Custom load hook.
+
+        This method is called after the object has been loaded fully from the
+        database. The ``conn`` attribute is a connection to the database.
+
+        You should not manage the connection within this ethod, ie. abort or
+        commit the transaction.
+        """
+
+
+class IColumnSerialization(zope.interface.Interface):
+    """Column Serialization Support
+
+    Persistent objects implementing this interfave are able to store some of
+    their data into columns of their storage table. This allows developers to
+    access those attributes ina  more natural way using SQL.
+    """
+
+    _pj_column_fields = zope.schema.Tuple(
+        title=u'Column Fields',
+        description=(u'A list of zope.schema fields that represent columns '
+                     u'in the storage table. Fields cannot be named `id` or '
+                     u'`data` as those attributes are reserved.'),
+        reuqired=True)
+
+    def _pj_get_column_fields():
+        """Get Column Fields as a mapping from name to value."""
