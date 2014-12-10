@@ -452,6 +452,38 @@ When loading, the same happens:
   'email'
 
 
+Column Serialization
+--------------------
+
+pjpersist also allows for the object to specify values, usually attributes or
+properties, to be stored as columns on the object's storage table.
+
+  >>> import zope.schema
+  >>> class IPerson(zope.interface.Interface):
+  ...
+  ...     name = zope.schema.TextLine(title=u'Name')
+  ...     address = zope.schema.TextLine(title=u'Address')
+  ...     visited = zope.schema.Datetime(title=u'Visited')
+  ...     phone = zope.schema.TextLine(title=u'Phone')
+
+Initially, we are storing only the name in a column:
+
+  >>> from pjpersist.persistent import SimpleColumnSerialization, select_fields
+  >>> class ColumnPerson(SimpleColumnSerialization, Person):
+  ...     zope.interface.implements(IPerson)
+  ...     _pj_table = 'cperson'
+  ...     _pj_column_fields = select_fields(IPerson, 'name')
+
+So once I create such a person and commit the transaction, the person table is
+extended to store the attribute and the person is added to the table:
+
+##  >>> dm.root['anton'] = anton = ColumnPerson(u'Anton')
+##  >>> transaction.commit()
+##
+##  >>> dumpTable('cperson')
+
+
+
 Tricky Cases
 ------------
 

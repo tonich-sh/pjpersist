@@ -28,7 +28,7 @@ class PersistentSerializationHooks(persistent.Persistent):
         return None
 
 
-class SimpleColumnSerialization(persistent.Persistent):
+class SimpleColumnSerialization(object):
     zope.interface.implements(interfaces.IColumnSerialization)
 
     _pj_column_fields = ()
@@ -39,5 +39,5 @@ class SimpleColumnSerialization(persistent.Persistent):
             for field in self._pj_column_fields}
 
 
-def select_fields(schema, fieldnames):
+def select_fields(schema, *fieldnames):
     return tuple(schema[fname] for fname in fieldnames)
