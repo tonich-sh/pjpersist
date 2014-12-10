@@ -378,8 +378,9 @@ class PJContainer(contained.Contained,
         return qry
 
     def raw_find(self, qry=None, fields=(), **kwargs):
+        if isinstance(qry, dict):
+            qry = self.convert_mongo_query(qry)
         qry = self._pj_add_items_filter(qry)
-        #qstr = qry.__sqlrepr__('postgres')
 
         # returning the cursor instead of fetchall at the cost of not closing it
         # iterating over the cursor is better and this way we expose rowcount
