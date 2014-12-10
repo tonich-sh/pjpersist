@@ -87,13 +87,13 @@ class IObjectWriter(zope.interface.Interface):
     """The object writer stores an object in the database."""
 
     def get_non_persistent_state(obj, seen):
-        """Convert a non-persistent object to a Mongo state/document."""
+        """Convert a non-persistent object to a JSONB state/document."""
 
     def get_persistent_state(obj, seen):
-        """Convert a persistent object to a Mongo state/document."""
+        """Convert a persistent object to a JSONB state/document."""
 
     def get_state(obj, seen=None):
-        """Convert an arbitrary object to a Mongo state/document.
+        """Convert an arbitrary object to a JSONB state/document.
 
         A ``CircularReferenceError`` is raised, if a non-persistent loop is
         detected.
@@ -119,7 +119,7 @@ class IObjectReader(zope.interface.Interface):
     def get_object(state, obj):
         """Get an object from the given state.
 
-        The ``obj`` is the Mongo document of which the created object is part
+        The ``obj`` is the JSONB document of which the created object is part
         of.
         """
 
@@ -158,10 +158,10 @@ class IPJDataManager(persistent.interfaces.IPersistentDataManager):
         """
 
     def flush():
-        """Flush all changes to Mongo."""
+        """Flush all changes to PostGreSQL."""
 
     def insert(obj, id=None):
-        """Insert an object into Mongo.
+        """Insert an object into PostGreSQL.
 
         The correct collection is determined by object type.
 
@@ -170,29 +170,10 @@ class IPJDataManager(persistent.interfaces.IPersistentDataManager):
         """
 
     def remove(obj):
-        """Remove an object from Mongo.
+        """Remove an object from PostGreSQL.
 
         The correct collection is determined by object type.
         """
-
-
-class IMongoConnectionPool(zope.interface.Interface):
-    """MongoDB connection pool"""
-
-    connection = zope.interface.Attribute('MongoDBConnection instance')
-
-    host = zope.schema.TextLine(
-        title=u'MongoDB Server Hostname (without protocol)',
-        description=u'MongoDB Server Hostname or IPv4 address',
-        default=u'localhost',
-        required=True)
-
-    port = zope.schema.Int(
-        title=u'MongoDB Server Port',
-        description=u'MongoDB Server Port',
-        default=27017,
-        required=True)
-
 
 class IPJDataManagerProvider(zope.interface.Interface):
     """Utility to get a PJ data manager.
@@ -203,10 +184,3 @@ class IPJDataManagerProvider(zope.interface.Interface):
 
     def get(database):
         """Return a PJ data manager for the given database."""
-
-
-class IMongoSpecProcessor(zope.interface.Interface):
-    """An adapter to process find/update spec's"""
-
-    def process(collection, spec):
-        """return the processed spec here"""
