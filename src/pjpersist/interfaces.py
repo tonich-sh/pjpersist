@@ -204,7 +204,7 @@ class IColumnSerialization(zope.interface.Interface):
         description=(u'A list of zope.schema fields that represent columns '
                      u'in the storage table. Fields cannot be named `id` or '
                      u'`data` as those attributes are reserved.'),
-        reuqired=True)
+        required=True)
 
     def _pj_get_column_fields():
         """Get Column Fields as a mapping from name to value."""
