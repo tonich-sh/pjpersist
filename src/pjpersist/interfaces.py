@@ -142,7 +142,7 @@ class IPJDataManager(persistent.interfaces.IPersistentDataManager):
         The correct collection is determined by object type.
 
         If `id` is provided, object will be inserted under that id. Otherwise,
-        new unique id will be generated.
+        a new unique id will be generated.
         """
 
     def remove(obj):
@@ -151,10 +151,11 @@ class IPJDataManager(persistent.interfaces.IPersistentDataManager):
         The correct collection is determined by object type.
         """
 
+
 class IPJDataManagerProvider(zope.interface.Interface):
     """Utility to get a PJ data manager.
 
-    Implementations of this utility ususally maintain connection information
+    Implementations of this utility usually maintain connection information
     and ensure that there is one consistent datamanager per thread.
     """
 
@@ -176,7 +177,7 @@ class IPersistentSerializationHooks(zope.interface.Interface):
         This method is called after the object has been stored in the
         database. The ``conn`` attribute is a connection to the database.
 
-        You should not manage the connection within this ethod, ie. abort or
+        You should not manage the connection within this method, ie. abort or
         commit the transaction.
         """
 
@@ -186,7 +187,7 @@ class IPersistentSerializationHooks(zope.interface.Interface):
         This method is called after the object has been loaded fully from the
         database. The ``conn`` attribute is a connection to the database.
 
-        You should not manage the connection within this ethod, ie. abort or
+        You should not manage the connection within this method, ie. abort or
         commit the transaction.
         """
 
@@ -196,7 +197,7 @@ class IColumnSerialization(zope.interface.Interface):
 
     Persistent objects implementing this interfave are able to store some of
     their data into columns of their storage table. This allows developers to
-    access those attributes ina  more natural way using SQL.
+    access those attributes in a more natural way using SQL.
     """
 
     _pj_column_fields = zope.schema.Tuple(
