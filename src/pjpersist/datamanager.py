@@ -117,7 +117,7 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
 
             try:
                 return super(PJPersistCursor, self).execute(sql, args)
-            except psycopg2.ProgrammingError, e:
+            except psycopg2.Error, e:
                 # XXX: ugly: we're creating here missing tables on the fly
                 msg = e.message
                 # if the exception message matches
@@ -133,12 +133,26 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
 
                     self.datamanager._create_doc_table(
                         self.datamanager.database, tableName)
-                    return super(PJPersistCursor, self).execute(sql, args)
+                    try:
+                        return super(PJPersistCursor, self).execute(sql, args)
+                    except psycopg2.Error, e:
+                        # Join the transaction, because failed queries require
+                        # aborting the transaction.
+                        self.datamanager._join_txn()
+                # Join the transaction, because failed queries require
+                # aborting the transaction.
+                self.datamanager._join_txn()
                 # otherwise let it fly away
                 raise
         else:
-            # otherwise just execute the given sql
-            return super(PJPersistCursor, self).execute(sql, args)
+            try:
+                # otherwise just execute the given sql
+                return super(PJPersistCursor, self).execute(sql, args)
+            except psycopg2.Error, e:
+                # Join the transaction, because failed queries require
+                # aborting the transaction.
+                self.datamanager._join_txn()
+                raise
 
 
 class Root(UserDict.DictMixin):
@@ -204,6 +218,8 @@ class PJDataManager(object):
     zope.interface.implements(interfaces.IPJDataManager)
 
     name_map_table = 'persistence_name_map'
+    _has_name_map_table = False
+    root = None
 
     def __init__(self, conn, root_table=None, name_map_table=None):
         self._conn = conn
@@ -230,9 +246,11 @@ class PJDataManager(object):
         self.annotations = {}
         if name_map_table is not None:
             self.name_map_table = name_map_table
-        self._init_name_map_table()
         self.transaction_manager = transaction.manager
-        self.root = Root(self, root_table)
+        if not self._has_name_map_table:
+            self._init_name_map_table()
+        if self.root is None:
+            self.root = Root(self, root_table)
 
     def getCursor(self, flush=True):
         def factory(*args, **kwargs):
@@ -264,6 +282,7 @@ class PJDataManager(object):
                 "SELECT * FROM information_schema.tables where table_name=%s",
                 (self.name_map_table,))
             if cur.rowcount:
+                self._has_name_map_table = True
                 return
             LOG.info("Creating name map table %s" % self.name_map_table)
             cur.execute('''
@@ -273,6 +292,7 @@ class PJDataManager(object):
                     path varchar,
                     doc_has_type bool)
                 ''' % self.name_map_table)
+            self._has_name_map_table = True
 
     def _get_name_map_entry(self, database, table, path=None):
         name_map = sb.Table(self.name_map_table)
@@ -401,6 +421,11 @@ class PJDataManager(object):
             obj = obj._p_pj_doc_object
         return obj
 
+    def _join_txn(self):
+        if self._needs_to_join:
+            self.transaction_manager.get().join(self)
+            self._needs_to_join = False
+
     def dump(self, obj):
         res = self._writer.store(obj)
         if id(obj) in self._registered_objects:
@@ -412,9 +437,7 @@ class PJDataManager(object):
         return self._reader.get_ghost(dbref, klass)
 
     def reset(self):
-        root = self.root
         self.__init__(self._conn)
-        self.root = root
 
     def flush(self):
         # Now write every registered object, but make sure we write each
@@ -426,9 +449,7 @@ class PJDataManager(object):
         self._registered_objects = {}
 
     def insert(self, obj, oid=None):
-        if self._needs_to_join:
-            self.transaction_manager.get().join(self)
-            self._needs_to_join = False
+        self._join_txn()
         if obj._p_oid is not None:
             raise ValueError('Object._p_oid is already set.', obj)
         res = self._writer.store(obj, id=oid)
@@ -471,9 +492,7 @@ class PJDataManager(object):
         # When reading a state from PostGreSQL, we also need to join the
         # transaction, because we keep an active object cache that gets stale
         # after the transaction is complete and must be cleaned.
-        if self._needs_to_join:
-            self.transaction_manager.get().join(self)
-            self._needs_to_join = False
+        self._join_txn()
         # If the doc is None, but it has been loaded before, we look it
         # up. This acts as a great hook for optimizations that load many
         # documents at once. They can now dump the states into the
@@ -489,9 +508,7 @@ class PJDataManager(object):
         raise KeyError(tid)
 
     def register(self, obj):
-        if self._needs_to_join:
-            self.transaction_manager.get().join(self)
-            self._needs_to_join = False
+        self._join_txn()
 
         # Do not bring back removed objects. But only main the document
         # objects can be removed, so check for that.

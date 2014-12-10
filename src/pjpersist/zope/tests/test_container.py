@@ -1220,7 +1220,6 @@ def doctest_load_does_not_set_p_changed():
 
       >>> transaction.commit()
       >>> dm.root['people'] = people = People()
-      >>> x = transaction.begin()
       >>> for idx in xrange(2):
       ...     people[None] = PeoplePerson('Mr Number %.5i' %idx, random.randint(0, 100))
       >>> transaction.commit()
@@ -1260,7 +1259,6 @@ def doctest_firing_events_PJContainer():
 
       >>> transaction.commit()
       >>> dm.root['people'] = people = People()
-      >>> x = transaction.begin()
       >>> for idx in xrange(2):
       ...     people[None] = PeoplePerson('Mr Number %.5i' %idx, random.randint(0, 100))
       <zope.lifecycleevent.ObjectAddedEvent object at ...>
@@ -1315,7 +1313,6 @@ def doctest_firing_events_IdNamesPJContainer():
 
       >>> transaction.commit()
       >>> dm.root['people'] = people = PeopleWithIDKeys()
-      >>> x = transaction.begin()
       >>> for idx in xrange(2):
       ...     people[None] = PeoplePerson('Mr Number %.5i' %idx, random.randint(0, 100))
       <zope.lifecycleevent.ObjectAddedEvent object at ...>

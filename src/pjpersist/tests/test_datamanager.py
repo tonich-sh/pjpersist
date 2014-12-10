@@ -503,6 +503,7 @@ def doctest_PJDataManager_register():
 
     Registers an object to be stored.
 
+      >>> dm.reset()
       >>> dm._needs_to_join
       True
       >>> len(dm._registered_objects)
@@ -708,10 +709,11 @@ def doctest_PJDataManager_transaction_abort_after_query():
       ...     transaction.abort()
 
     We aborted transaction and now we can continue doing stuff
-      >>> cur = dm.getCursor()
+
+    >>> cur = dm.getCursor()
       >>> cur.execute("SELECT 1")
       >>> cur.fetchall()
-      [1]
+      [[1]]
 
     """
 

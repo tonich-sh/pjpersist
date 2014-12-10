@@ -79,6 +79,7 @@ def dropDB():
 def cleanDB(conn=None):
     if conn is None:
         conn = getConnection(DBNAME)
+    conn.rollback()
     with conn.cursor() as cur:
         cur.execute("""SELECT tablename FROM pg_tables""")
         for res in cur.fetchall():
