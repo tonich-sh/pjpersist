@@ -365,8 +365,11 @@ class PJContainer(contained.Contained,
             datafld = sb.Field(self._pj_table, 'data')
             res = []
             for name in fields:
+                if name == 'id':
+                    res.append(sb.Field(self._pj_table, name))
+                else:
+                    res.append(sb.ColumnAS(sb.JSON_GETITEM(datafld, name), name))
                 # XXX: handle functions later here
-                res.append(sb.ColumnAS(sb.JSON_GETITEM(datafld, name), name))
         return res
 
     # BBB: providing support for mongo style queries
