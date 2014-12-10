@@ -178,6 +178,8 @@ class IPersistentSerializationHooks(zope.interface.Interface):
 
         You should not manage the connection within this ethod, ie. abort or
         commit the transaction.
+
+        If the method raises ``NotImplementedError``, it is ignored.
         """
 
     def _pj_after_load_hook(conn):
@@ -188,6 +190,8 @@ class IPersistentSerializationHooks(zope.interface.Interface):
 
         You should not manage the connection within this ethod, ie. abort or
         commit the transaction.
+
+        If the method raises ``NotImplementedError``, it is ignored.
         """
 
 
