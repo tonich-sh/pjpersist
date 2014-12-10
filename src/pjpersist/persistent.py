@@ -21,10 +21,10 @@ class PersistentSerializationHooks(persistent.Persistent):
     zope.interface.implements(IPersistentSerializationHooks)
 
     def _pj_after_store_hook(self, conn):
-        raise NotImplementedError
+        return None
 
     def _pj_after_load_hook(self, conn):
-        raise NotImplementedError
+        return None
 
 
 class SimpleColumnSerialization(persistent.Persistent):

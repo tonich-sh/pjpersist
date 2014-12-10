@@ -60,7 +60,7 @@ to the DB:
   <Person Stephan>
 
 Custom Persistence Tables
-------------------------------
+-------------------------
 
 By default, persistent objects are stored in a table having the escaped
 Python path of the class:

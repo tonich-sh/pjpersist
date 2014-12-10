@@ -349,6 +349,8 @@ class ObjectWriter(object):
         stored = False
         if obj._p_oid is None:
             doc_id = self._jar._insert_doc(db_name, table_name, doc, id)
+            if interfaces.IPersistentSerializationHooks.providedBy(obj):
+                obj._pj_after_store_hook(self._jar._conn)
             stored = True
             obj._p_jar = self._jar
             obj._p_oid = DBRef(table_name, doc_id, db_name)
@@ -357,6 +359,8 @@ class ObjectWriter(object):
             self._jar._object_cache[hash(obj._p_oid)] = obj
         else:
             self._jar._update_doc(db_name, table_name, doc, obj._p_oid.id)
+            if interfaces.IPersistentSerializationHooks.providedBy(obj):
+                obj._pj_after_store_hook(self._jar._conn)
             stored = True
 
         if stored:
@@ -606,6 +610,9 @@ class ObjectReader(object):
             self._jar._latest_states[obj._p_oid] = doc
         # Set the state.
         obj.__setstate__(state)
+        # Run the custom load functions.
+        if interfaces.IPersistentSerializationHooks.providedBy(obj):
+            obj._pj_after_load_hook(self._jar._conn)
 
     def get_ghost(self, dbref, klass=None):
         # If we can, we return the object from cache.
