@@ -78,7 +78,7 @@ Python path of the class:
              u'name': u'Stephan',
              u'phone': None,
              u'today': {u'_py_type': u'datetime.datetime',
-                        u'components': [2014, 5, 14, 12, 30, 0]},
+                        u'value': u'2014-05-14T12:30:00'},
              u'visited': []},
     'id': u'0001020304050607080a0b0c0'}]
 
@@ -151,7 +151,7 @@ But once we commit the transaction, everything is available:
              u'name': u'Stephan Richter',
              u'phone': None,
              u'today': {u'_py_type': u'datetime.datetime',
-                        u'components': [2014, 5, 14, 12, 30, 0]},
+                        u'value': u'2014-05-14T12:30:00'},
              u'visited': []},
     'id': u'0001020304050607080a0b0c0'}]
 
@@ -202,7 +202,7 @@ Let's now commit the transaction and look at the JSONB document again:
                         u'country': u'+1',
                         u'number': u'394-5124'},
              u'today': {u'_py_type': u'datetime.datetime',
-                        u'components': [2014, 5, 14, 12, 30, 0]},
+                        u'value': u'2014-05-14T12:30:00'},
              u'visited': []},
     'id': u'0001020304050607080a0b0c0'}]
 
@@ -233,9 +233,8 @@ always maintained as lists, since JSON does not have two sequence types.
                          u'database': u'pjpersist_test',
                          u'id': u'0001020304050607080a0b0c0',
                          u'table': u'address'},
-            u'birthday': {u'_py_factory': u'datetime.date',
-                          u'_py_factory_args': [{u'_py_type': u'BINARY',
-                                                 u'data': u'B7wBGQ==\n'}]},
+            u'birthday': {u'_py_type': u'datetime.date',
+                          u'value': u'1980-01-25'},
             u'friends': {u'roy': {u'_py_type': u'DBREF',
                                   u'database': u'pjpersist_test',
                                   u'id': u'0001020304050607080a0b0c0',
@@ -246,13 +245,26 @@ always maintained as lists, since JSON does not have two sequence types.
                        u'country': u'+1',
                        u'number': u'394-5124'},
             u'today': {u'_py_type': u'datetime.datetime',
-                       u'components': [2014, 5, 14, 12, 30, 0]},
+                       u'value': u'2014-05-14T12:30:00'},
             u'visited': [u'Germany', u'USA']},
    'id': u'0001020304050607080a0b0c0'}
 
 
 Custom Serializers
 ------------------
+
+(A patch to demonstrate)
+
+  >>> del serialize.SERIALIZERS[1]
+
+  >>> dm.root['stephan'].birthday = datetime.date(1981, 1, 25)
+  >>> transaction.commit()
+
+  >>> pprint.pprint(
+  ...     fetchone(person_cn,
+  ...         """data @> '{"name": "Stephan Richter"}'""")['data']['birthday'])
+  {u'_py_factory': u'datetime.date',
+   u'_py_factory_args': [{u'_py_type': u'BINARY', u'data': u'B70BGQ==\n'}]}
 
 As you can see, the serialization of the birthay is all but ideal. We can,
 however, provide a custom serializer that uses the ordinal to store the data.
@@ -280,7 +292,7 @@ however, provide a custom serializer that uses the ordinal to store the data.
 Let's have a look again:
 
   >>> dm.root['stephan'].birthday
-  datetime.date(1980, 1, 25)
+  datetime.date(1981, 1, 25)
 
   >>> pprint.pprint(dict(
   ...     fetchone(person_cn, """data @> '{"name": "Stephan Richter"}'""")))
@@ -288,7 +300,7 @@ Let's have a look again:
                          u'database': u'pjpersist_test',
                          u'id': u'0001020304050607080a0b0c',
                          u'table': u'address'},
-            u'birthday': {u'_py_type': u'datetime.date', u'ordinal': 722839},
+            u'birthday': {u'_py_type': u'datetime.date', u'ordinal': 723205},
             u'friends': {u'roy': {u'_py_type': u'DBREF',
                                   u'database': u'pjpersist_test',
                                   u'id': u'0001020304050607080a0b0c',
@@ -299,7 +311,7 @@ Let's have a look again:
                        u'country': u'+1',
                        u'number': u'394-5124'},
             u'today': {u'_py_type': u'datetime.datetime',
-                       u'components': [2014, 5, 14, 12, 30, 0]},
+                       u'value': u'2014-05-14T12:30:00'},
             u'visited': [u'Germany', u'USA']},
    'id': u'0001020304050607080a0b0c'}
 
@@ -343,7 +355,7 @@ of another document:
                          u'database': u'pjpersist_test',
                          u'id': u'0001020304050607080a0b0c0',
                          u'table': u'address'},
-            u'birthday': {u'_py_type': u'datetime.date', u'ordinal': 722839},
+            u'birthday': {u'_py_type': u'datetime.date', u'ordinal': 723205},
             u'car': {u'_py_persistent_type': u'__main__.Car',
                      u'make': u'Ford',
                      u'model': u'Explorer',
@@ -358,7 +370,7 @@ of another document:
                        u'country': u'+1',
                        u'number': u'394-5124'},
             u'today': {u'_py_type': u'datetime.datetime',
-                       u'components': [2014, 5, 14, 12, 30, 0]},
+                       u'value': u'2014-05-14T12:30:00'},
             u'visited': [u'Germany', u'USA']},
    'id': u'0001020304050607080a0b0c0'}
 
@@ -497,7 +509,7 @@ extended to store the attribute and the person is added to the table:
              u'name': u'Anton',
              u'phone': None,
              u'today': {u'_py_type': u'datetime.datetime',
-                        u'components': [2014, 5, 14, 12, 30, 0]},
+                        u'value': u'2014-05-14T12:30:00'},
              u'visited': []},
     'id': u'0001020304050607080a0b0c0',
     'name': u'Anton'}]

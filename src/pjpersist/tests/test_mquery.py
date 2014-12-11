@@ -180,8 +180,8 @@ def test_convert_datetime():
         >>> run(mq.convert(
         ...     {'ts': datetime.datetime(2014,12,11,11,12,14),
         ...      'dte': datetime.date(2014,12,11)}))
-        ((((Bar.data) -> ('dte')) = ('{"ordinal": 735578, "_py_type": "datetime.date"}'))
-        AND (((Bar.data) -> ('ts')) = ('{"_py_type": "datetime.datetime", "components": [2014, 12, 11, 11, 12, 14]}')))
+        ((((Bar.data) -> ('dte')) = ('{"_py_type": "datetime.date", "value": "2014-12-11"}'))
+        AND (((Bar.data) -> ('ts')) = ('{"_py_type": "datetime.datetime", "value": "2014-12-11T11:12:14"}')))
 
         >>> testing.tearDownSerializers(None)
 

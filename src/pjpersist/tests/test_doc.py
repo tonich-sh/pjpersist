@@ -19,7 +19,7 @@ from pprint import pprint
 
 from zope.exceptions import exceptionformatter
 
-from pjpersist import serialize, testing
+from pjpersist import testing
 
 
 class ReprMixin(object):
@@ -44,7 +44,6 @@ def setUp(test):
             return cur.fetchone()
     test.globs['fetchone'] = fetchone
 
-    del serialize.SERIALIZERS[1]
 
 def tearDown(test):
     testing.tearDown(test)

@@ -57,7 +57,7 @@ PostGreSQL:
              u'name': u'Stephan',
              u'phone': None,
              u'today': {u'_py_type': u'datetime.datetime',
-                        u'components': [2014, 12, 4, 12, 30, 0]},
+                        u'value': u'2014-12-04T12:30:00'},
              u'visited': []},
     'id': u'0001020304050607080a0b0c0'}]
 
@@ -96,7 +96,7 @@ the standard PostGreSQL reference construct.
              u'name': u'Stephan',
              u'phone': None,
              u'today': {u'_py_type': u'datetime.datetime',
-                        u'components': [2014, 12, 4, 12, 30, 0]},
+                        u'value': u'2014-12-04T12:30:00'},
              u'visited': []},
     'id': u'0001020304050607080a0b0c0'}]
 
@@ -130,7 +130,7 @@ Well, let's create a phone number object for that:
                         u'country': u'+1',
                         u'number': u'394-5124'},
              u'today': {u'_py_type': u'datetime.datetime',
-                        u'components': [2014, 12, 4, 12, 30, 0]},
+                        u'value': u'2014-12-04T12:30:00'},
              u'visited': []},
     'id': u'0001020304050607080a0b0c0'}]
 
@@ -149,9 +149,8 @@ Push the data to PostGreSQL, and dump the results:
                           u'database': u'pjpersist_test',
                           u'id': u'0001020304050607080a0b0c0',
                           u'table': u'address'},
-             u'birthday': {u'_py_factory': u'datetime.date',
-                           u'_py_factory_args': [{u'_py_type': u'BINARY',
-                                                  u'data': u'B7wBGQ==\n'}]},
+             u'birthday': {u'_py_type': u'datetime.date',
+                           u'value': u'1980-01-25'},
              u'friends': {u'roy': {u'_py_type': u'DBREF',
                                    u'database': u'pjpersist_test',
                                    u'id': u'0001020304050607080a0b0c0',
@@ -162,7 +161,7 @@ Push the data to PostGreSQL, and dump the results:
                         u'country': u'+1',
                         u'number': u'394-5124'},
              u'today': {u'_py_type': u'datetime.datetime',
-                        u'components': [2014, 12, 4, 12, 30, 0]},
+                        u'value': u'2014-12-04T12:30:00'},
              u'visited': [u'Germany', u'USA']},
     'id': u'0001020304050607080a0b0c0'},
    {'data': {u'address': None,
@@ -171,7 +170,7 @@ Push the data to PostGreSQL, and dump the results:
              u'name': u'Roy Mathew',
              u'phone': None,
              u'today': {u'_py_type': u'datetime.datetime',
-                        u'components': [2014, 12, 4, 12, 30, 0]},
+                        u'value': u'2014-12-04T12:30:00'},
              u'visited': []},
     'id': u'0001020304050607080a0b0c0'}]
 

@@ -15,52 +15,60 @@
 import datetime
 from pjpersist import serialize
 
+
 class DateSerializer(serialize.ObjectSerializer):
+
+    fmt = "%Y-%m-%d"
 
     def can_read(self, state):
         return isinstance(state, dict) and \
                state.get('_py_type') == 'datetime.date'
 
     def read(self, state):
-        return datetime.date.fromordinal(state['ordinal'])
+        return datetime.datetime.strptime(state['value'], self.fmt).date()
 
     def can_write(self, obj):
         return isinstance(obj, datetime.date)
 
     def write(self, obj):
         return {'_py_type': 'datetime.date',
-                'ordinal': obj.toordinal()}
+                'value': obj.strftime(self.fmt)}
 
 
 class TimeSerializer(serialize.ObjectSerializer):
+
+    fmt = "%H:%M:%S"
 
     def can_read(self, state):
         return isinstance(state, dict) and \
                state.get('_py_type') == 'datetime.time'
 
     def read(self, state):
-        return datetime.time(*state['components'])
+        return datetime.datetime.strptime(state['value'], self.fmt).time()
 
     def can_write(self, obj):
         return isinstance(obj, datetime.time)
 
     def write(self, obj):
         return {'_py_type': 'datetime.time',
-                'components': [obj.hour, obj.minute, obj.second]}
+                'value': obj.strftime(self.fmt)}
+
 
 class DateTimeSerializer(serialize.ObjectSerializer):
+
+    # XXX: timezone?
+    fmt = "%Y-%m-%dT%H:%M:%S"
 
     def can_read(self, state):
         return isinstance(state, dict) and \
                state.get('_py_type') == 'datetime.datetime'
 
     def read(self, state):
-        return datetime.datetime(*state['components'])
+        return datetime.datetime.strptime(state['value'], self.fmt)
 
     def can_write(self, obj):
         return isinstance(obj, datetime.datetime)
 
     def write(self, obj):
         return {'_py_type': 'datetime.datetime',
-                'components': [obj.year, obj.month, obj.day,
-                               obj.hour, obj.minute, obj.second]}
+                'value': obj.strftime(self.fmt)}
