@@ -258,8 +258,7 @@ class PJContainer(contained.Contained,
         # The cache cannot help, so the item is looked up in the database.
         datafld = sb.Field(self._pj_table, 'data')
         fld = sb.JGET(datafld, self._pj_mapping_key)
-        pv = self._pj_jar._writer.get_state(key)
-        qry = (fld == pv)
+        qry = (fld == key)
         obj = self.find_one(qry)
         if obj is None:
             raise KeyError(key)
@@ -325,8 +324,7 @@ class PJContainer(contained.Contained,
             return key in self._cache
         datafld = sb.Field(self._pj_table, 'data')
         fld = sb.JGET(datafld, self._pj_mapping_key)
-        pv = self._pj_jar._writer.get_state(key)
-        qry = (fld == pv)
+        qry = (fld == key)
 
         res = self.raw_find(qry, fields=('id',), limit=1)
         return (res.rowcount > 0)
@@ -419,7 +417,6 @@ class PJContainer(contained.Contained,
         elif id is not None:
             qry = qry & (tbl.id == id)
         qry = self._pj_add_items_filter(qry)
-        #qstr = qry.__sqlrepr__('postgres')
 
         with self._pj_jar.getCursor() as cur:
             cur.execute(sb.Select(sb.Field(self._pj_table, '*'), qry, limit=2))
