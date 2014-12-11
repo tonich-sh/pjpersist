@@ -258,7 +258,8 @@ class PJContainer(contained.Contained,
         # The cache cannot help, so the item is looked up in the database.
         datafld = sb.Field(self._pj_table, 'data')
         fld = sb.JGET(datafld, self._pj_mapping_key)
-        qry = (fld == key)
+        pv = self._pj_jar._writer.get_state(key)
+        qry = (fld == pv)
         obj = self.find_one(qry)
         if obj is None:
             raise KeyError(key)
@@ -324,7 +325,8 @@ class PJContainer(contained.Contained,
             return key in self._cache
         datafld = sb.Field(self._pj_table, 'data')
         fld = sb.JGET(datafld, self._pj_mapping_key)
-        qry = (fld == key)
+        pv = self._pj_jar._writer.get_state(key)
+        qry = (fld == pv)
 
         res = self.raw_find(qry, fields=('id',), limit=1)
         return (res.rowcount > 0)
