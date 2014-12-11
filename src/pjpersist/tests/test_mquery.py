@@ -164,6 +164,30 @@ def test_convert_id():
 
     """
 
+
+def test_convert_datetime():
+    """Test mquery.convert datetime handling.
+
+    Setup:
+
+        >>> mq = mquery.Converter("Bar", "data")
+        >>> mq.simplified = True
+        >>> import datetime
+        >>> testing.setUpSerializers(None)
+
+    datetime fields require special serialization:
+
+        >>> run(mq.convert(
+        ...     {'ts': datetime.datetime(2014,12,11,11,12,14),
+        ...      'dte': datetime.date(2014,12,11)}))
+        ((((Bar.data) -> ('dte')) = ('{"ordinal": 735578, "_py_type": "datetime.date"}'))
+        AND (((Bar.data) -> ('ts')) = ('{"_py_type": "datetime.datetime", "components": [2014, 12, 11, 11, 12, 14]}')))
+
+        >>> testing.tearDownSerializers(None)
+
+    """
+
+
 def test_suite():
     return doctest.DocTestSuite(
         optionflags=testing.OPTIONFLAGS)

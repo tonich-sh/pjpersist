@@ -15,6 +15,7 @@
 
 import json
 from pjpersist import sqlbuilder as sb
+from pjpersist import serialize
 
 
 class Converter(object):
@@ -36,7 +37,9 @@ class Converter(object):
         doc = sb.Field(self.table, self.field)
         for key, value in sorted(query.items()):
             accessor = self.getField(doc, key, json=True)
-            jvalue = json.dumps(value)
+            # some values, esp. datetime must go through PJ serialize
+            pjvalue = serialize.ObjectWriter(None).get_state(value)
+            jvalue = json.dumps(pjvalue)
 
             if key == '_id':
                 jvalue = value
@@ -63,7 +66,7 @@ class Converter(object):
                 else:
                     clauses.append(sb.OR(
                         accessor == jvalue,
-                        sb.JSONB_SUBSET(sb.JSONB(json.dumps([value])), accessor),
+                        sb.JSONB_SUBSET(sb.JSONB(json.dumps([pjvalue])), accessor),
                     ))
         return sb.AND(*clauses)
 
@@ -88,7 +91,9 @@ class Converter(object):
 
     def operator_expr(self, operator, field, key, op2):
         op1 = self.getField(field, key, json=True)
-        op2j = json.dumps(op2)
+        # some values, esp. datetime must go through PJ serialize
+        pjvalue = serialize.ObjectWriter(None).get_state(op2)
+        op2j = json.dumps(pjvalue)
 
         if key == '_id':
             op2j = op2

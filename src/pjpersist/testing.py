@@ -88,11 +88,19 @@ def cleanDB(conn=None):
     conn.commit()
 
 
-def setUp(test):
-    module.setUp(test)
+def setUpSerializers(test):
     serialize.SERIALIZERS = [serializers.DateTimeSerializer(),
                              serializers.DateSerializer(),
                              serializers.TimeSerializer()]
+
+
+def tearDownSerializers(test):
+    del serialize.SERIALIZERS[:]
+
+
+def setUp(test):
+    module.setUp(test)
+    setUpSerializers(test)
     #createDB()
     test.globs['conn'] = getConnection(DBNAME)
     cleanDB(test.globs['conn'])
@@ -118,12 +126,12 @@ def setUp(test):
 
 def tearDown(test):
     module.tearDown(test)
+    tearDownSerializers(test)
     transaction.abort()
     cleanDB(test.globs['conn'])
     test.globs['conn'].close()
     #dropDB()
     resetCaches()
-    serialize.SERIALIZERS = []
 
 
 class DatabaseLayer(object):
