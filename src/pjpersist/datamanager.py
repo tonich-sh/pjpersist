@@ -171,7 +171,8 @@ class Root(UserDict.DictMixin):
         self._jar = jar
         if table is not None:
             self.table = table
-        self._init_table()
+        if PJ_AUTO_CREATE_TABLES:
+            self._init_table()
 
     def _init_table(self):
         with self._jar.getCursor(False) as cur:
@@ -255,7 +256,7 @@ class PJDataManager(object):
         if name_map_table is not None:
             self.name_map_table = name_map_table
         self.transaction_manager = transaction.manager
-        if not self._has_name_map_table:
+        if not self._has_name_map_table and PJ_AUTO_CREATE_TABLES:
             self._init_name_map_table()
         if self.root is None:
             self.root = Root(self, root_table)
