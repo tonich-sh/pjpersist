@@ -21,7 +21,7 @@ def run(sqlx):
 
 
 def test_convert():
-    """Test mquery.convert.
+    r"""Test mquery.convert.
 
     We can parse MongoDB queries and convert them to SQLBuilder
     expressions.  First we inititalize the converter with our table
@@ -114,6 +114,10 @@ def test_convert():
                 WHERE (((value) > ('2')) AND
                        ((value) <= ('3'))))
 
+    $startswith is to replace a $regex:
+
+        >>> run(mq.convert({'drinks': {'$startswith': 'good'}}))
+        (((Bar.data) -> ('drinks'))::text LIKE ('good%') ESCAPE E'\\')
 
     """
 

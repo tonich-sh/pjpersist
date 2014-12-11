@@ -42,21 +42,33 @@ class PGArray(SQLExpression):
         return 'array[%s]' % ", ".join(items)
 
 
-class JSONB(SQLExpression):
-    """Cast to JSONB"""
+class TYPECAST(SQLExpression):
+    """Cast to a type"""
 
-    cast = "::jsonb"
+    cast = None
 
-    def __init__(self, arg):
+    def __init__(self, arg, typ=None):
         self.arg = arg
+        if typ is not None:
+            self.cast = '::' + typ
 
     def __sqlrepr__(self, db):
         return sqlrepr(self.arg, db) + self.cast
 
 
-class JSON(JSONB):
+class JSONB(TYPECAST):
+    """Cast to JSONB"""
+    cast = "::jsonb"
+
+
+class JSON(TYPECAST):
     """Cast to JSON"""
     cast = '::json'
+
+
+class TEXT(TYPECAST):
+    """Cast to text"""
+    cast = '::text'
 
 
 def JSON_GETITEM(json, key):

@@ -44,13 +44,14 @@ class Converter(object):
             if key == '_id':
                 jvalue = value
 
-            if key in ('$and', '$or', '$nor'):
+            if key in ('$and', '$or', '$nor', '$startswith'):
                 if not isinstance(value, (list, tuple)):
                     raise ValueError("Argument must be a list: %r" % value)
                 oper = {
                     '$and': sb.AND,
                     '$or': sb.OR,
-                    '$nor': lambda *items: sb.NOT(sb.OR(*items))
+                    '$nor': lambda *items: sb.NOT(sb.OR(*items)),
+                    '$startswith': sb.STARTSWITH  # special case for a $regex
                 }[key]
                 clauses.append(oper(*(self.convert(expr) for expr in value)))
             elif isinstance(value, dict):
@@ -148,5 +149,7 @@ class Converter(object):
                     )))
                 )
             )
+        if operator == '$startswith':
+            return sb.STARTSWITH(sb.TEXT(op1), op2)
         else:
             raise ValueError("Unrecognized operator %s" % operator)
