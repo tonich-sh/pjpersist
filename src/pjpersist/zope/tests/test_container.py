@@ -1425,6 +1425,139 @@ def doctest_firing_events_IdNamesPJContainer():
 
     """
 
+import zope.schema
+from pjpersist.persistent import SimpleColumnSerialization, select_fields
+
+
+class ColumnPeople(container.AllItemsPJContainer):
+    _pj_mapping_key = 'name'
+    _p_pj_table = 'people'
+    _pj_table = 'cperson'
+
+
+class IPerson(zope.interface.Interface):
+    name = zope.schema.TextLine(title=u'Name')
+    address = zope.schema.TextLine(title=u'Address')
+    visited = zope.schema.Datetime(title=u'Visited')
+    phone = zope.schema.TextLine(title=u'Phone')
+
+
+class ColumnPerson(SimpleColumnSerialization, container.PJContained,
+                   persistent.Persistent):
+    zope.interface.implements(IPerson)
+    _p_pj_table = 'cperson'
+    _pj_column_fields = select_fields(IPerson, 'name')
+
+    def __init__(self, name, phone=None, address=None, friends=None,
+                 visited=(), birthday=None):
+        self.name = name
+        self.address = address
+        self.friends = friends or {}
+        self.visited = visited
+        self.phone = phone
+        self.birthday = birthday
+
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return '<%s %s>' % (self.__class__.__name__, self)
+
+
+def doctest_PJContainer_SimpleColumnSerialization():
+    """
+    Check PJContainer methods when SimpleColumnSerialization is in effect
+
+      >>> import pjpersist.sqlbuilder as sb
+
+      >>> table = ColumnPerson._p_pj_table
+      >>> dm._ensure_sql_columns(ColumnPerson(u'foo'), table)
+
+      >>> dm.root['people'] = people = ColumnPeople()
+      >>> for idx in xrange(20):
+      ...     people[None] = ColumnPerson(u'Mr Number %.5i' %idx)
+
+      >> dumpTable('cperson')
+
+      >>> qry = sb.Field(table, 'name') == u'Mr Number 00010'
+      >>> list(people.find(qry))
+      [<ColumnPerson Mr Number 00010>]
+
+      >>> pprint(list(people.raw_find(qry)))
+      [[u'54894d3fb25d2b232e0046d6',
+        u'Mr Number 00010',
+        {u'address': None,
+         u'birthday': None,
+         u'friends': {},
+         u'name': u'Mr Number 00010',
+         u'phone': None,
+         u'visited': []}]]
+
+      >>> people.find_one(qry)
+      <ColumnPerson Mr Number 00010>
+
+      >>> pprint(people.raw_find_one(qry))
+      [u'54894d80b25d2b240f00bbf6',
+       u'Mr Number 00010',
+       {u'address': None,
+        u'birthday': None,
+        u'friends': {},
+        u'name': u'Mr Number 00010',
+        u'phone': None,
+        u'visited': []}]
+
+      >>> people[u'Mr Number 00007']
+      <ColumnPerson Mr Number 00007>
+
+      >>> del people[u'Mr Number 00007']
+      >>> people[u'Mr Number 00007']
+      Traceback (most recent call last):
+      ...
+      KeyError: u'Mr Number 00007'
+
+      >>> pprint(list(people))
+      [u'Mr Number 00000',
+       u'Mr Number 00001',
+       u'Mr Number 00002',
+       u'Mr Number 00003',
+       u'Mr Number 00004',
+       u'Mr Number 00005',
+       u'Mr Number 00006',
+       u'Mr Number 00008',
+       u'Mr Number 00009',
+       u'Mr Number 00010',
+       u'Mr Number 00011',
+       u'Mr Number 00012',
+       u'Mr Number 00013',
+       u'Mr Number 00014',
+       u'Mr Number 00015',
+       u'Mr Number 00016',
+       u'Mr Number 00017',
+       u'Mr Number 00018',
+       u'Mr Number 00019']
+
+      >>> pprint(list(people.keys()))
+      [u'Mr Number 00000',
+       u'Mr Number 00001',
+       u'Mr Number 00002',
+       u'Mr Number 00003',
+       u'Mr Number 00004',
+       u'Mr Number 00005',
+       u'Mr Number 00006',
+       u'Mr Number 00008',
+       u'Mr Number 00009',
+       u'Mr Number 00010',
+       u'Mr Number 00011',
+       u'Mr Number 00012',
+       u'Mr Number 00013',
+       u'Mr Number 00014',
+       u'Mr Number 00015',
+       u'Mr Number 00016',
+       u'Mr Number 00017',
+       u'Mr Number 00018',
+       u'Mr Number 00019']
+    """
+
 
 class PJContainedInterfaceTest(unittest.TestCase):
 
