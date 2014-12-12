@@ -22,6 +22,7 @@ import os
 import psycopg2
 import psycopg2.extensions
 import psycopg2.extras
+import psycopg2.errorcodes
 import pjpersist.sqlbuilder as sb
 import random
 import re
@@ -150,6 +151,7 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
                 # Join the transaction, because failed queries require
                 # aborting the transaction.
                 self.datamanager._join_txn()
+                self.check_for_conflict(e)
                 # otherwise let it fly away
                 raise
         else:
@@ -161,7 +163,23 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
                 # Join the transaction, because failed queries require
                 # aborting the transaction.
                 self.datamanager._join_txn()
+                self.check_for_conflict(e)
                 raise
+
+    def check_for_conflict(self, e):
+        """Check whether exception indicates serialization failure and raise
+        ConflictError in this case.
+
+        Serialization failures are denoted by postgres codes:
+            40001 - serialization_failure
+            40P01 - deadlock_detected
+        """
+        serialization_errors = (
+            psycopg2.errorcodes.SERIALIZATION_FAILURE,
+            psycopg2.errorcodes.DEADLOCK_DETECTED
+        )
+        if e.pgcode in serialization_errors:
+            raise interfaces.ConflictError(str(e))
 
 
 class Root(UserDict.DictMixin):

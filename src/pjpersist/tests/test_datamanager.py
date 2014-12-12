@@ -1141,7 +1141,7 @@ def doctest_conflict1():
       >>> dm1.tpc_finish(None)
       Traceback (most recent call last):
       ...
-      TransactionRollbackError: could not serialize access due to concurrent update
+      ConflictError: could not serialize access due to concurrent update
 
       >>> transaction.abort()
 
@@ -1180,7 +1180,7 @@ def doctest_conflict2():
       >>> dm2.tpc_finish(None)
       Traceback (most recent call last):
       ...
-      TransactionRollbackError: could not serialize access due to concurrent update
+      ConflictError: could not serialize access due to concurrent update
 
       >>> transaction.abort()
 
