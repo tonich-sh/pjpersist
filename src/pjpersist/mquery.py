@@ -110,9 +110,9 @@ class Converter(object):
         if operator == '$ne':
             return op1 != op2j
         if operator == '$in':
-            return sb.JSONB_CONTAINS_ANY(op1, [json.dumps(el) for el in op2])
+            return sb.JSONB_CONTAINS_ANY(op1, [el for el in op2])
         if operator == '$nin':
-            return sb.NOT(sb.JSONB_CONTAINS_ANY(op1, [json.dumps(el) for el in op2]))
+            return sb.NOT(sb.JSONB_CONTAINS_ANY(op1, [el for el in op2]))
         if operator == '$not':
             # MongoDB's rationalization for this operator:
             # it matches when op1 does not pass the condition

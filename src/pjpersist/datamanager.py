@@ -155,6 +155,7 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
         else:
             try:
                 # otherwise just execute the given sql
+                __traceback_info__ = (sql, args)
                 return super(PJPersistCursor, self).execute(sql, args)
             except psycopg2.Error, e:
                 # Join the transaction, because failed queries require
