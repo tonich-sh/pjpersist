@@ -52,7 +52,7 @@ def select(conn, query, print_sql=False):
                 print 'SQL> ', sql
             cur.execute(sql)
             for e in cur.fetchall():
-                print e[0] 
+                print e[0]
     finally:
         conn.rollback()
 
@@ -84,11 +84,13 @@ def doctest_operators():
 
     List searches:
 
-       >>> select(conn, {'nr': {'$in': [40, 41, 42]}})
+       >>> select(conn, {'nr': {'$in': [40, 41, 42]}}, True)
+       SQL>  SELECT mq.data FROM mq WHERE (((mq.data) -> ('nr')) IN ('40'::jsonb, '41'::jsonb, '42'::jsonb))
        {u'nr': 42}
        {u'nr': 42, u'drink': u'whiskey', u'day': u'Friday', u'plan': u'getdown'}
 
-       >>> select(conn, {'foo': {'$in': ['foo', 'bar', 'baz']}})
+       >>> select(conn, {'foo': {'$in': ['foo', 'bar', 'baz']}}, True)
+       SQL>  SELECT mq.data FROM mq WHERE (((mq.data) -> ('foo')) IN ('"foo"'::jsonb, '"bar"'::jsonb, '"baz"'::jsonb))
        {u'foo': u'bar'}
 
        >>> select(conn, {'foo': {'$nin': ['foo', 'baz']}})
