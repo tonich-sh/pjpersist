@@ -110,8 +110,14 @@ class Converter(object):
         if operator == '$ne':
             return op1 != op2j
         if operator == '$in':
+            if not op2:
+                # SQL burps on empty lists with IN:
+                return False
             return sb.IN(op1, [sb.JSONB(json.dumps(el)) for el in op2])
         if operator == '$nin':
+            if not op2:
+                # SQL burps on empty lists with IN:
+                return True
             return sb.NOT(sb.IN(op1, [sb.JSONB(json.dumps(el)) for el in op2]))
         if operator == '$not':
             # MongoDB's rationalization for this operator:

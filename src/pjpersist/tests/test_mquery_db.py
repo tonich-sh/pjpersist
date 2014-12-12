@@ -96,6 +96,19 @@ def doctest_operators():
        >>> select(conn, {'foo': {'$nin': ['foo', 'baz']}})
        {u'foo': u'bar'}
 
+    Edge cases with empty lists:
+
+       >>> select(conn, {'nr': {'$in': []}}, True)
+       SQL>  SELECT mq.data FROM mq WHERE 'f'
+
+       >>> select(conn, {'nr': {'$nin': []}}, True)
+       SQL>  SELECT mq.data FROM mq WHERE 't'
+       {u'foo': u'bar'}
+       {u'nr': 42}
+       {u'some': {u'numbers': [42, 69, 105]}}
+       {u'nr': 42, u'drink': u'whiskey', u'day': u'Friday', u'plan': u'getdown'}
+
+
     Existence of keys:
 
        >>> select(conn, {'some.numbers': {'$exists': True}})
