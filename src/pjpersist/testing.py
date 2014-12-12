@@ -132,6 +132,7 @@ def tearDown(test):
     test.globs['conn'].close()
     #dropDB()
     resetCaches()
+    serialize.SERIALIZERS.__init__()
 
 
 class DatabaseLayer(object):
@@ -151,7 +152,6 @@ db_layer = DatabaseLayer("db_layer")
 
 
 def resetCaches():
-    serialize.SERIALIZERS.__init__()
     serialize.OID_CLASS_LRU.__init__(20000)
     serialize.TABLES_WITH_TYPE.__init__()
     serialize.AVAILABLE_NAME_MAPPINGS.__init__()
@@ -174,5 +174,10 @@ def log_sql_to_file(fname, add_tb=True, tb_limit=15):
     datamanager.LOG.addHandler(fh)
 
 
-cleanup.addCleanUp(resetCaches)
+def onCleanup():
+    serialize.SERIALIZERS.__init__()
+    resetCaches()
+
+
+cleanup.addCleanUp(onCleanup)
 atexit.register(dropDB)
