@@ -40,6 +40,10 @@ class CircularReferenceError(Exception):
     pass
 
 
+class ConflictError(Exception):
+    pass
+
+
 class IObjectSerializer(zope.interface.Interface):
     """An object serializer allows for custom serialization output for
     objects."""
