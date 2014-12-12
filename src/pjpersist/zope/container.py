@@ -373,7 +373,11 @@ class PJContainer(contained.Contained,
                 if name in first_class_fields:
                     res.append(sb.Field(self._pj_table, name))
                 else:
-                    res.append(sb.ColumnAS(sb.JSON_GETITEM(datafld, name), name))
+                    if '.' not in name:
+                        accessor = sb.JSON_GETITEM(datafld, name)
+                    else:
+                        accessor = sb.JSON_PATH(datafld, name.split("."))
+                    res.append(sb.ColumnAS(accessor, name.replace('.', '_')))
                 # XXX: handle functions later here
         return res
 

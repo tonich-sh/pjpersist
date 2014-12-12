@@ -1559,6 +1559,35 @@ def doctest_PJContainer_SimpleColumnSerialization():
     """
 
 
+def doctest_PJContainer_get_sb_fields():
+    """Check _get_sb_fields behavour
+
+      >>> c = ColumnPeople()
+
+      >>> c._get_sb_fields(())
+      cperson.*
+
+      >>> c._get_sb_fields(None)
+      cperson.*
+
+      >>> def printit(res):
+      ...     for r in res:
+      ...           print r.__sqlrepr__('postgres')
+
+      >>> printit(c._get_sb_fields(('name',)))
+      ((cperson.data) -> ('name')) AS name
+
+      >>> printit(c._get_sb_fields(('id', 'name',)))
+      cperson.id
+      ((cperson.data) -> ('name')) AS name
+
+      >>> printit(c._get_sb_fields(('id', 'name', 'metadata.number')))
+      cperson.id
+      ((cperson.data) -> ('name')) AS name
+      ((cperson.data) #> (array['metadata', 'number'])) AS metadata.number
+
+    """
+
 class PJContainedInterfaceTest(unittest.TestCase):
 
     def test_verifyClass(self):
