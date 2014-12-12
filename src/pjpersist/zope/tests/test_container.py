@@ -1584,7 +1584,7 @@ def doctest_PJContainer_get_sb_fields():
       >>> printit(c._get_sb_fields(('id', 'name', 'metadata.number')))
       cperson.id
       ((cperson.data) -> ('name')) AS name
-      ((cperson.data) #> (array['metadata', 'number'])) AS metadata.number
+      ((cperson.data) #> (array['metadata', 'number'])) AS metadata_number
 
     """
 
