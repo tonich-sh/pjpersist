@@ -127,18 +127,18 @@ class JGET(object):
        (((Person.data) -> ('key')) >= ('[true, false, null]'::jsonb))
 
     But not always (is this a good idea?):
+    (adamG: no it's not a good idea, because -> returns jsonb which is never NULL
+    see doctest_datetime_range)
 
        >>> print (JGET("data", "key", table="Person") == None
        ...     ).__sqlrepr__('postgres')
-       (((Person.data) -> ('key')) IS NULL)
+       (((Person.data) -> ('key')) = ('null'::jsonb))
 
        >>> print (JGET("data", "key", table="Person") != None
        ...     ).__sqlrepr__('postgres')
-       (((Person.data) -> ('key')) IS NOT NULL)
-
-
-
+       (((Person.data) -> ('key')) <> ('null'::jsonb))
     """
+
     def __init__(self, field, selector, table=None):
         if table is not None:
             self.field = Field(table, field)
@@ -155,16 +155,9 @@ class JGET(object):
     def __ge__(self, other):
         return SQLOp(">=", self, JSONB(json.dumps(other)))
     def __eq__(self, other):
-        if other is None:
-            return ISNULL(self)
-        else:
-            return SQLOp("=", self, JSONB(json.dumps(other)))
+        return SQLOp("=", self, JSONB(json.dumps(other)))
     def __ne__(self, other):
-        if other is None:
-            return ISNOTNULL(self)
-        else:
-            return SQLOp("<>", self, JSONB(json.dumps(other)))
-
+        return SQLOp("<>", self, JSONB(json.dumps(other)))
     def __and__(self, other):
         return SQLOp("AND", self, JSONB(json.dumps(other)))
     def __rand__(self, other):
