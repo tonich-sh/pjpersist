@@ -125,6 +125,7 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
             super(PJPersistCursor, self).execute("SAVEPOINT before_execute;")
 
             try:
+                __traceback_info__ = (self.datamanager.database, sql, args)
                 return super(PJPersistCursor, self).execute(sql, args)
             except psycopg2.Error, e:
                 # XXX: ugly: we're creating here missing tables on the fly
@@ -157,7 +158,7 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
         else:
             try:
                 # otherwise just execute the given sql
-                __traceback_info__ = (sql, args)
+                __traceback_info__ = (self.datamanager.database, sql, args)
                 return super(PJPersistCursor, self).execute(sql, args)
             except psycopg2.Error, e:
                 # Join the transaction, because failed queries require
