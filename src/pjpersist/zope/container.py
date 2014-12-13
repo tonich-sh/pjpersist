@@ -416,6 +416,8 @@ class PJContainer(contained.Contained,
         if qry is None and id is None:
             raise ValueError(
                 'Missing parameter, at least qry or id must be specified.')
+        if isinstance(qry, dict):
+            qry = self.convert_mongo_query(qry)
         tbl = sb.Table(self._pj_table)
         if qry is None:
             qry = (tbl.id == id)
