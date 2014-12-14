@@ -21,6 +21,7 @@ dataset = [
     {'foo': 'bar'},
     {'nr': 42},
     {'some': {'numbers': [42, 69, 105]}},
+    {'more': {'strings': ['a', 'f', 'x']}},
     {'plan': 'getdown', 'day': 'Friday', 'drink': 'whiskey', 'nr': 42},
 ]
 
@@ -84,17 +85,25 @@ def doctest_operators():
 
     List searches:
 
-       >>> select(conn, {'nr': {'$in': [40, 41, 42]}}, True)
-       SQL>  SELECT mq.data FROM mq WHERE (((mq.data) -> ('nr')) IN ('40'::jsonb, '41'::jsonb, '42'::jsonb))
+       >>> select(conn, {'nr': {'$in': [40, 41, 42]}})
        {u'nr': 42}
        {u'nr': 42, u'drink': u'whiskey', u'day': u'Friday', u'plan': u'getdown'}
 
-       >>> select(conn, {'foo': {'$in': ['foo', 'bar', 'baz']}}, True)
-       SQL>  SELECT mq.data FROM mq WHERE (((mq.data) -> ('foo')) IN ('"foo"'::jsonb, '"bar"'::jsonb, '"baz"'::jsonb))
+       >>> select(conn, {'foo': {'$in': ['foo', 'bar', 'baz']}})
        {u'foo': u'bar'}
 
        >>> select(conn, {'foo': {'$nin': ['foo', 'baz']}})
        {u'foo': u'bar'}
+
+       >>> select(conn, {'more.strings': {'$in': ['a', 'g']}})
+       {u'more': {u'strings': [u'a', u'f', u'x']}}
+
+       >>> select(conn, {'more.strings': {'$in': ['h', 'g']}})
+
+       >>> select(conn, {'some.numbers': {'$in': [42, 200]}})
+       {u'some': {u'numbers': [42, 69, 105]}}
+
+       >>> select(conn, {'some.numbers': {'$in': [80, 200]}})
 
     Edge cases with empty lists:
 
@@ -106,6 +115,7 @@ def doctest_operators():
        {u'foo': u'bar'}
        {u'nr': 42}
        {u'some': {u'numbers': [42, 69, 105]}}
+       {u'more': {u'strings': [u'a', u'f', u'x']}}
        {u'nr': 42, u'drink': u'whiskey', u'day': u'Friday', u'plan': u'getdown'}
 
 
@@ -117,17 +127,20 @@ def doctest_operators():
        >>> select(conn, {'nr': {'$exists': False}})
        {u'foo': u'bar'}
        {u'some': {u'numbers': [42, 69, 105]}}
+       {u'more': {u'strings': [u'a', u'f', u'x']}}
 
     Negation of comparisons:
 
        >>> select(conn, {'nr': {'$not': {'$gt': 40}}})
        {u'foo': u'bar'}
        {u'some': {u'numbers': [42, 69, 105]}}
+       {u'more': {u'strings': [u'a', u'f', u'x']}}
 
        >>> select(conn, {'nr': {'$not': {'$gt': 42}}})
        {u'foo': u'bar'}
        {u'nr': 42}
        {u'some': {u'numbers': [42, 69, 105]}}
+       {u'more': {u'strings': [u'a', u'f', u'x']}}
        {u'nr': 42, u'drink': u'whiskey', u'day': u'Friday', u'plan': u'getdown'}
 
     List sizes:

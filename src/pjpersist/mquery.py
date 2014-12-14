@@ -113,12 +113,25 @@ class Converter(object):
             if not op2:
                 # SQL burps on empty lists with IN:
                 return False
-            return sb.IN(op1, [sb.JSONB(json.dumps(el)) for el in op2])
+            # The $in operator in Mongo is pretty powerful, since it
+            # implements the classic "in" (contains) and the "any" operator.
+            # There is an optimization for strings:
+            #      sb.JSONB_CONTAINS_ANY(op1, [unicode(e) for e in op2])
+            ops = [sb.IN(op1, [sb.JSONB(json.dumps(el)) for el in op2])]
+            ops += [sb.JSONB_SUPERSET(op1, json.dumps(el)) for el in op2]
+            return sb.OR(*ops)
         if operator == '$nin':
             if not op2:
                 # SQL burps on empty lists with IN:
                 return True
-            return sb.NOT(sb.IN(op1, [sb.JSONB(json.dumps(el)) for el in op2]))
+            # The $nin operator in Mongo is pretty powerful, since it
+            # implements the classic "not in" (not contains) and the "not any"
+            # operator.
+            # There is an optimization for strings:
+            #      sb.JSONB_CONTAINS_ANY(op1, [unicode(e) for e in op2])
+            ops = [sb.IN(op1, [sb.JSONB(json.dumps(el)) for el in op2]),]
+            ops += [sb.JSONB_SUPERSET(op1, json.dumps(el)) for el in op2]
+            return sb.NOT(sb.OR(*ops))
         if operator == '$not':
             # MongoDB's rationalization for this operator:
             # it matches when op1 does not pass the condition

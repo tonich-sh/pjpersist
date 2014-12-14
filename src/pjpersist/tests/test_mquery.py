@@ -69,10 +69,19 @@ def test_convert():
         (((Bar.data) -> ('quantity')) <= ('20'))
 
         >>> run(mq.convert({'quantity': {'$in': [20, 30, 40]}}))
-        (((Bar.data) -> ('quantity')) IN ('20'::jsonb, '30'::jsonb, '40'::jsonb))
+        ((((Bar.data) -> ('quantity')) IN
+                  ('20'::jsonb, '30'::jsonb, '40'::jsonb)) OR
+         ((((Bar.data) -> ('quantity')) @> ('20')) OR
+         ((((Bar.data) -> ('quantity')) @> ('30')) OR
+         (((Bar.data) -> ('quantity')) @> ('40')))))
 
         >>> run(mq.convert({'quantity': {'$nin': [20, 30, 40]}}))
-        NOT (((Bar.data) -> ('quantity')) IN ('20'::jsonb, '30'::jsonb, '40'::jsonb))
+        NOT ((((Bar.data) -> ('quantity')) IN
+                      ('20'::jsonb, '30'::jsonb, '40'::jsonb)) OR
+             ((((Bar.data) -> ('quantity')) @> ('20')) OR
+             ((((Bar.data) -> ('quantity')) @> ('30')) OR
+             (((Bar.data) -> ('quantity')) @> ('40')))))
+
 
     The $not operator.  It matches if the field does not exist or
     does not match the condition:
@@ -100,7 +109,10 @@ def test_convert():
     There can be several operators in one dict:
 
         >>> run(mq.convert({'qty': {'$exists': True, '$nin': [1, 2]}}))
-        ((((Bar.data) -> ('qty')) IS NOT NULL) AND (NOT (((Bar.data) -> ('qty')) IN ('1'::jsonb, '2'::jsonb))))
+        ((((Bar.data) -> ('qty')) IS NOT NULL) AND
+         (NOT ((((Bar.data) -> ('qty')) IN ('1'::jsonb, '2'::jsonb)) OR
+              ((((Bar.data) -> ('qty')) @> ('1')) OR
+               (((Bar.data) -> ('qty')) @> ('2'))))))
 
     The $all operator
 
