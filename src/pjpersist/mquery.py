@@ -133,6 +133,10 @@ class Converter(object):
             return sb.func.jsonb_array_length(op1) == op2
         if operator == '$exists':
             return sb.ISNOTNULL(op1) if op2 else sb.ISNULL(op1)
+        if operator == '$any':
+            return sb.JSONB_CONTAINS_ANY(op1, op2)
+        if operator == '$nany':
+            return sb.NOT(sb.JSONB_CONTAINS_ANY(op1, op2))
         if operator == '$all':
             return sb.JSONB_SUPERSET(op1, op2j)
         if operator == '$elemMatch':
