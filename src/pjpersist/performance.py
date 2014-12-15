@@ -281,6 +281,7 @@ class PerformancePJ(PerformanceBase):
             dm = datamanager.PJDataManager(conn)
 
             dm.create_tables(('people', 'person', 'address'))
+            dm.root._init_table()
 
             # this speeds up slow_read around TWICE
             #with conn.cursor() as cur:
