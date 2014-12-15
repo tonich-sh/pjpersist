@@ -196,7 +196,7 @@ class ObjectWriter(object):
             raise interfaces.CircularReferenceError(obj)
         # Add the current object to the list of seen objects.
         if not (type(obj) in interfaces.REFERENCE_SAFE_TYPES or
-                getattr(obj, '_m_reference_safe', False)):
+                getattr(obj, '_pj_reference_safe', False)):
             seen.append(id(obj))
         # Get the state of the object. Only pickable objects can be reduced.
         reduce_fn = copy_reg.dispatch_table.get(type(obj))

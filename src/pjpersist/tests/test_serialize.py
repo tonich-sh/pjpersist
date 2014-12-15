@@ -265,7 +265,7 @@ def doctest_ObjectWriter_get_non_persistent_state_circluar_references():
        Types can also declare themselves as reference safe:
 
          >>> class Ref(object):
-         ...   _m_reference_safe = True
+         ...   _pj_reference_safe = True
          ...   def __init__(self, x):
          ...       self.x = x
 
