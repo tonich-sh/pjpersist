@@ -253,8 +253,8 @@ class PerformanceBase(object):
 def getConnection(database=None):
     return psycopg2.connect(
         database=database or 'template1',
-        host='localhost', port=5433,
-        user='shoobx', password='shoobx')
+        host='localhost', port=5432,
+        user='pjpersist', password='pjpersist')
 
 
 class PerformancePJ(PerformanceBase):
