@@ -20,7 +20,7 @@ import psycopg2.extras
 import re
 import transaction
 from pprint import pprint
-from zope.testing import cleanup, module, renormalizing
+from zope.testing import module, renormalizing
 
 from pjpersist import datamanager, serialize, serializers
 
@@ -174,10 +174,4 @@ def log_sql_to_file(fname, add_tb=True, tb_limit=15):
     datamanager.LOG.addHandler(fh)
 
 
-def onCleanup():
-    serialize.SERIALIZERS.__init__()
-    resetCaches()
-
-
-cleanup.addCleanUp(onCleanup)
 atexit.register(dropDB)
