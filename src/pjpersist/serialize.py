@@ -382,7 +382,9 @@ class ObjectWriter(object):
             self._jar._update_doc(
                 db_name, table_name, doc, obj._p_oid.id, column_data)
             stored = True
-        # let's call the hook here, to always have _p_jar and _p_oid set
+        # Add object to the permanent cache.
+        self._jar._perm_object_cache.put_object(obj)
+        # Let's call the hook here, to always have _p_jar and _p_oid set
         if interfaces.IPersistentSerializationHooks.providedBy(obj):
             obj._pj_after_store_hook(self._jar._conn)
 
@@ -636,6 +638,9 @@ class ObjectReader(object):
         # Run the custom load functions.
         if interfaces.IPersistentSerializationHooks.providedBy(obj):
             obj._pj_after_load_hook(self._jar._conn)
+        # Now that the object is fully loaded, we can add it to the permanent
+        # cache.
+        self._jar._perm_object_cache.put_object(obj)
 
     def get_ghost(self, dbref, klass=None):
         # If we can, we return the object from cache.
@@ -643,6 +648,11 @@ class ObjectReader(object):
             return self._jar._object_cache[hash(dbref)]
         except KeyError:
             pass
+        # Try the permanent cache next.
+        obj = self._jar._perm_object_cache.get_object(dbref)
+        if obj is not None:
+            return obj
+        # Tough, we actually have to create the object.
         if klass is None:
             klass = self.resolve(dbref)
         obj = klass.__new__(klass)

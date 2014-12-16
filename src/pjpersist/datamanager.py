@@ -35,7 +35,7 @@ import transaction
 import zope.interface
 from zope.exceptions import exceptionformatter
 
-from pjpersist import interfaces, serialize
+from pjpersist import interfaces, objectcache, serialize
 
 PJ_ACCESS_LOGGING = False
 # set to True to automatically create tables if they don't exist
@@ -250,6 +250,8 @@ class PJDataManager(object):
     _has_name_map_table = False
     root = None
 
+    ObjectCacheFactory = objectcache.TransactionalObjectCache
+
     def __init__(self, conn, root_table=None, name_map_table=None):
         self._conn = conn
         self.database = get_database_name_from_dsn(conn.dsn)
@@ -273,6 +275,7 @@ class PJDataManager(object):
         self._needs_to_join = True
         self._object_cache = {}
         self.annotations = {}
+        self._perm_object_cache = self.ObjectCacheFactory(self)
         if name_map_table is not None:
             self.name_map_table = name_map_table
         self.transaction_manager = transaction.manager
@@ -403,6 +406,8 @@ class PJDataManager(object):
         # Create id if it is None.
         if id is None:
             id = self.createId()
+        # Give the object cache to insert info into the doc.
+        self._perm_object_cache.before_store(id, doc)
         # Insert the document into the table.
         with self.getCursor() as cur:
             builtins = dict(id=id, data=Json(doc))
@@ -425,6 +430,8 @@ class PJDataManager(object):
         return id
 
     def _update_doc(self, database, table, doc, id, column_data=None):
+        # Give the object cache to insert info into the doc.
+        self._perm_object_cache.before_store(id, doc)
         # Insert the document into the table.
         with self.getCursor() as cur:
             builtins = dict(data=Json(doc))
