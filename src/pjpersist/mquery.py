@@ -174,5 +174,7 @@ class Converter(object):
             )
         if operator == '$startswith':
             return sb.STARTSWITH(sb.TEXT(op1), op2)
+        if operator == '$regex':
+            return sb.RLIKE(sb.TEXT(op1), op2)
         else:
             raise ValueError("Unrecognized operator %s" % operator)
