@@ -65,10 +65,14 @@ class Converter(object):
                     # Let's ignore the membership case for test clarity
                     clauses.append(accessor == jvalue)
                 else:
-                    clauses.append(sb.OR(
+                    options = [
                         accessor == jvalue,
-                        sb.JSONB_SUBSET(sb.JSONB(json.dumps([pjvalue])), accessor),
-                    ))
+                        sb.JSONB_SUBSET(sb.JSONB(json.dumps([pjvalue])),
+                                        accessor)
+                    ]
+                    if value is None:
+                        options.append(sb.ISNULL(accessor))
+                    clauses.append(sb.OR(*options))
         return sb.AND(*clauses)
 
     def getField(self, field, key, json=False):
