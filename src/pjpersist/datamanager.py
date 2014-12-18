@@ -596,7 +596,12 @@ class PJDataManager(object):
                 self._modified_objects[id(obj)] = obj
 
     def abort(self, transaction):
-        self._conn.rollback()
+        try:
+            self._conn.rollback()
+        except psycopg2.InterfaceError:
+            # this happens usually when PG is restarted and the connection dies
+            # our only chance to exit the spiral is to abort the transaction
+            pass
         self.reset()
 
     def commit(self, transaction):
