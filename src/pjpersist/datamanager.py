@@ -103,7 +103,7 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
         txn = '%i - %s' % (id(txn), txn.description),
 
         TABLE_LOG.debug(
-            "sql:%r,\n args:%r,\n TXN:%s,\n tb:\n%s", sql, args, txn, tb)
+            "%s,\n args:%r,\n TXN:%s,\n tb:\n%s", sql, args, txn, tb)
 
     def execute(self, sql, args=None):
         # Convert SQLBuilder object to string
