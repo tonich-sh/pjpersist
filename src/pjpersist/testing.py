@@ -15,11 +15,15 @@
 from __future__ import absolute_import
 import atexit
 import doctest
+import logging
 import psycopg2
 import psycopg2.extras
+import os
 import re
+import sys
 import transaction
 from pprint import pprint
+from StringIO import StringIO
 from zope.testing import module, renormalizing
 
 from pjpersist import datamanager, serialize, serializers
@@ -143,9 +147,33 @@ class DatabaseLayer(object):
 
     def setUp(self):
         createDB()
+        self.setUpSqlLogging()
 
     def tearDown(self):
+        self.tearDownSqlLogging()
         dropDB()
+
+    def setUpSqlLogging(self):
+        if "SHOW_SQL" not in os.environ:
+            return
+
+        self.save_PJ_ACCESS_LOGGING = datamanager.PJ_ACCESS_LOGGING
+        datamanager.PJ_ACCESS_LOGGING = True
+        self.save_ADD_TB = datamanager.PJPersistCursor.ADD_TB
+        datamanager.ADD_TB = True
+
+        setUpLogging(datamanager.TABLE_LOG, copy_to_stdout=True)
+        setUpLogging(datamanager.LOG, copy_to_stdout=True)
+
+    def tearDownSqlLogging(self):
+        if "SHOW_SQL" not in os.environ:
+            return
+
+        tearDownLogging(datamanager.LOG)
+        tearDownLogging(datamanager.TABLE_LOG)
+
+        datamanager.PJ_ACCESS_LOGGING = self.save_PJ_ACCESS_LOGGING
+        datamanager.PJPersistCursor.ADD_TB = self.save_ADD_TB
 
 
 db_layer = DatabaseLayer("db_layer")
@@ -172,6 +200,54 @@ def log_sql_to_file(fname, add_tb=True, tb_limit=15):
         '%(name)s - %(levelname)s - %(message)s')
     fh.setFormatter(formatter)
     datamanager.LOG.addHandler(fh)
+
+
+class StdoutHandler(logging.StreamHandler):
+    """Logging handler that follows the current binding of sys.stdout."""
+
+    def __init__(self):
+        # skip logging.StreamHandler.__init__()
+        logging.Handler.__init__(self)
+
+    @property
+    def stream(self):
+        return sys.stdout
+
+
+def setUpLogging(logger, level=logging.DEBUG, format='%(message)s',
+                 copy_to_stdout=False):
+    if isinstance(logger, str):
+        logger = logging.getLogger(logger)
+    buf = StringIO()
+    handler = logging.StreamHandler(buf)
+    handler._added_by_tests_ = True
+    handler._old_propagate_ = logger.propagate
+    handler._old_level_ = logger.level
+    handler.setFormatter(logging.Formatter(format))
+    logger.addHandler(handler)
+    if copy_to_stdout:
+        # can't use logging.StreamHandler(sys.stdout) because sys.stdout might
+        # be changed latter to a StringIO, and we want messages to be seen
+        # by doctests.
+        handler = StdoutHandler()
+        handler._added_by_tests_ = True
+        handler._old_propagate_ = logger.propagate
+        handler._old_level_ = logger.level
+        handler.setFormatter(logging.Formatter(format))
+        logger.addHandler(handler)
+    logger.propagate = False
+    logger.setLevel(level)
+    return buf
+
+
+def tearDownLogging(logger):
+    if isinstance(logger, str):
+        logger = logging.getLogger(logger)
+    for handler in list(logger.handlers):
+        if hasattr(handler, '_added_by_tests_'):
+            logger.removeHandler(handler)
+            logger.propagate = handler._old_propagate_
+            logger.setLevel(handler._old_level_)
 
 
 atexit.register(dropDB)
