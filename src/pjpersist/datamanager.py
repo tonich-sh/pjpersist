@@ -103,7 +103,7 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
         txn = '%i - %s' % (id(txn), txn.description),
 
         TABLE_LOG.debug(
-            "sql:%r,\n args:%r,\n TXN:%s,\n tb:\n%s", sql, args, txn, tb)
+            "%s,\n args:%r,\n TXN:%s,\n tb:\n%s", sql, args, txn, tb)
 
     def execute(self, sql, args=None):
         # Convert SQLBuilder object to string
@@ -603,7 +603,12 @@ class PJDataManager(object):
                 self._modified_objects[id(obj)] = obj
 
     def abort(self, transaction):
-        self._conn.rollback()
+        try:
+            self._conn.rollback()
+        except psycopg2.InterfaceError:
+            # this happens usually when PG is restarted and the connection dies
+            # our only chance to exit the spiral is to abort the transaction
+            pass
         self.reset()
 
     def commit(self, transaction):
