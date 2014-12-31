@@ -136,7 +136,6 @@ def tearDown(test):
     test.globs['conn'].close()
     #dropDB()
     resetCaches()
-    serialize.SERIALIZERS.__init__()
 
 
 class DatabaseLayer(object):
