@@ -21,6 +21,7 @@ import psycopg2.extras
 import os
 import re
 import sys
+import threading
 import transaction
 from pprint import pprint
 from StringIO import StringIO
@@ -247,6 +248,14 @@ def tearDownLogging(logger):
             logger.removeHandler(handler)
             logger.propagate = handler._old_propagate_
             logger.setLevel(handler._old_level_)
+
+
+#TO_JOIN = []
+def run_in_thread(func):
+    t = threading.Thread(target=func)
+    t.setDaemon(True)
+    t.start()
+    #TO_JOIN.append(t)
 
 
 atexit.register(dropDB)

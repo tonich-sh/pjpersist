@@ -15,7 +15,9 @@
 import doctest
 import persistent
 import transaction
+import unittest
 from pprint import pprint
+from zope.testing import module
 
 from pjpersist import interfaces, serialize, testing, datamanager
 
@@ -23,6 +25,8 @@ class Root(persistent.Persistent):
     pass
 
 class Foo(persistent.Persistent):
+    name = None
+
     def __init__(self, name=None):
         self.name = name
 
@@ -1112,7 +1116,7 @@ def doctest_get_database_name_from_dsn():
     """
 
 
-def doctest_conflict1():
+def doctest_conflict_mod_1():
     """Check conflict detection. We modify the same object in different
     transactions, simulating separate processes.
 
@@ -1151,7 +1155,7 @@ def doctest_conflict1():
     """
 
 
-def doctest_conflict2():
+def doctest_conflict_mod_2():
     """Check conflict detection. We modify the same object in different
     transactions, simulating separate processes.
 
@@ -1190,10 +1194,167 @@ def doctest_conflict2():
     """
 
 
+class DatamanagerConflictTest(unittest.TestCase):
+    layer = testing.db_layer
+
+    def setUp(self):
+        #module.setUp(self)
+        testing.setUpSerializers(self)
+        self.conn = testing.getConnection(testing.DBNAME)
+        testing.cleanDB(self.conn)
+        self.dm = datamanager.PJDataManager(self.conn)
+
+    def tearDown(self):
+        #module.tearDown(self)
+        testing.tearDownSerializers(self)
+        transaction.abort()
+        testing.cleanDB(self.conn)
+        self.conn.close()
+        testing.resetCaches()
+
+    def test_conflict_del_1(self):
+        """Check conflict detection. We modify and delete the same object in
+        different transactions, simulating separate processes."""
+
+        foo = Foo('foo-first')
+        self.dm.root['foo'] = foo
+
+        self.dm.tpc_finish(None)
+
+        conn1 = testing.getConnection(testing.DBNAME)
+        dm1 = datamanager.PJDataManager(conn1)
+
+        self.assertEqual(dm1.root['foo'].name, 'foo-first')
+
+        dm1.root['foo'].name = 'foo-second'
+
+        conn2 = testing.getConnection(testing.DBNAME)
+        dm2 = datamanager.PJDataManager(conn2)
+
+        self.assertEqual(dm2.root['foo'].name, 'foo-first')
+        del dm2.root['foo']
+
+        #Finish in order 2 - 1
+
+        dm2.tpc_finish(None)
+        with self.assertRaises(interfaces.ConflictError):
+            dm1.tpc_finish(None)
+
+        transaction.abort()
+
+        conn2.close()
+        conn1.close()
+
+    def test_conflict_del_2(self):
+        """Check conflict detection. We modify and delete the same object in
+        different transactions, simulating separate processes."""
+
+        foo = Foo('foo-first')
+        self.dm.root['foo'] = foo
+
+        self.dm.tpc_finish(None)
+
+        conn1 = testing.getConnection(testing.DBNAME)
+        dm1 = datamanager.PJDataManager(conn1)
+
+        self.assertEqual(dm1.root['foo'].name, 'foo-first')
+
+        dm1.root['foo'].name = 'foo-second'
+
+        conn2 = testing.getConnection(testing.DBNAME)
+        dm2 = datamanager.PJDataManager(conn2)
+
+        self.assertEqual(dm2.root['foo'].name, 'foo-first')
+        del dm2.root['foo']
+
+        #Finish in order 1 - 2
+        # well, try to... dm1.tpc_finish will block until dm2 is done
+
+        @testing.run_in_thread
+        def background_commit():
+            with self.assertRaises(interfaces.ConflictError):
+                dm1.tpc_finish(None)
+        dm2.tpc_finish(None)
+
+        transaction.abort()
+
+        conn2.close()
+        conn1.close()
+
+    def test_conflict_del_3(self):
+        """Check conflict detection. We modify and delete the same object in
+        different transactions, simulating separate processes."""
+
+        foo = Foo('foo-first')
+        self.dm.root['foo'] = foo
+
+        self.dm.tpc_finish(None)
+
+        conn1 = testing.getConnection(testing.DBNAME)
+        dm1 = datamanager.PJDataManager(conn1)
+        conn2 = testing.getConnection(testing.DBNAME)
+        dm2 = datamanager.PJDataManager(conn2)
+
+        self.assertEqual(dm2.root['foo'].name, 'foo-first')
+        del dm2.root['foo']
+
+        self.assertEqual(dm1.root['foo'].name, 'foo-first')
+        dm1.root['foo'].name = 'foo-second'
+
+        #Finish in order 2 - 1
+
+        dm2.tpc_finish(None)
+        with self.assertRaises(interfaces.ConflictError):
+            dm1.tpc_finish(None)
+
+        transaction.abort()
+
+        conn2.close()
+        conn1.close()
+
+    def test_conflict_del_4(self):
+        """Check conflict detection. We modify and delete the same object in
+        different transactions, simulating separate processes."""
+
+        foo = Foo('foo-first')
+        self.dm.root['foo'] = foo
+
+        self.dm.tpc_finish(None)
+
+        conn1 = testing.getConnection(testing.DBNAME)
+        dm1 = datamanager.PJDataManager(conn1)
+        conn2 = testing.getConnection(testing.DBNAME)
+        dm2 = datamanager.PJDataManager(conn2)
+
+        self.assertEqual(dm2.root['foo'].name, 'foo-first')
+        del dm2.root['foo']
+
+        self.assertEqual(dm1.root['foo'].name, 'foo-first')
+        dm1.root['foo'].name = 'foo-second'
+
+        #Finish in order 1 - 2
+        # well, try to... dm1.tpc_finish will block until dm2 is done
+
+        @testing.run_in_thread
+        def background_commit():
+            with self.assertRaises(interfaces.ConflictError):
+                dm1.tpc_finish(None)
+        dm2.tpc_finish(None)
+
+        transaction.abort()
+
+        conn2.close()
+        conn1.close()
+
+
 def test_suite():
-    suite = doctest.DocTestSuite(
+    dtsuite = doctest.DocTestSuite(
         setUp=testing.setUp, tearDown=testing.tearDown,
         checker=testing.checker,
         optionflags=testing.OPTIONFLAGS)
-    suite.layer = testing.db_layer
-    return suite
+    dtsuite.layer = testing.db_layer
+
+    return unittest.TestSuite((
+        dtsuite,
+        unittest.makeSuite(DatamanagerConflictTest),
+        ))
