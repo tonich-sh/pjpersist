@@ -21,7 +21,9 @@ import psycopg2.extras
 import os
 import re
 import sys
+import threading
 import transaction
+import unittest
 from pprint import pprint
 from StringIO import StringIO
 from zope.testing import module, renormalizing
@@ -136,7 +138,6 @@ def tearDown(test):
     test.globs['conn'].close()
     #dropDB()
     resetCaches()
-    serialize.SERIALIZERS.__init__()
 
 
 class DatabaseLayer(object):
@@ -177,6 +178,25 @@ class DatabaseLayer(object):
 
 
 db_layer = DatabaseLayer("db_layer")
+
+
+class PJTestCase(unittest.TestCase):
+    layer = db_layer
+
+    def setUp(self):
+        #module.setUp(self)
+        setUpSerializers(self)
+        self.conn = getConnection(DBNAME)
+        cleanDB(self.conn)
+        self.dm = datamanager.PJDataManager(self.conn)
+
+    def tearDown(self):
+        #module.tearDown(self)
+        tearDownSerializers(self)
+        transaction.abort()
+        cleanDB(self.conn)
+        self.conn.close()
+        resetCaches()
 
 
 def resetCaches():
@@ -248,6 +268,14 @@ def tearDownLogging(logger):
             logger.removeHandler(handler)
             logger.propagate = handler._old_propagate_
             logger.setLevel(handler._old_level_)
+
+
+#TO_JOIN = []
+def run_in_thread(func):
+    t = threading.Thread(target=func)
+    t.setDaemon(True)
+    t.start()
+    #TO_JOIN.append(t)
 
 
 atexit.register(dropDB)

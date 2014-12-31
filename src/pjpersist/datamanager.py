@@ -130,6 +130,7 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
             except psycopg2.Error, e:
                 # XXX: ugly: we're creating here missing tables on the fly
                 msg = e.message
+                TABLE_LOG.debug("%s %r failed with %s", sql, args, msg)
                 # if the exception message matches
                 m = re.search('relation "(.*?)" does not exist', msg)
                 if m:
