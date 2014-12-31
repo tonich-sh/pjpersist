@@ -23,6 +23,7 @@ import re
 import sys
 import threading
 import transaction
+import unittest
 from pprint import pprint
 from StringIO import StringIO
 from zope.testing import module, renormalizing
@@ -177,6 +178,25 @@ class DatabaseLayer(object):
 
 
 db_layer = DatabaseLayer("db_layer")
+
+
+class PJTestCase(unittest.TestCase):
+    layer = db_layer
+
+    def setUp(self):
+        #module.setUp(self)
+        setUpSerializers(self)
+        self.conn = getConnection(DBNAME)
+        cleanDB(self.conn)
+        self.dm = datamanager.PJDataManager(self.conn)
+
+    def tearDown(self):
+        #module.tearDown(self)
+        tearDownSerializers(self)
+        transaction.abort()
+        cleanDB(self.conn)
+        self.conn.close()
+        resetCaches()
 
 
 def resetCaches():

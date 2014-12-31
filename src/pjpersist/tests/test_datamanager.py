@@ -1194,23 +1194,7 @@ def doctest_conflict_mod_2():
     """
 
 
-class DatamanagerConflictTest(unittest.TestCase):
-    layer = testing.db_layer
-
-    def setUp(self):
-        #module.setUp(self)
-        testing.setUpSerializers(self)
-        self.conn = testing.getConnection(testing.DBNAME)
-        testing.cleanDB(self.conn)
-        self.dm = datamanager.PJDataManager(self.conn)
-
-    def tearDown(self):
-        #module.tearDown(self)
-        testing.tearDownSerializers(self)
-        transaction.abort()
-        testing.cleanDB(self.conn)
-        self.conn.close()
-        testing.resetCaches()
+class DatamanagerConflictTest(testing.PJTestCase):
 
     def test_conflict_del_1(self):
         """Check conflict detection. We modify and delete the same object in
