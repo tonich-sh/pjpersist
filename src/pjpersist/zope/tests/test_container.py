@@ -1588,6 +1588,126 @@ def doctest_PJContainer_get_sb_fields():
 
     """
 
+
+class ContainerConflictTest(testing.PJTestCase):
+
+    def test_conflict_SimplePJContainer_key_1(self):
+        """Check conflict detection. We add the same key in
+        different transactions, simulating separate processes."""
+
+        self.dm.root['c'] = container.SimplePJContainer()
+        self.dm.tpc_finish(None)
+
+        conn1 = testing.getConnection(testing.DBNAME)
+        dm1 = datamanager.PJDataManager(conn1)
+
+        dm1.root['c'][u'stephan'] = SimplePerson(u'Stephan')
+
+        conn2 = testing.getConnection(testing.DBNAME)
+        dm2 = datamanager.PJDataManager(conn2)
+
+        dm2.root['c'][u'stephan'] = SimplePerson(u'Stephan')
+
+        #Finish in order 2 - 1
+
+        dm2.tpc_finish(None)
+        with self.assertRaises(interfaces.ConflictError):
+            dm1.tpc_finish(None)
+
+        transaction.abort()
+
+        conn2.close()
+        conn1.close()
+
+    def test_conflict_SimplePJContainer_key_2(self):
+        """Check conflict detection. We add the same key in
+        different transactions, simulating separate processes."""
+
+        self.dm.root['c'] = container.SimplePJContainer()
+        self.dm.tpc_finish(None)
+
+        conn1 = testing.getConnection(testing.DBNAME)
+        dm1 = datamanager.PJDataManager(conn1)
+
+        dm1.root['c'][u'stephan'] = SimplePerson(u'Stephan')
+
+        conn2 = testing.getConnection(testing.DBNAME)
+        dm2 = datamanager.PJDataManager(conn2)
+
+        dm2.root['c'][u'stephan'] = SimplePerson(u'Stephan')
+
+        #Finish in order 1 - 2
+
+        dm1.tpc_finish(None)
+        with self.assertRaises(interfaces.ConflictError):
+            dm2.tpc_finish(None)
+
+        transaction.abort()
+
+        conn2.close()
+        conn1.close()
+
+    def test_conflict_PJContainer_key_1(self):
+        """Check conflict detection. We add the same key in
+        different transactions, simulating separate processes."""
+
+        self.dm.root['c'] = container.PJContainer('person')
+        # (auto-create the table)
+        self.dm.root['c'][u'roy'] = Person(u'Roy')
+        self.dm.tpc_finish(None)
+
+        conn1 = testing.getConnection(testing.DBNAME)
+        dm1 = datamanager.PJDataManager(conn1)
+
+        dm1.root['c'][u'stephan'] = Person(u'Stephan')
+
+        conn2 = testing.getConnection(testing.DBNAME)
+        dm2 = datamanager.PJDataManager(conn2)
+
+        dm2.root['c'][u'stephan'] = Person(u'Stephan')
+
+        #Finish in order 2 - 1
+
+        dm2.tpc_finish(None)
+        with self.assertRaises(interfaces.ConflictError):
+            dm1.tpc_finish(None)
+
+        transaction.abort()
+
+        conn2.close()
+        conn1.close()
+
+    def test_conflict_PJContainer_key_2(self):
+        """Check conflict detection. We add the same key in
+        different transactions, simulating separate processes."""
+
+        self.dm.root['c'] = container.PJContainer('person')
+        # (auto-create the table)
+        self.dm.root['c'][u'roy'] = Person(u'Roy')
+        self.dm.tpc_finish(None)
+
+        conn1 = testing.getConnection(testing.DBNAME)
+        dm1 = datamanager.PJDataManager(conn1)
+
+        dm1.root['c'][u'stephan'] = Person(u'Stephan')
+
+        conn2 = testing.getConnection(testing.DBNAME)
+        dm2 = datamanager.PJDataManager(conn2)
+
+        dm2.root['c'][u'stephan'] = Person(u'Stephan')
+
+        #Finish in order 1 - 2
+
+        dm1.tpc_finish(None)
+        with self.assertRaises(interfaces.ConflictError):
+            dm2.tpc_finish(None)
+
+        transaction.abort()
+
+        conn2.close()
+        conn1.close()
+
+
 class PJContainedInterfaceTest(unittest.TestCase):
 
     def test_verifyClass(self):
@@ -1748,6 +1868,7 @@ def test_suite():
         #                     #|doctest.REPORT_NDIFF
         #                     )
         #        ),
+        unittest.makeSuite(ContainerConflictTest),
         unittest.makeSuite(PJContainedInterfaceTest),
         unittest.makeSuite(SimplePJContainerInterfaceTest),
         unittest.makeSuite(PJContainerInterfaceTest),
