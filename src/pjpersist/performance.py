@@ -92,6 +92,9 @@ class PerformanceBase(object):
 
         PJLOGGER.debug('=========== done: %s', text)
 
+    def insertPeople(self, options):
+        pass
+
     def getPeople(self, options):
         pass
 
@@ -168,8 +171,9 @@ class PerformanceBase(object):
     def object_caching(self, people, peopleCnt):
         # Profile object caching
         transaction.begin()
-        t1 = time.time()
+        # cache warmup
         [person.name for person in people.values()]
+        t1 = time.time()
         [person.name for person in people.values()]
         #cProfile.runctx(
         #    '[person.name for person in people.values()]', globals(), locals())
@@ -178,8 +182,9 @@ class PerformanceBase(object):
         self.printResult('Fast Read (caching x2)', t1, t2, peopleCnt*2)
 
         transaction.begin()
-        t1 = time.time()
+        # cache warmup
         [person.name for person in people.values()]
+        t1 = time.time()
         [person.name for person in people.values()]
         [person.name for person in people.values()]
         #cProfile.runctx(
@@ -187,18 +192,6 @@ class PerformanceBase(object):
         t2 = time.time()
         transaction.commit()
         self.printResult('Fast Read (caching x3)', t1, t2, peopleCnt*3)
-
-        transaction.begin()
-        t1 = time.time()
-        [person.name for person in people.values()]
-        [person.name for person in people.values()]
-        [person.name for person in people.values()]
-        [person.name for person in people.values()]
-        #cProfile.runctx(
-        #    '[person.name for person in people.values()]', globals(), locals())
-        t2 = time.time()
-        transaction.commit()
-        self.printResult('Fast Read (caching x4)', t1, t2, peopleCnt*4)
 
     def modify(self, people, peopleCnt):
         # Profile modification
@@ -232,21 +225,34 @@ class PerformanceBase(object):
         self.printResult('Deletion', t1, t2, peopleCnt)
 
     def run_basic_crud(self, options):
-        people = self.getPeople(options)
+        people = self.insertPeople(options)
 
         peopleCnt = len(people)
 
+        people = self.getPeople(options)
         self.slow_read(people, peopleCnt)
+
+        people = self.getPeople(options)
         self.read_list(people, peopleCnt)
+
+        people = self.getPeople(options)
         self.read_list_values(people, peopleCnt)
+
+        people = self.getPeople(options)
         self.fast_read_values(people, peopleCnt)
+
+        people = self.getPeople(options)
         self.fast_read(people, peopleCnt)
+
+        people = self.getPeople(options)
         self.object_caching(people, peopleCnt)
 
         if options.modify:
+            people = self.getPeople(options)
             self.modify(people, peopleCnt)
 
         if options.delete:
+            people = self.getPeople(options)
             self.delete(people, peopleCnt)
 
 
@@ -263,7 +269,7 @@ class PerformancePJ(PerformanceBase):
 
     profile_output = PROFILE_OUTPUT + '_pj_'
 
-    def getPeople(self, options):
+    def insertPeople(self, options):
         if options.reload:
             connroot = getConnection()
             with connroot.cursor() as cur:
@@ -290,21 +296,36 @@ class PerformancePJ(PerformanceBase):
             #        "CREATE INDEX data_name ON person ((data->>('name')));")
 
             dm.root['people'] = people = People()
+            transaction.commit()
+
+            def insert():
+                for idx in xrange(options.size):
+                    klass = (self.personKlass if (MULTIPLE_CLASSES and idx % 2)
+                             else self.person2Klass)
+                    people[None] = klass('Mr Number %.5i' % idx,
+                                         random.randint(0, 100))
 
             # Profile inserts
-            transaction.begin()
             t1 = time.time()
-            for idx in xrange(options.size):
-                klass = (self.personKlass if (MULTIPLE_CLASSES and idx % 2)
-                         else self.person2Klass)
-                people[None] = klass('Mr Number %.5i' % idx,
-                                     random.randint(0, 100))
+            if PROFILE:
+                cProfile.runctx(
+                    'insert()', globals(), locals(),
+                    filename=self.profile_output+'_insert')
+            else:
+                insert()
             transaction.commit()
             t2 = time.time()
             self.printResult('Insert', t1, t2, options.size)
         else:
             people = dm.root['people']
 
+        return people
+
+    def getPeople(self, options):
+        conn = getConnection('performance')
+
+        dm = datamanager.PJDataManager(conn)
+        people = dm.root['people']
         return people
 
 
@@ -337,7 +358,7 @@ class PerformanceZODB(PerformanceBase):
 
     profile_output = PROFILE_OUTPUT + '_zodb_'
 
-    def getPeople(self, options):
+    def insertPeople(self, options):
         folder = tempfile.gettempdir()
         #folder = './'  # my /tmp is a tmpfs
         fname = os.path.join(folder, 'performance_data.fs')
@@ -347,8 +368,8 @@ class PerformanceZODB(PerformanceBase):
             except:
                 pass
         fs = ZODB.FileStorage.FileStorage(fname)
-        db = ZODB.DB(fs)
-        conn = db.open()
+        self.db = ZODB.DB(fs)
+        conn = self.db.open()
 
         root = conn.root()
 
@@ -369,6 +390,14 @@ class PerformanceZODB(PerformanceBase):
             self.printResult('Insert', t1, t2, options.size)
         else:
             people = root['people']
+
+        return people
+
+    def getPeople(self, options):
+        conn = self.db.open()
+
+        root = conn.root()
+        people = root['people']
 
         return people
 
