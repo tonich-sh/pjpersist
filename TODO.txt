@@ -31,3 +31,6 @@
   - crazy idea: make UPDATEs and INSERTs async, wait for those async operations
     to complete before SELECTs and COMMIT
     IOW, do UPDATEs and INSERTs in a thread, join() the threads before SELECTs
+
+  - sqlbuilder __sqlrepr__ is slow, use SQL commands whereever it is possible
+    and makes sense
