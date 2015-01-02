@@ -278,6 +278,9 @@ class PJDataManager(object):
         if self.root is None:
             self.root = Root(self, root_table)
 
+        from pjpersist import objectcache
+        self._new_obj_cache = objectcache.ObjectCache(self)
+
     def getCursor(self, flush=True):
         def factory(*args, **kwargs):
             return PJPersistCursor(self, flush, *args, **kwargs)
@@ -477,6 +480,7 @@ class PJDataManager(object):
             __traceback_info__ = obj
             obj = self._get_doc_object(obj)
             self._writer.store(obj)
+            self._new_obj_cache.invalidate(obj._p_oid)
             written.add(obj_id)
             todo = set(self._registered_objects.keys()) - written
 
@@ -498,6 +502,7 @@ class PJDataManager(object):
 
     def dump(self, obj):
         res = self._writer.store(obj)
+        self._new_obj_cache.invalidate(obj._p_oid)
         if id(obj) in self._registered_objects:
             obj._p_changed = False
             del self._registered_objects[id(obj)]
@@ -523,6 +528,7 @@ class PJDataManager(object):
         if obj._p_oid is not None:
             raise ValueError('Object._p_oid is already set.', obj)
         res = self._writer.store(obj, id=oid)
+        self._new_obj_cache.invalidate(obj._p_oid)
         obj._p_changed = False
         self._object_cache[hash(obj._p_oid)] = obj
         self._inserted_objects[id(obj)] = obj
@@ -541,6 +547,7 @@ class PJDataManager(object):
             cur.execute('DELETE FROM %s WHERE id = %%s' % table, (obj._p_oid.id,))
         if hash(obj._p_oid) in self._object_cache:
             del self._object_cache[hash(obj._p_oid)]
+        self._new_obj_cache.invalidate(obj._p_oid)
 
         # Edge case: The object was just added in this transaction.
         if id(obj) in self._inserted_objects:
@@ -599,10 +606,12 @@ class PJDataManager(object):
             # this happens usually when PG is restarted and the connection dies
             # our only chance to exit the spiral is to abort the transaction
             pass
+        self._new_obj_cache.abort()
         self.reset()
 
     def commit(self, transaction):
         self._flush_objects()
+        self._new_obj_cache.commit()
         self._conn.commit()
         self.reset()
 

@@ -288,6 +288,7 @@ class PerformancePJ(PerformanceBase):
 
             dm.create_tables(('people', 'person', 'address'))
             dm.root._init_table()
+            dm._new_obj_cache._ensure_db_objects()
 
             # this speeds up slow_read around TWICE
             #with conn.cursor() as cur:
