@@ -20,6 +20,7 @@ import unittest
 import ZODB
 import ZODB.DemoStorage
 import persistent
+import psycopg2
 import random
 import re
 import transaction
@@ -1701,6 +1702,38 @@ class ContainerConflictTest(testing.PJTestCase):
         dm1.tpc_finish(None)
         with self.assertRaises(interfaces.ConflictError):
             dm2.tpc_finish(None)
+
+        transaction.abort()
+
+        conn2.close()
+        conn1.close()
+
+    def test_conflict_PJContainer_same_id(self):
+        """Check conflict detection. Should never happen that
+        PJDataManager.createId creates the very same ID, but you never know..."""
+
+        self.dm.root['c'] = container.PJContainer('person')
+        # (auto-create the table)
+        self.dm.root['c'][u'roy'] = Person(u'Roy')
+        self.dm.tpc_finish(None)
+
+        conn1 = testing.getConnection(testing.DBNAME)
+        dm1 = datamanager.PJDataManager(conn1)
+        dm1.createId = lambda: 'abcd'
+        conn2 = testing.getConnection(testing.DBNAME)
+        dm2 = datamanager.PJDataManager(conn2)
+        dm2.createId = lambda: 'abcd'
+
+        dm1.root['c'][u'stephan1'] = Person(u'Stephan1')
+
+        # pain: isolation would block inserting stephan2
+        #       we have to commit dm1 first
+        dm1.tpc_finish(None)
+
+        with self.assertRaises(psycopg2.IntegrityError):
+            # XXX: this might need to be translated to ConflictError
+            dm2.root['c'][u'stephan2'] = Person(u'Stephan2')
+        dm2.tpc_finish(None)
 
         transaction.abort()
 

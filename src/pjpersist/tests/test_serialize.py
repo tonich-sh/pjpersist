@@ -941,23 +941,6 @@ def doctest_ObjectReader_set_ghost_state():
       >>> gobj.name
       u'top'
 
-    Note that the original state is stored in the data manager:
-
-      >>> gobj._p_jar._original_states
-      {DBRef('Top',
-             '0001020304050607080a0b0c',
-             'pjpersist_test'): {u'name': u'top'}}
-
-    Note that it is important that the fully returned JSONB document is stored
-    here, since this document is taken and put back into PostGreSQL when a
-    transaction is not committed.
-
-    This state does not change, even when the object is modified:
-
-      >>> gobj.name = 'stop'
-      >>> gobj._p_jar._original_states[gobj._p_oid] != gobj.__getstate__()
-      True
-
     """
 
 

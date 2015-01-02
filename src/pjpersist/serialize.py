@@ -622,13 +622,7 @@ class ObjectReader(object):
         state_doc.pop(interfaces.PY_TYPE_ATTR_NAME, None)
         # Now convert the document to a proper Python state dict.
         state = dict(self.get_object(state_doc, obj))
-        # Now store the original state. It is assumed that the state dict is
-        # not modified later.
-        # Make sure that we never set the original state multiple times, even
-        # if reassigning the state within the same transaction. Otherwise we
-        # can never fully undo a transaction.
-        if obj._p_oid not in self._jar._original_states:
-            self._jar._original_states[obj._p_oid] = doc
+        if obj._p_oid not in self._jar._latest_states:
             # Sometimes this method is called to update the object state
             # before storage. Only update the latest states when the object is
             # originally loaded.
