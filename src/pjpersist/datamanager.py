@@ -531,6 +531,7 @@ class PJDataManager(object):
         self._new_obj_cache.invalidate(obj._p_oid)
         obj._p_changed = False
         self._object_cache[hash(obj._p_oid)] = obj
+        self._new_obj_cache.put_object(obj)
         self._inserted_objects[id(obj)] = obj
         return res
 
@@ -547,6 +548,7 @@ class PJDataManager(object):
             cur.execute('DELETE FROM %s WHERE id = %%s' % table, (obj._p_oid.id,))
         if hash(obj._p_oid) in self._object_cache:
             del self._object_cache[hash(obj._p_oid)]
+        self._new_obj_cache.del_object(obj._p_oid)
         self._new_obj_cache.invalidate(obj._p_oid)
 
         # Edge case: The object was just added in this transaction.
