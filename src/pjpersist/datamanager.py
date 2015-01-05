@@ -153,7 +153,7 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
                 # Join the transaction, because failed queries require
                 # aborting the transaction.
                 self.datamanager._join_txn()
-                self.check_for_conflict(e)
+                check_for_conflict(e)
                 # otherwise let it fly away
                 raise
         else:
@@ -165,23 +165,24 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
                 # Join the transaction, because failed queries require
                 # aborting the transaction.
                 self.datamanager._join_txn()
-                self.check_for_conflict(e)
+                check_for_conflict(e)
                 raise
 
-    def check_for_conflict(self, e):
-        """Check whether exception indicates serialization failure and raise
-        ConflictError in this case.
 
-        Serialization failures are denoted by postgres codes:
-            40001 - serialization_failure
-            40P01 - deadlock_detected
-        """
-        serialization_errors = (
-            psycopg2.errorcodes.SERIALIZATION_FAILURE,
-            psycopg2.errorcodes.DEADLOCK_DETECTED
-        )
-        if e.pgcode in serialization_errors:
-            raise interfaces.ConflictError(str(e))
+def check_for_conflict(e):
+    """Check whether exception indicates serialization failure and raise
+    ConflictError in this case.
+
+    Serialization failures are denoted by postgres codes:
+        40001 - serialization_failure
+        40P01 - deadlock_detected
+    """
+    serialization_errors = (
+        psycopg2.errorcodes.SERIALIZATION_FAILURE,
+        psycopg2.errorcodes.DEADLOCK_DETECTED
+    )
+    if e.pgcode in serialization_errors:
+        raise interfaces.ConflictError(str(e))
 
 
 class Root(UserDict.DictMixin):
@@ -603,7 +604,11 @@ class PJDataManager(object):
 
     def commit(self, transaction):
         self._flush_objects()
-        self._conn.commit()
+        try:
+            self._conn.commit()
+        except psycopg2.Error, e:
+            check_for_conflict(e)
+            raise
         self.reset()
 
     def tpc_begin(self, transaction):

@@ -1330,6 +1330,49 @@ class DatamanagerConflictTest(testing.PJTestCase):
         conn2.close()
         conn1.close()
 
+    def test_conflict_commit_1(self):
+        """Test conflict on commit
+
+        The typical detail string for such failures is:
+
+        DETAIL:  Reason code: Canceled on identification as a pivot, during commit
+        attempt.
+        """
+
+        # We will not reproduce the full scenario with pjpersist, however we will
+        # pretend the right exception is thrown by commit.
+        #
+        # First, get the error, that psycopg throws in such case
+        # The example is taken from https://wiki.postgresql.org/wiki/SSI
+        import psycopg2
+
+        conn1 = self.conn
+        conn2 = testing.getConnection(testing.DBNAME)
+
+        with conn1.cursor() as cur:
+            cur.execute("DROP TABLE IF EXISTS mytab")
+            cur.execute("CREATE TABLE mytab (class int NOT NULL, value int NOT NULL )")
+            cur.execute("INSERT INTO mytab VALUES (1, 10), (1, 20), (2, 100), (2, 200)")
+        conn1.commit()
+
+        with conn1.cursor() as cur1, conn2.cursor() as cur2:
+            cur1.execute("SELECT SUM(value) FROM mytab WHERE class = 1")
+            cur1.execute("INSERT INTO mytab VALUES (2, 30)")
+
+            cur2.execute("SELECT SUM(value) FROM mytab WHERE class = 2")
+            cur2.execute("INSERT INTO mytab VALUES (1, 300)")
+
+        conn2.commit()
+        conn2.close()
+
+        # Now datamanager, holding conn1 is in doomed state. it is expected to
+        # fail on commit attempt.
+        txn = transaction.get()
+        txn.join(self.dm)
+
+        with self.assertRaises(interfaces.ConflictError):
+            transaction.commit()
+
 
 def test_suite():
     dtsuite = doctest.DocTestSuite(
