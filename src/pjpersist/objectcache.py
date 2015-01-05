@@ -174,6 +174,13 @@ class ThreadedObjectCache(TransactionalObjectCache):
 
     def abort(self):
         # do some magic with the changed objects to revert changes
+        # the simplest way seems to be to just nuke the object from the cache
+        for dbref in self.invalidations:
+            try:
+                del self.objects[dbref_key(dbref)]
+            except KeyError:
+                pass
+
         self.invalidations.clear()
 
 
