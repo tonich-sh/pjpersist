@@ -1741,6 +1741,216 @@ class ContainerConflictTest(testing.PJTestCase):
         conn1.close()
 
 
+class CountingCommandsTest(testing.PJTestCase):
+
+    """We want to see here that various operations emit the least SQL commands
+    """
+
+    def setUp(self):
+        super(CountingCommandsTest, self).setUp()
+
+        self.save_PJ_ACCESS_LOGGING = datamanager.PJ_ACCESS_LOGGING
+        datamanager.PJ_ACCESS_LOGGING = True
+        self.save_ADD_TB = datamanager.PJPersistCursor.ADD_TB
+        datamanager.PJPersistCursor.ADD_TB = True
+
+        self.table_log = testing.setUpLogging(datamanager.TABLE_LOG)
+        self.log = testing.setUpLogging(datamanager.LOG)
+
+        self.maxDiff = None
+
+    def tearDown(self):
+        testing.tearDownLogging(datamanager.LOG)
+        testing.tearDownLogging(datamanager.TABLE_LOG)
+
+        datamanager.PJ_ACCESS_LOGGING = self.save_PJ_ACCESS_LOGGING
+        datamanager.PJPersistCursor.ADD_TB = self.save_ADD_TB
+
+        super(CountingCommandsTest, self).tearDown()
+
+    def test_count_PJContainer_getitem(self):
+        self.dm.root['c'] = container.PJContainer('person')
+        # (auto-create the table)
+        self.dm.root['c'][u'roy'] = Person(u'Roy')
+        self.dm.tpc_finish(None)
+
+        # force a new transaction, clear the cache in the transaction
+        # this would happen on a new request
+        transaction.manager.free(transaction.manager.get())
+
+        cnt = self.dm.root['c']
+
+        self.table_log.truncate(0)
+
+        roy = cnt['roy']
+
+        # Roy was just inserted, must stay in the objectcache
+        # no SELECTs
+        c = self.table_log.getvalue()
+        self.assertEqual(c, '')
+
+        # force a new transaction, clear the cache in the transaction
+        # this would happen on a new request
+        transaction.manager.free(transaction.manager.get())
+
+        cnt = self.dm.root['c']
+
+        self.table_log.truncate(0)
+
+        roy = cnt['roy']
+
+        # Roy was just inserted, must stay in the objectcache
+        # no SELECTs
+        c = self.table_log.getvalue()
+        self.assertEqual(c, '')
+
+        import pjpersist.objectcache
+        self.dm.tpc_finish(None)
+        self.dm._new_obj_cache.clear_cache()
+        self.dm.tpc_finish(None)
+
+        self.assertEqual(len(self.dm._new_obj_cache.objects), 0)
+
+        cnt = self.dm.root['c']
+
+        self.table_log.truncate(0)
+
+        roy = cnt['roy']
+
+        sqlc = self.table_log.getvalue()
+        sqlc = [line for line in sqlc.splitlines() if line.startswith('SELECT')]
+        self.assertEqual(len(sqlc), 3)
+
+        # 1. the container
+        # 2. state of roy
+        # 3. persistence_name_map
+
+    def test_count_PJContainer_read_list(self):
+        self.dm.root['c'] = container.PJContainer('person')
+        # (auto-create the table)
+        self.dm.root['c'][u'roy'] = Person(u'Roy')
+        self.dm.root['c'][u'stephan'] = Person(u'Stephan')
+        self.dm.root['c'][u'albertas'] = Person(u'Albertas')
+        self.dm.tpc_finish(None)
+
+        # force a new transaction, clear the cache in the transaction
+        # this would happen on a new request
+        transaction.manager.free(transaction.manager.get())
+
+        cnt = self.dm.root['c']
+
+        self.table_log.truncate(0)
+
+        [p for p in list(cnt)]
+
+        # the container and the guys were just inserted,
+        # must stay in the objectcache
+        # no SELECTs
+        c = self.table_log.getvalue()
+        self.assertEqual(c, '')
+
+        # force a new transaction, clear the cache in the transaction
+        # this would happen on a new request
+        transaction.manager.free(transaction.manager.get())
+
+        cnt = self.dm.root['c']
+
+        self.table_log.truncate(0)
+
+        [p for p in list(cnt)]
+
+        # the container and the guys were just inserted,
+        # must stay in the objectcache
+        # no SELECTs
+        c = self.table_log.getvalue()
+        self.assertEqual(c, '')
+
+        import pjpersist.objectcache
+        self.dm.tpc_finish(None)
+        self.dm._new_obj_cache.clear_cache()
+        self.dm.tpc_finish(None)
+
+        self.assertEqual(len(self.dm._new_obj_cache.objects), 0)
+
+        cnt = self.dm.root['c']
+
+        self.table_log.truncate(0)
+
+        [p for p in list(cnt)]
+
+        sqlc = self.table_log.getvalue()
+        sqlc = [line for line in sqlc.splitlines() if line.startswith('SELECT')]
+
+        # 1. the container
+        # 2. the __iter__ reading keys
+        # 3. __len__ of the container
+
+        self.assertEqual(len(sqlc), 3)
+
+    def test_count_PJContainer_values(self):
+        self.dm.root['c'] = container.PJContainer('person')
+        # (auto-create the table)
+        self.dm.root['c'][u'roy'] = Person(u'Roy')
+        self.dm.root['c'][u'stephan'] = Person(u'Stephan')
+        self.dm.root['c'][u'albertas'] = Person(u'Albertas')
+        self.dm.tpc_finish(None)
+
+        # force a new transaction, clear the cache in the transaction
+        # this would happen on a new request
+        transaction.manager.free(transaction.manager.get())
+
+        cnt = self.dm.root['c']
+
+        self.table_log.truncate(0)
+
+        [p for p in cnt.values()]
+
+        # the container and the guys were just inserted,
+        # must stay in the objectcache
+        # no SELECTs
+        c = self.table_log.getvalue()
+        self.assertEqual(c, '')
+
+        # force a new transaction, clear the cache in the transaction
+        # this would happen on a new request
+        transaction.manager.free(transaction.manager.get())
+
+        cnt = self.dm.root['c']
+
+        self.table_log.truncate(0)
+
+        [p for p in cnt.values()]
+
+        # the container and the guys were just inserted,
+        # must stay in the objectcache
+        # no SELECTs
+        c = self.table_log.getvalue()
+        self.assertEqual(c, '')
+
+        import pjpersist.objectcache
+        self.dm.tpc_finish(None)
+        self.dm._new_obj_cache.clear_cache()
+        self.dm.tpc_finish(None)
+
+        self.assertEqual(len(self.dm._new_obj_cache.objects), 0)
+
+        cnt = self.dm.root['c']
+
+        self.table_log.truncate(0)
+
+        [p for p in cnt.values()]
+
+        sqlc = self.table_log.getvalue()
+        sqlc = [line for line in sqlc.splitlines() if line.startswith('SELECT')]
+
+        # 1. the container
+        # 2. all persons in the container
+        # 3. persistence_name_map
+
+        self.assertEqual(len(sqlc), 3)
+
+
+
 class PJContainedInterfaceTest(unittest.TestCase):
 
     def test_verifyClass(self):
@@ -1903,6 +2113,7 @@ def test_suite():
         #        ),
         # XXX: not easy to test conflicts until the object cache is thread based
         #unittest.makeSuite(ContainerConflictTest),
+        unittest.makeSuite(CountingCommandsTest),
         unittest.makeSuite(PJContainedInterfaceTest),
         unittest.makeSuite(SimplePJContainerInterfaceTest),
         unittest.makeSuite(PJContainerInterfaceTest),
