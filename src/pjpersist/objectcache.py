@@ -54,6 +54,9 @@ class TransactionalObjectCache(object):
     def abort(self):
         self.objects = {}
 
+    def clear_cache(self):
+        self.objects = {}
+
     def invalidate(self, obj):
         pass
 
@@ -183,6 +186,11 @@ class ThreadedObjectCache(TransactionalObjectCache):
 
         self.invalidations.clear()
 
+    def clear_cache(self):
+        del _CACHE.objects
+        del _CACHE.last_seen_txn
+        # XXX: yuck, how to clear all thread's caches???
+
 
 class ConnectionObjectCache(ThreadedObjectCache):
     # XXX: this would be a good idea, but psycopg2.connection is a C class
@@ -220,3 +228,6 @@ class ConnectionObjectCache(ThreadedObjectCache):
     @last_seen_txn.setter
     def last_seen_txn(self, value):
         self._datamanager._conn.last_seen_txn = value
+
+    def clear_cache(self):
+        self.objects = {}
