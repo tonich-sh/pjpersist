@@ -166,6 +166,7 @@ def doctest_PJDataManager_object_dump_load_reset():
     Let's now reset the data manager, so we do not hit a cache while loading
     the object again:
 
+      >>> dm._new_obj_cache.clear_cache()
       >>> dm.reset()
 
     We can now load the object:
@@ -575,7 +576,7 @@ def doctest_PJDataManager_abort():
       >>> foo3_ref = dm.insert(Foo('three'))
 
       >>> dm.flush()
-      >>> dumpTable(table)
+      >>> dumpTable(table, sort=True)
       [{'data': {u'name': u'1'}, 'id': u'f40442f6870c0b84d78b7dd8'},
        {'data': {u'name': u'three'}, 'id': u'cff24e7e99b7185fc9a98579'}]
 
@@ -748,6 +749,7 @@ def doctest_PJDataManager_sub_objects():
 
       >>> foo = dm.root['one']
       >>> foo._p_changed
+      False
 
       >>> foo.list = serialize.PersistentList()
       >>> foo.list._p_jar
@@ -819,10 +821,10 @@ def doctest_PJDataManager_complex_sub_objects():
       >>> cur = dm._conn.cursor()
       >>> cur.execute('SELECT tablename from pg_tables;')
       >>> sorted(e[0] for e in cur.fetchall()
-      ...        if not e[0].startswith('pg_') and not e[0].startswith('sql_'))
-      [u'persistence_name_map',
-       u'persistence_root',
-       u'pjpersist_dot_tests_dot_test_datamanager_dot_foo']
+      ...        if (not e[0].startswith('pg_')
+      ...            and not e[0].startswith('sql_'))
+      ...            and not e[0].startswith('persistence_'))
+      [u'pjpersist_dot_tests_dot_test_datamanager_dot_foo']
 
     Now, save foo first, and then add subobjects
 
@@ -844,10 +846,10 @@ def doctest_PJDataManager_complex_sub_objects():
 
       >>> cur.execute('SELECT tablename from pg_tables;')
       >>> sorted(e[0] for e in cur.fetchall()
-      ...        if not e[0].startswith('pg_') and not e[0].startswith('sql_'))
-      [u'persistence_name_map',
-       u'persistence_root',
-       u'pjpersist_dot_tests_dot_test_datamanager_dot_foo']
+      ...        if (not e[0].startswith('pg_')
+      ...            and not e[0].startswith('sql_'))
+      ...            and not e[0].startswith('persistence_'))
+      [u'pjpersist_dot_tests_dot_test_datamanager_dot_foo']
 
       >>> dm.root['two'].sup.bar
       <Bar second bar>
@@ -871,7 +873,12 @@ def doctest_PJDataManager_complex_sub_objects():
 
       >>> foo = dm.root['one']
       >>> foo.sup.name = 'new super'
+      >>> foo.sup._p_changed=True
+      >>> foo.sup._p_changed
+      False
       >>> foo.sup.bar.name = 'new bar'
+      >>> foo.sup.bar._p_pj_doc_object
+      <Super new super>
       >>> dm.tpc_finish(None)
 
       >>> foo = dm.root['one']
@@ -888,14 +895,20 @@ def doctest_PJDataManager_complex_sub_objects():
       >>> foo.sup.bar._p_pj_sub_object
       True
       >>> foo.sup.bar._p_pj_doc_object
-      <Foo one>
+      <Super new super>
+
+      >>> cur = dm.getCursor()
+      >>> cur.execute(
+      ... '''SELECT * FROM pjpersist_dot_tests_dot_test_datamanager_dot_foo
+      ...    WHERE data @> '{"name": "one"}' ''')
+      >>> pprint([dict(e) for e in cur.fetchall()])
 
       >>> cur.execute('SELECT tablename from pg_tables;')
       >>> sorted(e[0] for e in cur.fetchall()
-      ...        if not e[0].startswith('pg_') and not e[0].startswith('sql_'))
-      [u'persistence_name_map',
-       u'persistence_root',
-       u'pjpersist_dot_tests_dot_test_datamanager_dot_foo']
+      ...        if (not e[0].startswith('pg_')
+      ...            and not e[0].startswith('sql_'))
+      ...            and not e[0].startswith('persistence_'))
+      [u'pjpersist_dot_tests_dot_test_datamanager_dot_foo']
 
     Even if _p_pj_doc_object is pointed to subobject, subobject does not get
     saved to its own table:
@@ -907,10 +920,10 @@ def doctest_PJDataManager_complex_sub_objects():
 
       >>> cur.execute('SELECT tablename from pg_tables;')
       >>> sorted(e[0] for e in cur.fetchall()
-      ...        if not e[0].startswith('pg_') and not e[0].startswith('sql_'))
-      [u'persistence_name_map',
-       u'persistence_root',
-       u'pjpersist_dot_tests_dot_test_datamanager_dot_foo']
+      ...        if (not e[0].startswith('pg_')
+      ...            and not e[0].startswith('sql_'))
+      ...            and not e[0].startswith('persistence_'))
+      [u'pjpersist_dot_tests_dot_test_datamanager_dot_foo']
     """
 
 
@@ -1018,7 +1031,7 @@ def doctest_PJDataManager_long():
     Let's see how it is deserialzied?
 
       >>> dm.root['app'].x
-      1
+      1L
 
     Let's now create a really long integer:
 
@@ -1087,9 +1100,9 @@ def doctest_PJDataManager_sub_doc_multi_flush():
     Let's now modify bar a few times with intermittend flushes.
 
       >>> foo = dm.root['foo']
-      >>> foo.bar.name = 'bar-new'
+      >>> foo.bar.name = u'bar-new'
       >>> dm.flush()
-      >>> foo.bar.name = 'bar-newer'
+      >>> foo.bar.name = u'bar-newer'
 
       >>> dm.tpc_finish(None)
       >>> dm.root['foo'].bar.name
@@ -1116,85 +1129,69 @@ def doctest_get_database_name_from_dsn():
     """
 
 
-def doctest_conflict_mod_1():
-    """Check conflict detection. We modify the same object in different
-    transactions, simulating separate processes.
-
-      >>> foo = Foo('foo-first')
-      >>> dm.root['foo'] = foo
-
-      >>> dm.tpc_finish(None)
-
-      >>> conn1 = testing.getConnection(testing.DBNAME)
-      >>> dm1 = datamanager.PJDataManager(conn1)
-
-      >>> dm1.root['foo']
-      <Foo foo-first>
-      >>> dm1.root['foo'].name = 'foo-second'
-
-      >>> conn2 = testing.getConnection(testing.DBNAME)
-      >>> dm2 = datamanager.PJDataManager(conn2)
-
-      >>> dm2.root['foo']
-      <Foo foo-first>
-      >>> dm2.root['foo'].name = 'foo-third'
-
-    Finish in order 2 - 1
-
-      >>> dm2.tpc_finish(None)
-      >>> dm1.tpc_finish(None)
-      Traceback (most recent call last):
-      ...
-      ConflictError: could not serialize access due to concurrent update
-
-      >>> transaction.abort()
-
-      >>> conn2.close()
-      >>> conn1.close()
-
-    """
-
-
-def doctest_conflict_mod_2():
-    """Check conflict detection. We modify the same object in different
-    transactions, simulating separate processes.
-
-      >>> foo = Foo('foo-first')
-      >>> dm.root['foo'] = foo
-
-      >>> dm.tpc_finish(None)
-
-      >>> conn1 = testing.getConnection(testing.DBNAME)
-      >>> dm1 = datamanager.PJDataManager(conn1)
-
-      >>> dm1.root['foo']
-      <Foo foo-first>
-      >>> dm1.root['foo'].name = 'foo-second'
-
-      >>> conn2 = testing.getConnection(testing.DBNAME)
-      >>> dm2 = datamanager.PJDataManager(conn2)
-
-      >>> dm2.root['foo']
-      <Foo foo-first>
-      >>> dm2.root['foo'].name = 'foo-third'
-
-    Finish in order 1 - 2
-
-      >>> dm1.tpc_finish(None)
-      >>> dm2.tpc_finish(None)
-      Traceback (most recent call last):
-      ...
-      ConflictError: could not serialize access due to concurrent update
-
-      >>> transaction.abort()
-
-      >>> conn2.close()
-      >>> conn1.close()
-
-    """
-
-
 class DatamanagerConflictTest(testing.PJTestCase):
+
+    def test_conflict_mod_1(self):
+        """Check conflict detection. We modify the same object in different
+        transactions, simulating separate processes."""
+
+        foo = Foo('foo-first')
+        self.dm.root['foo'] = foo
+
+        self.dm.tpc_finish(None)
+
+        conn1 = testing.getConnection(testing.DBNAME)
+        dm1 = datamanager.PJDataManager(conn1)
+        conn2 = testing.getConnection(testing.DBNAME)
+        dm2 = datamanager.PJDataManager(conn2)
+
+        self.assertEqual(dm1.root['foo'].name, 'foo-first')
+        dm1.root['foo'].name = 'foo-second'
+
+        self.assertEqual(dm2.root['foo'].name, 'foo-first')
+        dm2.root['foo'].name = 'foo-third'
+
+        # Finish in order 2 - 1
+
+        dm2.tpc_finish(None)
+        with self.assertRaises(interfaces.ConflictError):
+            dm1.tpc_finish(None)
+
+        transaction.abort()
+
+        conn2.close()
+        conn1.close()
+
+    def test_conflict_mod_2(self):
+        """Check conflict detection. We modify the same object in different
+        transactions, simulating separate processes."""
+
+        foo = Foo('foo-first')
+        self.dm.root['foo'] = foo
+
+        self.dm.tpc_finish(None)
+
+        conn1 = testing.getConnection(testing.DBNAME)
+        dm1 = datamanager.PJDataManager(conn1)
+        conn2 = testing.getConnection(testing.DBNAME)
+        dm2 = datamanager.PJDataManager(conn2)
+
+        self.assertEqual(dm1.root['foo'].name, 'foo-first')
+        dm1.root['foo'].name = 'foo-second'
+
+        self.assertEqual(dm2.root['foo'].name, 'foo-first')
+        dm2.root['foo'].name = 'foo-third'
+
+        # Finish in order 1 - 2
+
+        dm1.tpc_finish(None)
+        with self.assertRaises(interfaces.ConflictError):
+            dm2.tpc_finish(None)
+
+        transaction.abort()
+
+        conn2.close()
+        conn1.close()
 
     def test_conflict_del_1(self):
         """Check conflict detection. We modify and delete the same object in

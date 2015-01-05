@@ -977,6 +977,9 @@ def doctest_deserialize_persistent_references():
     Now we access the objects objects again to see whether they got properly
     deserialized.
 
+      >>> dm._new_obj_cache.clear_cache()
+      >>> dm.tpc_finish(None)
+
       >>> top2 = dm.root['top']
       >>> id(top2) == id(top)
       False

@@ -628,10 +628,10 @@ def doctest_PJContainer_add_IdNamesPJContainer():
 
     Let's now search and receive documents as result:
 
-      >>> sorted(dm.root['people'].keys())
-      [u'...']
       >>> stephan = dm.root['people'].values()[0]
       >>> stephan.__name__ == str(stephan._p_oid.id)
+      True
+      >>> dm.root['people'].keys()[0] == stephan.__name__
       True
 """
 
@@ -669,17 +669,17 @@ def doctest_PJContainer_find():
       # "(((person.data) ->> ('name')) LIKE ('Ro%') ESCAPE E'\\\\')"
 
       >>> res = dm.root['people'].raw_find(qry)
-      >>> pprint(list(res))
+      >>> pprint(sorted(res, key=lambda row:row['data']['name']))
       [[u'0001020304050607080a0b0c0',
-        {u'key': u'roy',
-         u'name': u'Roy',
+        {u'key': u'roger',
+         u'name': u'Roger',
          u'parent': {u'_py_type': u'DBREF',
                      u'database': u'pjpersist_test',
                      u'id': u'0001020304050607080a0b0c0',
                      u'table': u'pjpersist_dot_zope_dot_container_dot_PJContainer'}}],
        [u'0001020304050607080a0b0c0',
-        {u'key': u'roger',
-         u'name': u'Roger',
+        {u'key': u'roy',
+         u'name': u'Roy',
          u'parent': {u'_py_type': u'DBREF',
                      u'database': u'pjpersist_test',
                      u'id': u'0001020304050607080a0b0c0',
@@ -688,15 +688,19 @@ def doctest_PJContainer_find():
     And now the same query, but this time with object results:
 
       >>> res = dm.root['people'].find(qry)
-      >>> pprint(list(res))
-      [<Person Roy>, <Person Roger>]
+      >>> pprint(sorted(res, key=lambda p:p.name))
+      [<Person Roger>, <Person Roy>]
 
     When no spec is specified, all items are returned:
 
       >>> res = dm.root['people'].find()
-      >>> pprint(list(res))
-      [<Person Stephan>, <Person Roy>, <Person Roger>, <Person Adam>,
-       <Person Albertas>, <Person Russ>]
+      >>> pprint(sorted(res, key=lambda p:p.name))
+      [<Person Adam>,
+       <Person Albertas>,
+       <Person Roger>,
+       <Person Roy>,
+       <Person Russ>,
+       <Person Stephan>]
 
 
     Let's see some sqlbuilder parameters (passed along as kwargs):
@@ -813,6 +817,12 @@ def doctest_PJContainer_cache_complete():
 
       >>> transaction.commit()
       >>> ppl = dm.root['people'] = container.PJContainer('person')
+
+    A brand new empty container is complete, right?
+
+      >>> ppl._cache_complete
+      True
+
       >>> ppl[u'stephan'] = Person(u'Stephan')
       >>> ppl[u'roy'] = Person(u'Roy')
       >>> ppl[u'roger'] = Person(u'Roger')
@@ -820,14 +830,19 @@ def doctest_PJContainer_cache_complete():
       >>> ppl[u'albertas'] = Person(u'Albertas')
       >>> ppl[u'russ'] = Person(u'Russ')
 
-    Clean the cache on the transaction:
+      >>> ppl._cache_complete
+      True
 
-      >>> txn = transaction.manager.get()
-      >>> if hasattr(txn, '_v_pj_container_cache'):
-      ...     delattr(txn, '_v_pj_container_cache')
+      >>> transaction.commit()
 
-    The cache is not complete:
+    Clean the cache:
 
+      >>> dm._new_obj_cache.clear_cache()
+      >>> dm.reset()
+
+    The cache is not yet complete:
+
+      >>> ppl = dm.root['people']
       >>> ppl._cache_complete
       False
 
@@ -922,10 +937,10 @@ def doctest_IdNamesPJContainer_basic():
     Notice how there is no "key" entry in the document. We get a usual key
     error, if an object does not exist:
 
-      >>> dm.root['c']['0001020304050607080a0b0c0']
+      >>> dm.root['c'][u'0001020304050607080a0b0c0']
       Traceback (most recent call last):
       ...
-      KeyError: '0001020304050607080a0b0c0'
+      KeyError: u'0001020304050607080a0b0c0'
 
       >>> '0001020304050607080a0b0c0' in dm.root['c']
       False
@@ -1412,7 +1427,7 @@ def doctest_firing_events_IdNamesPJContainer():
     attributes.
 
       >>> for idx in xrange(2):
-      ...     name = '4e7ddf12e1382374030%.5i' % (idx+20, )
+      ...     name = u'4e7ddf12e1382374030%.5i' % (idx+20, )
       ...     people[name] = PeoplePerson(name, random.randint(0, 100))
       <zope.lifecycleevent.ObjectAddedEvent object at ...>
       <zope.container.contained.ContainerModifiedEvent object at ...>
@@ -1516,7 +1531,7 @@ def doctest_PJContainer_SimpleColumnSerialization():
       ...
       KeyError: u'Mr Number 00007'
 
-      >>> pprint(list(people))
+      >>> pprint(sorted(list(people)))
       [u'Mr Number 00000',
        u'Mr Number 00001',
        u'Mr Number 00002',
@@ -1537,7 +1552,7 @@ def doctest_PJContainer_SimpleColumnSerialization():
        u'Mr Number 00018',
        u'Mr Number 00019']
 
-      >>> pprint(list(people.keys()))
+      >>> pprint(sorted(list(people.keys())))
       [u'Mr Number 00000',
        u'Mr Number 00001',
        u'Mr Number 00002',

@@ -134,7 +134,7 @@ class PJContainer(contained.Contained,
     _pj_remove_documents = True
 
     def __init__(self, table=None,
-                 mapping_key=None, parent_key=None):
+                 mapping_key=None, parent_key=None, mark_complete=True):
         if table:
             self._pj_table = table
         if mapping_key is not None:
@@ -142,7 +142,8 @@ class PJContainer(contained.Contained,
         if parent_key is not None:
             self._pj_parent_key = parent_key
         # brand new empty container, it's empty and therefore complete, right?
-        self._cache_mark_complete()
+        if mark_complete:
+            self._cache_mark_complete()
 
     @property
     def _pj_jar(self):
@@ -299,7 +300,7 @@ class PJContainer(contained.Contained,
         # When the key is None, we need to determine it.
         if key is None:
             if self._pj_mapping_key is None:
-                key = self._pj_jar.createId()
+                key = unicode(self._pj_jar.createId())
             else:
                 # we have _pj_mapping_key, use that attribute
                 key = getattr(value, self._pj_mapping_key)
@@ -537,6 +538,11 @@ class IdNamesPJContainer(PJContainer):
 
 class AllItemsPJContainer(PJContainer):
     _pj_parent_key = None
+
+    def __init__(self, table=None,
+                 mapping_key=None, parent_key=None, mark_complete=False):
+        super(AllItemsPJContainer, self).__init__(table, mapping_key, parent_key,
+                                                  mark_complete)
 
 
 class SubDocumentPJContainer(PJContained, PJContainer):
