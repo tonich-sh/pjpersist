@@ -141,6 +141,8 @@ class PJContainer(contained.Contained,
             self._pj_mapping_key = mapping_key
         if parent_key is not None:
             self._pj_parent_key = parent_key
+        # brand new empty container, it's empty and therefore complete, right?
+        self._cache_mark_complete()
 
     @property
     def _pj_jar(self):
