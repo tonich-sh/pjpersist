@@ -87,7 +87,9 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
         self.datamanager = datamanager
         self.flush = flush
 
-    def log_query(self, sql, args):
+    def log_query(self, sql, args, start_time):
+        duration = time.time() - start_time
+
         if self.ADD_TB:
             try:
                 raise ValueError('boom')
@@ -103,7 +105,8 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
         txn = '%i - %s' % (id(txn), txn.description),
 
         TABLE_LOG.debug(
-            "%s,\n args:%r,\n TXN:%s,\n tb:\n%s", sql, args, txn, tb)
+            "%s,\n args:%r,\n TXN:%s,\n tb:\n%s\n time:%s",
+            sql, args, txn, tb, duration)
 
     def execute(self, sql, args=None):
         # Convert SQLBuilder object to string
@@ -112,9 +115,6 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
         # Flush the data manager before any select.
         if self.flush and sql.strip().split()[0].lower() == 'select':
             self.datamanager.flush()
-        # Very useful logging of every SQL command with traceback to code.
-        if PJ_ACCESS_LOGGING:
-            self.log_query(sql, args)
 
         # XXX: Optimization opportunity to store returned JSONB docs in the
         # cache of the data manager. (SR)
@@ -126,6 +126,7 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
 
             try:
                 __traceback_info__ = (self.datamanager.database, sql, args)
+                start_time = time.time()
                 return super(PJPersistCursor, self).execute(sql, args)
             except psycopg2.Error, e:
                 # XXX: ugly: we're creating here missing tables on the fly
@@ -144,18 +145,28 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
 
                     self.datamanager._create_doc_table(
                         self.datamanager.database, tableName)
+
+                    start_time = time.time()
                     try:
                         return super(PJPersistCursor, self).execute(sql, args)
                     except psycopg2.Error, e:
                         # Join the transaction, because failed queries require
                         # aborting the transaction.
                         self.datamanager._join_txn()
+                    finally:
+                        # Very useful logging of every SQL command with traceback to code.
+                        if PJ_ACCESS_LOGGING:
+                            self.log_query(sql, args, start_time)
                 # Join the transaction, because failed queries require
                 # aborting the transaction.
                 self.datamanager._join_txn()
                 self.check_for_conflict(e)
                 # otherwise let it fly away
                 raise
+            finally:
+                # Very useful logging of every SQL command with traceback to code.
+                if PJ_ACCESS_LOGGING:
+                    self.log_query(sql, args, start_time)
         else:
             try:
                 # otherwise just execute the given sql
@@ -167,6 +178,11 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
                 self.datamanager._join_txn()
                 self.check_for_conflict(e)
                 raise
+            finally:
+                # Very useful logging of every SQL command with traceback to code.
+                if PJ_ACCESS_LOGGING:
+                    self.log_query(sql, args, start_time)
+
 
     def check_for_conflict(self, e):
         """Check whether exception indicates serialization failure and raise
