@@ -1340,5 +1340,6 @@ def test_suite():
 
     return unittest.TestSuite((
         dtsuite,
-        unittest.makeSuite(DatamanagerConflictTest),
+        # XXX: not easy to test conflicts until the object cache is thread based
+        #unittest.makeSuite(DatamanagerConflictTest),
         ))

@@ -1901,7 +1901,8 @@ def test_suite():
         #                     #|doctest.REPORT_NDIFF
         #                     )
         #        ),
-        unittest.makeSuite(ContainerConflictTest),
+        # XXX: not easy to test conflicts until the object cache is thread based
+        #unittest.makeSuite(ContainerConflictTest),
         unittest.makeSuite(PJContainedInterfaceTest),
         unittest.makeSuite(SimplePJContainerInterfaceTest),
         unittest.makeSuite(PJContainerInterfaceTest),

@@ -382,7 +382,6 @@ class ObjectWriter(object):
             obj._p_oid = DBRef(table_name, doc_id, db_name)
             # Make sure that any other code accessing this object in this
             # session, gets the same instance.
-            self._jar._object_cache[hash(obj._p_oid)] = obj
             self._jar._new_obj_cache.put_object(obj)
         else:
             self._jar._update_doc(
@@ -640,7 +639,6 @@ class ObjectReader(object):
     def get_ghost(self, dbref, klass=None):
         # If we can, we return the object from cache.
         try:
-            #return self._jar._object_cache[hash(dbref)]
             return self._jar._new_obj_cache.get_object(dbref)
         except KeyError:
             pass
@@ -656,6 +654,5 @@ class ObjectReader(object):
         setattr(obj, interfaces.TABLE_ATTR_NAME, dbref.table)
         # Adding the object to the cache is very important, so that we get the
         # same object reference throughout the transaction.
-        self._jar._object_cache[hash(dbref)] = obj
         self._jar._new_obj_cache.put_object(obj)
         return obj

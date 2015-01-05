@@ -30,7 +30,55 @@ LOG = logging.getLogger(__name__)
 _CACHE = threading.local()
 
 
-class ObjectCache(object):
+def get_cache(datamanager):
+    #return TransactionalObjectCache(datamanager)
+    #return ConnectionObjectCache(datamanager)
+    return ThreadedObjectCache(datamanager)
+
+
+def dbref_key(dbref):
+    return hash(dbref)
+
+
+class TransactionalObjectCache(object):
+    def __init__(self, datamanager):
+        self._datamanager = datamanager
+        self.objects = {}
+
+    def _ensure_db_objects(self):
+        pass
+
+    def commit(self):
+        self.objects = {}
+
+    def abort(self):
+        self.objects = {}
+
+    def invalidate(self, obj):
+        pass
+
+    def get_object(self, dbref):
+        try:
+            rv = self.objects[dbref_key(dbref)]
+            return rv
+        except KeyError:
+            raise
+
+    def del_object(self, obj):
+        try:
+            del self.objects[dbref_key(obj._p_oid)]
+        except KeyError:
+            pass
+
+    def put_object(self, obj):
+        if not hasattr(obj, '_p_oid'):
+            raise AttributeError('Non-persistent object')
+        if obj._p_oid is None:
+            raise ValueError('Object not yet added to database')
+        self.objects[dbref_key(obj._p_oid)] = obj
+
+
+class ThreadedObjectCache(TransactionalObjectCache):
     #zope.interface.implements(interfaces.IObjectCache)
 
     table = 'persistence_invalidations'
@@ -52,7 +100,7 @@ class ObjectCache(object):
                 else:
                     txn = 0
 
-            _CACHE.last_seen_txn = txn
+            self.last_seen_txn = txn
         else:
             self._read_invalidations()
         self.invalidations = set()
@@ -62,8 +110,9 @@ class ObjectCache(object):
             cur.execute(
                 "SELECT 1 FROM pg_class where relname = 'seq_pj_txn_serial'")
             if not cur.rowcount:
-                cur.execute(
-                    "CREATE SEQUENCE seq_pj_txn_serial START WITH 0 MINVALUE 0 NO MAXVALUE;")
+                cur.execute("""
+                            CREATE SEQUENCE seq_pj_txn_serial
+                            START WITH 0 MINVALUE 0 NO MAXVALUE;""")
             cur.execute(
                 "SELECT * FROM information_schema.tables where table_name=%s",
                 (self.table,))
@@ -75,6 +124,18 @@ class ObjectCache(object):
                         dbrefs TEXT[][])
                     ''' % self.table)
 
+    @property
+    def objects(self):
+        return _CACHE.objects
+
+    @property
+    def last_seen_txn(self):
+        return _CACHE.last_seen_txn
+
+    @last_seen_txn.setter
+    def last_seen_txn(self, value):
+        _CACHE.last_seen_txn = value
+
     def _get_txn_serial(self):
         with self._datamanager._conn.cursor() as cur:
             cur.execute(''' SELECT nextval('seq_pj_txn_serial') ''')
@@ -83,19 +144,19 @@ class ObjectCache(object):
     def _read_invalidations(self):
         with self._datamanager._conn.cursor() as cur:
             cur.execute("SELECT txn, dbrefs FROM %s WHERE txn > %%s" % self.table,
-                        (_CACHE.last_seen_txn,))
+                        (self.last_seen_txn,))
             for row in cur:
                 txn, dbrefs = row
-                _CACHE.last_seen_txn = max(_CACHE.last_seen_txn, txn)
+                self.last_seen_txn = max(self.last_seen_txn, txn)
                 for dbref in dbrefs:
                     oref = serialize.DBRef.from_tuple(dbref)
                     try:
-                        del _CACHE.objects[oref]
+                        del _CACHE.objects[dbref_key(oref)]
                     except KeyError:
                         pass
 
-    def invalidate(self, dbref):
-        self.invalidations.add(dbref)
+    def invalidate(self, obj):
+        self.invalidations.add(obj._p_oid)
 
     def commit(self):
         if self.invalidations:
@@ -109,24 +170,46 @@ class ObjectCache(object):
                     "INSERT INTO %s (txn, dbrefs) values (%%s, %%s)" % self.table,
                     (ser, dbrefs))
 
-            _CACHE.last_seen_txn = ser
+            self.last_seen_txn = ser
 
     def abort(self):
         # do some magic with the changed objects to revert changes
         self.invalidations.clear()
 
-    def get_object(self, dbref):
-        return _CACHE.objects[dbref]
 
-    def del_object(self, dbref):
-        try:
-            del _CACHE.objects[dbref]
-        except KeyError:
-            pass
+class ConnectionObjectCache(ThreadedObjectCache):
+    # XXX: this would be a good idea, but psycopg2.connection is a C class
+    #      cannot add an attribute...
+    def __init__(self, datamanager):
+        self._datamanager = datamanager
+        #if pjpersist.datamanager.PJ_AUTO_CREATE_TABLES:
+        #    self._ensure_db_objects()
+        self._ensure_db_objects()
+        if not hasattr(self._datamanager._conn, '_pj_object_cache'):
+            # XXX: for now go with a simple dict
+            #      later use persistent.picklecache.PickleCache
+            #      because we want to limit the cache size
+            self._datamanager._conn._pj_object_cache = {}
+            with self._datamanager._conn.cursor() as cur:
+                cur.execute("SELECT max(txn) FROM %s" % self.table)
+                if cur.rowcount:
+                    txn = cur.fetchone()[0]
+                else:
+                    txn = 0
 
-    def put_object(self, obj):
-        if not hasattr(obj, '_p_oid'):
-            raise AttributeError('Non-persistent object')
-        if obj._p_oid is None:
-            raise ValueError('Object not yet added to database')
-        _CACHE.objects[obj._p_oid] = obj
+            self._datamanager._conn._pj_last_seen_txn = txn
+        else:
+            self._read_invalidations()
+        self.invalidations = set()
+
+    @property
+    def objects(self):
+        return self._datamanager._conn._pj_object_cache
+
+    @property
+    def last_seen_txn(self):
+        return self._datamanager._conn.last_seen_txn
+
+    @last_seen_txn.setter
+    def last_seen_txn(self, value):
+        self._datamanager._conn.last_seen_txn = value
