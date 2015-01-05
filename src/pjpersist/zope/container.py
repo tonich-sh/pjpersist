@@ -468,8 +468,9 @@ class IdNamesPJContainer(PJContainer):
     """A container that uses the PostGreSQL table UID as the name/key."""
     _pj_mapping_key = None
 
-    def __init__(self, table=None, parent_key=None):
-        super(IdNamesPJContainer, self).__init__(table, parent_key)
+    def __init__(self, table=None, parent_key=None, mark_complete=True):
+        super(IdNamesPJContainer, self).__init__(
+            table=table, parent_key=parent_key, mark_complete=mark_complete)
 
     @property
     def _pj_remove_documents(self):
@@ -539,10 +540,9 @@ class IdNamesPJContainer(PJContainer):
 class AllItemsPJContainer(PJContainer):
     _pj_parent_key = None
 
-    def __init__(self, table=None,
-                 mapping_key=None, parent_key=None, mark_complete=False):
-        super(AllItemsPJContainer, self).__init__(table, mapping_key, parent_key,
-                                                  mark_complete)
+    def __init__(self, table=None, parent_key=None, mark_complete=False):
+        super(AllItemsPJContainer, self).__init__(
+            table=table, parent_key=parent_key, mark_complete=mark_complete)
 
 
 class SubDocumentPJContainer(PJContained, PJContainer):
