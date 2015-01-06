@@ -130,7 +130,7 @@ class PerformanceBase(object):
             [p for p in list(people)]
         t2 = time.time()
         transaction.commit()
-        self.printResult('Read (list)', t1, t2, peopleCnt)
+        self.printResult('Read (list(keys()))', t1, t2, peopleCnt)
 
     def read_list_values(self, people, peopleCnt):
         # Profile fast read (values)
@@ -144,7 +144,7 @@ class PerformanceBase(object):
             [p for p in list(people.values())]
         t2 = time.time()
         transaction.commit()
-        self.printResult('Read (list.values)', t1, t2, peopleCnt)
+        self.printResult('Read (list(values()))', t1, t2, peopleCnt)
 
     def fast_read_values(self, people, peopleCnt):
         # Profile fast read (values)
