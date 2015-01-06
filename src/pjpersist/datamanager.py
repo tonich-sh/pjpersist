@@ -169,6 +169,7 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
                     self.log_query(sql, args, start_time)
         else:
             try:
+                start_time = time.time()
                 # otherwise just execute the given sql
                 __traceback_info__ = (self.datamanager.database, sql, args)
                 return super(PJPersistCursor, self).execute(sql, args)
