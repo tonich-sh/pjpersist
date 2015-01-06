@@ -441,6 +441,8 @@ def main(args=None):
         args = sys.argv[1:]
     options, args = parser.parse_args(args)
 
+    testing.setUpSerializers(None)
+
     print 'PJ ---------------'
     PerformancePJ().run_basic_crud(options)
     print 'ZODB  ---------------'
