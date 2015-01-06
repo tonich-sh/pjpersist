@@ -27,13 +27,12 @@ LOG = logging.getLogger(__name__)
 #      use later a cache pool as ZODB does with Connectinons,
 #      assigned a cache on transaction start  based evtl. on cache size
 #      preferring a big cache first
-_CACHE = threading.local()
+#_CACHE = threading.local()
 
 
 def get_cache(datamanager):
-    #return TransactionalObjectCache(datamanager)
-    #return ConnectionObjectCache(datamanager)
-    return ThreadedObjectCache(datamanager)
+    return TransactionalObjectCache(datamanager)
+    #return DatamanagerObjectCache(datamanager)
 
 
 def dbref_key(dbref):
@@ -63,8 +62,10 @@ class TransactionalObjectCache(object):
     def get_object(self, dbref):
         try:
             rv = self.objects[dbref_key(dbref)]
+            #print "CACHE hit", dbref
             return rv
         except KeyError:
+            #print "CACHE miss", dbref
             raise
 
     def del_object(self, obj):
@@ -81,8 +82,16 @@ class TransactionalObjectCache(object):
         self.objects[dbref_key(obj._p_oid)] = obj
 
 
-class ThreadedObjectCache(TransactionalObjectCache):
+class DatamanagerObjectCache(TransactionalObjectCache):
     #zope.interface.implements(interfaces.IObjectCache)
+
+    # a very important basic rule:
+    # objects get their _p_jar set to the PJDataManager which loads them
+    # then these objects get into the cache, with their _p_jar
+    # the result is that these objects must be pulled from the cache
+    # by the VERY SAME PJDataManager, therefore the cache must be kept
+    # on the PJDataManager object
+    # you want to keep the PJDataManager instance around by using a pool
 
     table = 'persistence_invalidations'
 
@@ -91,11 +100,11 @@ class ThreadedObjectCache(TransactionalObjectCache):
         #if pjpersist.datamanager.PJ_AUTO_CREATE_TABLES:
         #    self._ensure_db_objects()
         self._ensure_db_objects()
-        if not hasattr(_CACHE, 'objects'):
+        if not hasattr(self._datamanager, '_DatamanagerObjectCache_objects'):
             # XXX: for now go with a simple dict
             #      later use persistent.picklecache.PickleCache
             #      because we want to limit the cache size
-            _CACHE.objects = {}
+            self._datamanager._DatamanagerObjectCache_objects = {}
             with self._datamanager._conn.cursor() as cur:
                 cur.execute("SELECT max(txn) FROM %s" % self.table)
                 if cur.rowcount:
@@ -129,15 +138,15 @@ class ThreadedObjectCache(TransactionalObjectCache):
 
     @property
     def objects(self):
-        return _CACHE.objects
+        return self._datamanager._DatamanagerObjectCache_objects
 
     @property
     def last_seen_txn(self):
-        return _CACHE.last_seen_txn
+        return self._datamanager._DatamanagerObjectCache_last_seen_txn
 
     @last_seen_txn.setter
     def last_seen_txn(self, value):
-        _CACHE.last_seen_txn = value
+        self._datamanager._DatamanagerObjectCache_last_seen_txn = value
 
     def _get_txn_serial(self):
         with self._datamanager._conn.cursor() as cur:
@@ -148,13 +157,14 @@ class ThreadedObjectCache(TransactionalObjectCache):
         with self._datamanager._conn.cursor() as cur:
             cur.execute("SELECT txn, dbrefs FROM %s WHERE txn > %%s" % self.table,
                         (self.last_seen_txn,))
+            objs = self.objects
             for row in cur:
                 txn, dbrefs = row
                 self.last_seen_txn = max(self.last_seen_txn, txn)
                 for dbref in dbrefs:
                     oref = serialize.DBRef.from_tuple(dbref)
                     try:
-                        del _CACHE.objects[dbref_key(oref)]
+                        del objs[dbref_key(oref)]
                     except KeyError:
                         pass
 
@@ -187,14 +197,11 @@ class ThreadedObjectCache(TransactionalObjectCache):
         self.invalidations.clear()
 
     def clear_cache(self):
-        del _CACHE.objects
-        del _CACHE.last_seen_txn
-        # XXX: yuck, how to clear all thread's caches???
+        del self._datamanager._DatamanagerObjectCache_objects
+        del self._datamanager._DatamanagerObjectCache_last_seen_txn
 
 
-class ConnectionObjectCache(ThreadedObjectCache):
-    # XXX: this would be a good idea, but psycopg2.connection is a C class
-    #      cannot add an attribute...
+class ConnectionObjectCache(DatamanagerObjectCache):
     def __init__(self, datamanager):
         self._datamanager = datamanager
         #if pjpersist.datamanager.PJ_AUTO_CREATE_TABLES:
