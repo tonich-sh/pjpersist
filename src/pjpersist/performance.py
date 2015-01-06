@@ -43,6 +43,7 @@ PROFILE = False
 PROFILE_OUTPUT = '/tmp/cprofile'
 LOG_SQL = False
 BIGDATA = True
+CLEAR_CACHE = False
 
 
 class People(container.AllItemsPJContainer):
@@ -234,30 +235,38 @@ class PerformanceBase(object):
 
         peopleCnt = len(people)
 
-        people = self.getPeople(options)
+        if CLEAR_CACHE:
+            people = self.getPeople(options)
         self.slow_read(people, peopleCnt)
 
-        people = self.getPeople(options)
+        if CLEAR_CACHE:
+            people = self.getPeople(options)
         self.read_list(people, peopleCnt)
 
-        people = self.getPeople(options)
+        if CLEAR_CACHE:
+            people = self.getPeople(options)
         self.read_list_values(people, peopleCnt)
 
-        people = self.getPeople(options)
+        if CLEAR_CACHE:
+            people = self.getPeople(options)
         self.fast_read_values(people, peopleCnt)
 
-        people = self.getPeople(options)
+        if CLEAR_CACHE:
+            people = self.getPeople(options)
         self.fast_read(people, peopleCnt)
 
-        people = self.getPeople(options)
+        if CLEAR_CACHE:
+            people = self.getPeople(options)
         self.object_caching(people, peopleCnt)
 
         if options.modify:
-            people = self.getPeople(options)
+            if CLEAR_CACHE:
+                people = self.getPeople(options)
             self.modify(people, peopleCnt)
 
         if options.delete:
-            people = self.getPeople(options)
+            if CLEAR_CACHE:
+                people = self.getPeople(options)
             self.delete(people, peopleCnt)
 
 
