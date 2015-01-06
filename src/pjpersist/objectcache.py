@@ -176,7 +176,7 @@ class DatamanagerObjectCache(TransactionalObjectCache):
             # do not insert if no changes
             ser = self._get_txn_serial()
             # XXX: might need to batch later if a shitload of objs get changed
-            dbrefs = [dbref.as_tuple() for dbref in self.invalidations]
+            dbrefs = [list(dbref.as_tuple()) for dbref in self.invalidations]
 
             with self._datamanager._conn.cursor() as cur:
                 cur.execute(
