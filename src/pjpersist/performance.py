@@ -46,7 +46,7 @@ BIGDATA = True
 CLEAR_CACHE = False
 
 
-class People(container.AllItemsPJContainer):
+class People(container.PJContainer):
     _p_pj_table = 'people'
     _pj_table = 'person'
     _pj_mapping_key = 'name'
