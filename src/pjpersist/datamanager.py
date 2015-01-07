@@ -512,6 +512,7 @@ class PJDataManager(object):
 
     def dump(self, obj):
         res = self._writer.store(obj)
+        self._new_obj_cache.invalidate(obj)
         if id(obj) in self._registered_objects:
             obj._p_changed = False
             del self._registered_objects[id(obj)]
@@ -609,6 +610,7 @@ class PJDataManager(object):
                 self._modified_objects[id(obj)] = obj
 
     def abort(self, transaction):
+        self._new_obj_cache.abort()
         try:
             self._conn.rollback()
         except psycopg2.InterfaceError:
@@ -619,6 +621,7 @@ class PJDataManager(object):
 
     def commit(self, transaction):
         self._flush_objects()
+        self._new_obj_cache.commit()
         try:
             self._conn.commit()
         except psycopg2.Error, e:
