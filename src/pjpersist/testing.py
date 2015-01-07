@@ -113,7 +113,7 @@ def setUp(test):
     test.globs['commit'] = transaction.commit
     test.globs['dm'] = datamanager.PJDataManager(test.globs['conn'])
 
-    def dumpTable(table, flush=True, isolate=False):
+    def dumpTable(table, flush=True, isolate=False, sort=False):
         if isolate:
             conn = getConnection(database=DBNAME)
         else:
@@ -124,7 +124,10 @@ def setUp(test):
             except psycopg2.ProgrammingError, err:
                 print err
             else:
-                pprint([dict(e) for e in cur.fetchall()])
+                res = [dict(e) for e in cur.fetchall()]
+                if sort:
+                    res = sorted(res)
+                pprint(res)
         if isolate:
             conn.close()
     test.globs['dumpTable'] = dumpTable
@@ -161,7 +164,7 @@ class DatabaseLayer(object):
         self.save_PJ_ACCESS_LOGGING = datamanager.PJ_ACCESS_LOGGING
         datamanager.PJ_ACCESS_LOGGING = True
         self.save_ADD_TB = datamanager.PJPersistCursor.ADD_TB
-        datamanager.ADD_TB = True
+        datamanager.PJPersistCursor.ADD_TB = True
 
         setUpLogging(datamanager.TABLE_LOG, copy_to_stdout=True)
         setUpLogging(datamanager.LOG, copy_to_stdout=True)
@@ -268,6 +271,11 @@ def tearDownLogging(logger):
             logger.removeHandler(handler)
             logger.propagate = handler._old_propagate_
             logger.setLevel(handler._old_level_)
+
+
+def printLog(buf):
+    print buf.getvalue()
+    buf.truncate(0)
 
 
 #TO_JOIN = []

@@ -1294,9 +1294,23 @@ def doctest_load_does_not_set_p_changed():
 
       >>> transaction.commit()
       >>> dm.root['people'] = people = People()
-      >>> for idx in xrange(2):
-      ...     people[None] = PeoplePerson('Mr Number %.5i' %idx, random.randint(0, 100))
+
+      >>> p1 = PeoplePerson('Mr Number 1', 1)
+      >>> p2 = PeoplePerson('Mr Number 2', 2)
+
+      >>> people[None] = p1
+      >>> people[None] = p2
+
+    A query will flush, thus clearing _p_changed on p1
+
+      >>> objs = [p1, p2]
+      >>> [o._p_changed for o in objs]
+      [False, True]
+
       >>> transaction.commit()
+
+      >>> [o._p_changed for o in objs]
+      [False, False]
 
       >>> objs = [o for o in people.values()]
       >>> len(objs)
@@ -1316,6 +1330,37 @@ def doctest_load_does_not_set_p_changed():
       >>> [o._p_changed for o in people.values()]
       [False, False]
 
+    """
+
+
+def doctest_commit_resets_p_changed():
+    """We need to guarantee that _p_changed is False after commit
+    this is important if we keep those objects around for caching
+    less important for abort, because at abort the object is nuked from the cache
+
+    Let's add some objects:
+
+      >>> transaction.commit()
+      >>> dm.root['people'] = people = People()
+
+      >>> p1 = PeoplePerson('Mr Number 1', 1)
+      >>> p2 = PeoplePerson('Mr Number 2', 2)
+
+      >>> people[None] = p1
+      >>> people[None] = p2
+
+    A query will flush, thus clearing _p_changed on p1
+
+      >>> objs = [p1, p2]
+      >>> [o._p_changed for o in objs]
+      [False, True]
+
+    A commit resets all _p_changed to False
+
+      >>> transaction.commit()
+
+      >>> [o._p_changed for o in objs]
+      [False, False]
     """
 
 

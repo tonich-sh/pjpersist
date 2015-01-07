@@ -279,7 +279,6 @@ class PJDataManager(object):
         # The latest states written to the database.
         self._latest_states = {}
         self._needs_to_join = True
-        self._object_cache = {}
         self.annotations = {}
         if name_map_table is not None:
             self.name_map_table = name_map_table
@@ -288,6 +287,9 @@ class PJDataManager(object):
             self._init_name_map_table()
         if self.root is None:
             self.root = Root(self, root_table)
+
+        from pjpersist import objectcache
+        self._new_obj_cache = objectcache.get_cache(self)
 
     def getCursor(self, flush=True):
         def factory(*args, **kwargs):
@@ -488,6 +490,7 @@ class PJDataManager(object):
             __traceback_info__ = obj
             obj = self._get_doc_object(obj)
             self._writer.store(obj)
+            self._new_obj_cache.invalidate(obj)
             written.add(obj_id)
             todo = set(self._registered_objects.keys()) - written
 
@@ -534,8 +537,8 @@ class PJDataManager(object):
         if obj._p_oid is not None:
             raise ValueError('Object._p_oid is already set.', obj)
         res = self._writer.store(obj, id=oid)
+        self._new_obj_cache.invalidate(obj)
         obj._p_changed = False
-        self._object_cache[hash(obj._p_oid)] = obj
         self._inserted_objects[id(obj)] = obj
         return res
 
@@ -550,8 +553,8 @@ class PJDataManager(object):
         dbname, table = self._get_table_from_object(obj)
         with self.getCursor() as cur:
             cur.execute('DELETE FROM %s WHERE id = %%s' % table, (obj._p_oid.id,))
-        if hash(obj._p_oid) in self._object_cache:
-            del self._object_cache[hash(obj._p_oid)]
+        self._new_obj_cache.del_object(obj)
+        self._new_obj_cache.invalidate(obj)
 
         # Edge case: The object was just added in this transaction.
         if id(obj) in self._inserted_objects:

@@ -110,8 +110,13 @@ class DBRef(object):
 
     def __repr__(self):
         return 'DBRef(%r, %r, %r)' %(self.table, self.id, self.database)
+
     def as_tuple(self):
         return self.database, self.table, self.id
+
+    @classmethod
+    def from_tuple(cls, tple):
+        return cls(tple[1], tple[2], tple[0])
 
     def as_json(self):
         return {'_py_type': 'DBREF',
@@ -377,7 +382,7 @@ class ObjectWriter(object):
             obj._p_oid = DBRef(table_name, doc_id, db_name)
             # Make sure that any other code accessing this object in this
             # session, gets the same instance.
-            self._jar._object_cache[hash(obj._p_oid)] = obj
+            self._jar._new_obj_cache.put_object(obj)
         else:
             self._jar._update_doc(
                 db_name, table_name, doc, obj._p_oid.id, column_data)
@@ -634,7 +639,7 @@ class ObjectReader(object):
     def get_ghost(self, dbref, klass=None):
         # If we can, we return the object from cache.
         try:
-            return self._jar._object_cache[hash(dbref)]
+            return self._jar._new_obj_cache.get_object(dbref)
         except KeyError:
             pass
         if klass is None:
@@ -649,5 +654,5 @@ class ObjectReader(object):
         setattr(obj, interfaces.TABLE_ATTR_NAME, dbref.table)
         # Adding the object to the cache is very important, so that we get the
         # same object reference throughout the transaction.
-        self._jar._object_cache[hash(dbref)] = obj
+        self._jar._new_obj_cache.put_object(obj)
         return obj
