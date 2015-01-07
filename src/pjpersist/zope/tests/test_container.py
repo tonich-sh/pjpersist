@@ -271,7 +271,6 @@ def doctest_SimplePJContainer_basic():
 
     Let's add a container to the root:
 
-      >>> dm.reset()
       >>> dm.root['c'] = container.SimplePJContainer()
 
       >>> dumpTable(cn)
@@ -970,9 +969,6 @@ def doctest_AllItemsPJContainer_basic():
     Let's start by creating two person containers that service different
     purposes:
 
-      >>> transaction.abort()
-      >>> dm.reset()
-
       >>> dm.root['friends'] = container.PJContainer('person')
       >>> dm.root['friends'][u'roy'] = Person(u'Roy')
       >>> dm.root['friends'][u'roger'] = Person(u'Roger')
@@ -1006,7 +1002,6 @@ def doctest_SubDocumentPJContainer_basic():
     a commonly trivial tables holding meta-data for the table
     object. But they require a root document:
 
-      >>> dm.reset()
       >>> dm.root['app_root'] = ApplicationRoot()
 
     Let's add a container to the app root:

@@ -594,7 +594,7 @@ def doctest_ObjectReader_resolve_quick_when_type_in_doc():
       >>> st_ref = dm.insert(st)
       >>> st2 = StoreType2()
       >>> st2_ref = dm.insert(st2)
-      >>> dm.reset()
+      >>> dm.commit(None)
 
     Let's now resolve the references:
 
@@ -603,7 +603,8 @@ def doctest_ObjectReader_resolve_quick_when_type_in_doc():
       <class 'pjpersist.tests.test_serialize.StoreType'>
       >>> reader.resolve(st2_ref)
       <class 'pjpersist.tests.test_serialize.StoreType2'>
-      >>> dm.reset()
+
+      >>> dm.commit(None)
 
     The table is now stored as one where objects save their type:
 
@@ -714,7 +715,8 @@ def doctest_ObjectReader_resolve_lookup_with_multiple_maps_dont_read_full():
 
     Let's clear dome caches and try again:
 
-      >>> dm.reset()
+      >>> dm.commit(None)
+
       >>> serialize.TABLES_WITH_TYPE.__init__()
 
       >>> reader = serialize.ObjectReader(dm)

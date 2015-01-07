@@ -205,7 +205,7 @@ def doctest_PJDataManager_flush():
 
       >>> foo = Foo('foo')
       >>> foo_ref = dm.dump(foo)
-      >>> dm.reset()
+      >>> dm.commit(None)
 
     Let's now load the object again and make a modification:
 
@@ -259,7 +259,8 @@ def doctest_PJDataManager_insert():
 
     Let's make sure it is really in PostGreSQL:
 
-      >>> dm.reset()
+      >>> dm.commit(None)
+
       >>> foo_new = dm.load(foo_ref)
       >>> foo_new
       <Foo foo>
@@ -300,7 +301,8 @@ def doctest_PJDataManager_remove():
 
       >>> foo = Foo('foo')
       >>> foo_ref = dm.insert(foo)
-      >>> dm.reset()
+
+      >>> dm.commit(None)
 
     Let's now load the object and remove it.
 
@@ -326,7 +328,8 @@ def doctest_PJDataManager_remove():
     There is an edge case, if the object is inserted and removed in the same
     transaction:
 
-      >>> dm.reset()
+      >>> dm.commit(None)
+
       >>> foo3 = Foo('Foo 3')
       >>> foo3_ref = dm.insert(foo3)
       >>> dm.remove(foo3)
@@ -362,8 +365,6 @@ def doctest_PJDataManager_insert_remove():
 
       >>> dumpTable(dm._get_table_from_object(foo)[1])
       []
-
-      >>> dm.reset()
 
     """
 
@@ -476,7 +477,7 @@ def doctest_PJDataManager_setstate():
       >>> foo = Foo(u'foo')
       >>> ref = dm.dump(foo)
 
-      >>> dm.reset()
+      >>> dm.commit(None)
       >>> dm._needs_to_join
       True
 
