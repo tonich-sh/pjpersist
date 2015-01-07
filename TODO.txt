@@ -28,6 +28,9 @@
   - use ujson instead of the built-in json module:
     http://blog.hartleybrody.com/python-serialize/
 
+    adamG: this does not help much at the moment, most of time is taken by
+    cursor.execute
+
   - crazy idea: make UPDATEs and INSERTs async, wait for those async operations
     to complete before SELECTs and COMMIT
     IOW, do UPDATEs and INSERTs in a thread, join() the threads before SELECTs

@@ -50,6 +50,7 @@ setup(
         'transaction >=1.1.0',
         'repoze.lru',
         'psycopg2',
+        'simplejson',
         'setuptools',
         'sqlobject',
         'zope.dottedname',
