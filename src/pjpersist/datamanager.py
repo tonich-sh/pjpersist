@@ -528,7 +528,9 @@ class PJDataManager(object):
         return self._reader.get_ghost(dbref, klass)
 
     def reset(self):
-        self.__init__(self._conn)
+        # we need to issue rollback on self._conn too, to get the latest
+        # DB updates, not just reset PJDataManager state
+        self.abort(None)
 
     def flush(self):
         # Now write every registered object, but make sure we write each
@@ -623,13 +625,15 @@ class PJDataManager(object):
             # our only chance to exit the spiral is to abort the transaction
             pass
         self._new_obj_cache.abort()
-        self.reset()
+        #self.reset()
+        self.__init__(self._conn)
 
     def commit(self, transaction):
         self._flush_objects()
         self._new_obj_cache.commit()
         self._conn.commit()
-        self.reset()
+        #self.reset()
+        self.__init__(self._conn)
 
     def tpc_begin(self, transaction):
         pass
