@@ -102,6 +102,7 @@ So we have to commit the transaction first:
   True
   >>> transaction.commit()
   >>> dm.root['stephan']._p_changed
+  False
   >>> fetchone(person_cn)['data']['name']
   u'Stephan Richter'
 
@@ -211,7 +212,7 @@ the sub-document, but it is very minimal. If the ``__reduce__`` method returns
 a more complex construct, more meta-data is written. We will see that next
 when storing a date and other arbitrary data:
 
-  >>> dm.root['stephan'].friends = {'roy': Person(u'Roy Mathew')}
+  >>> dm.root['stephan'].friends = {u'roy': Person(u'Roy Mathew')}
   >>> dm.root['stephan'].visited = (u'Germany', u'USA')
   >>> dm.root['stephan'].birthday = datetime.date(1980, 1, 25)
 
@@ -219,7 +220,7 @@ when storing a date and other arbitrary data:
   >>> dm.root['stephan'].friends
   {u'roy': <Person Roy Mathew>}
   >>> dm.root['stephan'].visited
-  [u'Germany', u'USA']
+  (u'Germany', u'USA')
   >>> dm.root['stephan'].birthday
   datetime.date(1980, 1, 25)
 
@@ -461,6 +462,12 @@ When we store the object, the hook is called:
 When loading, the same happens:
 
   >>> dm.root['stephan'].usernames.format
+  'email'
+
+Well after there's a real load, and the object is not coming from the cache
+
+  >>> dm.clear_cache()
+  >>> dm.root['stephan'].usernames.format
   After Load Hook
   'email'
 
@@ -538,7 +545,7 @@ The same is true for lists:
   >>> type(dm.root['stephan'].visited)
    <class 'pjpersist.serialize.PersistentList'>
 
-  >>> dm.root['stephan'].visited.append('France')
+  >>> dm.root['stephan'].visited.append(u'France')
   >>> transaction.commit()
   >>> dm.root['stephan'].visited
   [u'Germany', u'USA', u'France']

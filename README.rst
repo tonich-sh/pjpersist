@@ -73,7 +73,7 @@ Let's now add an address for Stephan. Addresses are also persistent objects:
   ...     def __str__(self):
   ...         return '%s (%s)' %(self.city, self.zip)
 
-  >>> stephan.address = Address('Maynard', '01754')
+  >>> stephan.address = Address(u'Maynard', u'01754')
 
 We need to commit the transaction, to push the data to PostGreSQL:
 
@@ -137,7 +137,7 @@ Well, let's create a phone number object for that:
 Let's now set various attributes:
 
   >>> stephan = dm.root['stephan']
-  >>> stephan.friends = {'roy': Person(u'Roy Mathew')}
+  >>> stephan.friends = {u'roy': Person(u'Roy Mathew')}
   >>> stephan.visited = (u'Germany', u'USA')
   >>> stephan.birthday = datetime.date(1980, 1, 25)
 
@@ -196,7 +196,7 @@ Of course all properties can be retrieved as python objects:
   datetime.datetime(2011, 10, 1, 9, 45)
 
   >>> stephan.visited
-  [u'Germany', u'USA']
+  (u'Germany', u'USA')
 
 
 See src/pjpersist/README.txt and the other txt files in the package

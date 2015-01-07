@@ -166,7 +166,7 @@ def doctest_PJDataManager_object_dump_load_reset():
     Let's now reset the data manager, so we do not hit a cache while loading
     the object again:
 
-      >>> dm._new_obj_cache.clear_cache()
+      >>> dm.clear_cache()
       >>> dm.reset()
 
     We can now load the object:
@@ -903,6 +903,7 @@ def doctest_PJDataManager_complex_sub_objects():
       ... '''SELECT * FROM pjpersist_dot_tests_dot_test_datamanager_dot_foo
       ...    WHERE data @> '{"name": "one"}' ''')
       >>> pprint([dict(e) for e in cur.fetchall()])
+      
 
       >>> cur.execute('SELECT tablename from pg_tables;')
       >>> sorted(e[0] for e in cur.fetchall()
