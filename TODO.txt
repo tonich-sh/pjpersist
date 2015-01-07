@@ -21,6 +21,10 @@
   - move the field `PY_TYPE_ATTR_NAME` out from the JSONB data to a real column
     (would avoid a `state_doc = copy.deepcopy(doc)` where deepcopy is expensive)
 
+    adamG: this does help a little, but is not significant
+
+    second thought: might not be so easy, because subobjects also get this field
+
   - think about implementing an object cache per connection and providing
     invalidation messages as ZEO (and maybe relstorage? does)
     see ZODB / collaborations.txt
