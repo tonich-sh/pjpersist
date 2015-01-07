@@ -102,18 +102,7 @@ class DatamanagerObjectCache(TransactionalObjectCache):
         #    self._ensure_db_objects()
         self._ensure_db_objects()
         if not hasattr(self._datamanager, '_DatamanagerObjectCache_objects'):
-            # XXX: for now go with a simple dict
-            #      later use persistent.picklecache.PickleCache
-            #      because we want to limit the cache size
-            self._datamanager._DatamanagerObjectCache_objects = {}
-            with self._datamanager._conn.cursor() as cur:
-                cur.execute("SELECT max(txn) FROM %s" % self.table)
-                if cur.rowcount:
-                    txn = cur.fetchone()[0]
-                else:
-                    txn = 0
-
-            self.last_seen_txn = txn
+            self.clear_cache()
         else:
             self.need_read_invalidations = True
         self.invalidations = set()
@@ -212,8 +201,18 @@ class DatamanagerObjectCache(TransactionalObjectCache):
         self.need_read_invalidations = True
 
     def clear_cache(self):
-        del self._datamanager._DatamanagerObjectCache_objects
-        del self._datamanager._DatamanagerObjectCache_last_seen_txn
+        # XXX: for now go with a simple dict
+        #      later use persistent.picklecache.PickleCache
+        #      because we want to limit the cache size
+        self._datamanager._DatamanagerObjectCache_objects = {}
+        with self._datamanager._conn.cursor() as cur:
+            cur.execute("SELECT max(txn) FROM %s" % self.table)
+            if cur.rowcount:
+                txn = cur.fetchone()[0]
+            else:
+                txn = 0
+
+        self.last_seen_txn = txn
 
 
 class ConnectionObjectCache(DatamanagerObjectCache):

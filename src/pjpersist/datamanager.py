@@ -526,6 +526,9 @@ class PJDataManager(object):
         # DB updates, not just reset PJDataManager state
         self.abort(None)
 
+    def clear_cache(self):
+        self._new_obj_cache.clear_cache()
+
     def flush(self):
         # Now write every registered object, but make sure we write each
         # object just once.
