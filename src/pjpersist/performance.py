@@ -42,9 +42,11 @@ MULTIPLE_CLASSES = True
 PROFILE = False
 PROFILE_OUTPUT = '/tmp/cprofile'
 LOG_SQL = False
+BIGDATA = True
+CLEAR_CACHE = False
 
 
-class People(container.AllItemsPJContainer):
+class People(container.PJContainer):
     _p_pj_table = 'people'
     _pj_table = 'person'
     _pj_mapping_key = 'name'
@@ -62,11 +64,15 @@ class Person(persistent.Persistent, container.PJContained):
     name = None
     age = None
     address = None
+    data = None
 
     def __init__(self, name, age):
         self.name = name
         self.age = age
         self.address = Address('Boston %i' %age)
+        # let's have some data for JSON
+        if BIGDATA:
+            self.data = BIGDICT
 
     def __repr__(self):
         return '<%s %s @ %s [%s]>' %(
@@ -124,7 +130,7 @@ class PerformanceBase(object):
             [p for p in list(people)]
         t2 = time.time()
         transaction.commit()
-        self.printResult('Read (list)', t1, t2, peopleCnt)
+        self.printResult('Read (list(keys()))', t1, t2, peopleCnt)
 
     def read_list_values(self, people, peopleCnt):
         # Profile fast read (values)
@@ -138,7 +144,7 @@ class PerformanceBase(object):
             [p for p in list(people.values())]
         t2 = time.time()
         transaction.commit()
-        self.printResult('Read (list.values)', t1, t2, peopleCnt)
+        self.printResult('Read (list(values()))', t1, t2, peopleCnt)
 
     def fast_read_values(self, people, peopleCnt):
         # Profile fast read (values)
@@ -229,30 +235,38 @@ class PerformanceBase(object):
 
         peopleCnt = len(people)
 
-        people = self.getPeople(options)
+        if CLEAR_CACHE:
+            people = self.getPeople(options)
         self.slow_read(people, peopleCnt)
 
-        people = self.getPeople(options)
+        if CLEAR_CACHE:
+            people = self.getPeople(options)
         self.read_list(people, peopleCnt)
 
-        people = self.getPeople(options)
+        if CLEAR_CACHE:
+            people = self.getPeople(options)
         self.read_list_values(people, peopleCnt)
 
-        people = self.getPeople(options)
+        if CLEAR_CACHE:
+            people = self.getPeople(options)
         self.fast_read_values(people, peopleCnt)
 
-        people = self.getPeople(options)
+        if CLEAR_CACHE:
+            people = self.getPeople(options)
         self.fast_read(people, peopleCnt)
 
-        people = self.getPeople(options)
+        if CLEAR_CACHE:
+            people = self.getPeople(options)
         self.object_caching(people, peopleCnt)
 
         if options.modify:
-            people = self.getPeople(options)
+            if CLEAR_CACHE:
+                people = self.getPeople(options)
             self.modify(people, peopleCnt)
 
         if options.delete:
-            people = self.getPeople(options)
+            if CLEAR_CACHE:
+                people = self.getPeople(options)
             self.delete(people, peopleCnt)
 
 
@@ -288,6 +302,7 @@ class PerformancePJ(PerformanceBase):
 
             dm.create_tables(('people', 'person', 'address'))
             dm.root._init_table()
+            #dm._new_obj_cache._ensure_db_objects()
 
             # this speeds up slow_read around TWICE
             #with conn.cursor() as cur:
@@ -435,7 +450,74 @@ def main(args=None):
         args = sys.argv[1:]
     options, args = parser.parse_args(args)
 
+    testing.setUpSerializers(None)
+
     print 'PJ ---------------'
     PerformancePJ().run_basic_crud(options)
     print 'ZODB  ---------------'
     PerformanceZODB().run_basic_crud(options)
+
+
+import datetime
+BIGDICT = {'Alcestis': 'mantilla',
+ 'arraignments': True,
+ 'bosh': 6909,
+ 'chant': 6785,
+ 'garbanzo': {'Armenian': True,
+              'benign': {'easygoing': {'basted': 'counterpoint',
+                                       'nonpolluting': 'Gretchen',
+                                       'ointment': {'Talleyrand': False,
+                                                    'comparably': 'hedgehog',
+                                                    'goiter': 6895,
+                                                    'medalist': {},
+                                                    'pinked': False},
+                                       'replication': datetime.datetime(1918, 3, 3, 8, 35),
+                                       'ripsaw': 4316},
+                         'interaction': datetime.datetime(1980, 7, 23, 8, 6),
+                         'renaissances': datetime.datetime(2013, 1, 22, 18, 59),
+                         'revision': True,
+                         'substantiates': {'Pepsi': True,
+                                           'affords': 5854,
+                                           'buckskins': 'legalize',
+                                           'syphilis': False,
+                                           'underdeveloped': True}},
+              'pennants': {'armadillo': {'Condillac': 'Equuleus',
+                                         'Orly': datetime.datetime(1911, 1, 17, 4, 24),
+                                         'civvies': 9109,
+                                         'hilly': datetime.datetime(2013, 1, 22, 18, 59),
+                                         'nurture': 1718},
+                           'comers': 322,
+                           'furtherance': {'Brahe': datetime.datetime(1980, 7, 23, 8, 6),
+                                           'Whitehead': False,
+                                           'joysticks': {'drinker': 6444,
+                                                         'gamed': 'hosing',
+                                                         'larkspur': 3430,
+                                                         'prepaid': 'unspoiled',
+                                                         'stockpile': datetime.datetime(1923, 6, 2, 15, 5)},
+                                           'snarls': 'meditates',
+                                           'studding': {'Botticelli': 8214,
+                                                        'Uruguayans': 830,
+                                                        'illicitness': 7397,
+                                                        'rosin': False,
+                                                        'underskirts': False}},
+                           'immodestly': 4678,
+                           'kleptomania': 'pounced'},
+              'sachet': {'bankrolls': True,
+                         'breeding': 9051,
+                         'failure': datetime.datetime(1975, 7, 22, 4, 44),
+                         'imposed': 'avenged',
+                         'undeceived': {'festal': 3225,
+                                        'intermezzi': 1484,
+                                        'poor': False,
+                                        'reprinted': datetime.datetime(1918, 3, 3, 8, 35),
+                                        'sleepwalkers': 'embarrassing'}},
+              'tryst': True},
+ 'inaugural': {'Horacio': datetime.datetime(1923, 6, 2, 15, 5),
+               'Utopians': True,
+               'chimeras': datetime.datetime(1967, 3, 1, 13, 42),
+               'domed': 3535,
+               'member': False},
+ 'lava': 'Domingo',
+ 'potash': 7166,
+ 'spoils': False,
+ 'subteens': False}
