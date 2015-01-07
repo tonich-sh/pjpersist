@@ -620,7 +620,7 @@ class PJDataManager(object):
         self.__init__(self._conn)
 
     def commit(self, transaction):
-        self._flush_objects()
+        self.flush()
         self._new_obj_cache.commit()
         try:
             self._conn.commit()
