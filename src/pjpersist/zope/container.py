@@ -444,9 +444,11 @@ class PJContainer(contained.Contained,
             del self[key]
 
     def __nonzero__(self):
-        qry = "SELECT COUNT(*) FROM %s" % self._pj_table
+        where = self._pj_add_items_filter(None)
+        select = sb.Select(sb.func.COUNT(sb.Field(self._pj_table, '*')),
+                           where=where)
         with self._pj_jar.getCursor() as cur:
-            cur.execute(qry)
+            cur.execute(select)
             return cur.fetchone()[0] > 0
 
 

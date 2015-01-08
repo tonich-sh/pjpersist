@@ -657,7 +657,7 @@ def doctest_PJContainer_bool():
       True
 
       >>> dm._query_report.qlog[-1].query
-      'SELECT COUNT(*) FROM person'
+      'SELECT COUNT(person.*) FROM person...'
   """
 
 
