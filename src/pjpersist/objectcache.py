@@ -43,6 +43,8 @@ class TransactionalObjectCache(object):
     def __init__(self, datamanager):
         self._datamanager = datamanager
         self.objects = {}
+        self.cache_hit_counter = 0
+        self.cache_miss_counter = 0
 
     def _ensure_db_objects(self):
         pass
@@ -59,13 +61,21 @@ class TransactionalObjectCache(object):
     def invalidate(self, obj):
         pass
 
+    def inc_cache_hit(self):
+        self.cache_hit_counter += 1
+
+    def inc_cache_miss(self):
+        self.cache_miss_counter += 1
+
     def get_object(self, dbref):
         try:
             rv = self.objects[dbref_key(dbref)]
             #print "CACHE hit", dbref
+            self.inc_cache_hit()
             return rv
         except KeyError:
             #print "CACHE miss", dbref
+            self.inc_cache_miss()
             raise
 
     def del_object(self, obj):
@@ -168,6 +178,12 @@ class DatamanagerObjectCache(TransactionalObjectCache):
             self._read_invalidations()
         return super(DatamanagerObjectCache, self).get_object(dbref)
 
+    def inc_cache_hit(self):
+        self._datamanager._DatamanagerObjectCache_cache_hit += 1
+
+    def inc_cache_miss(self):
+        self._datamanager._DatamanagerObjectCache_cache_miss += 1
+
     def invalidate(self, obj):
         self.invalidations.add(obj._p_oid)
 
@@ -205,6 +221,8 @@ class DatamanagerObjectCache(TransactionalObjectCache):
         #      later use persistent.picklecache.PickleCache
         #      because we want to limit the cache size
         self._datamanager._DatamanagerObjectCache_objects = {}
+        self._datamanager._DatamanagerObjectCache_cache_hit = 0
+        self._datamanager._DatamanagerObjectCache_cache_miss = 0
         with self._datamanager._conn.cursor() as cur:
             cur.execute("SELECT max(txn) FROM %s" % self.table)
             if cur.rowcount:
