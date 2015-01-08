@@ -440,6 +440,9 @@ class PJContainer(contained.Contained,
         return self._load_one(res['id'], res['data'])
 
     def count(self, qry=None):
+        if isinstance(qry, dict):
+            qry = self.convert_mongo_query(qry)
+
         where = self._pj_add_items_filter(qry)
         count = sb.func.COUNT(sb.Field(self._pj_table, '*'))
         if where is None:
