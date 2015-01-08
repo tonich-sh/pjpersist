@@ -43,15 +43,20 @@ PJ_ACCESS_LOGGING = False
 # set to True to automatically create tables if they don't exist
 # it is relatively expensive, so create your tables with a schema.sql
 # and turn this off for production
-PJ_AUTO_CREATE_TABLES = True
 
 # Enable query statistics reporting after transaction ends
 PJ_ENABLE_QUERY_STATS = False
+
+# Enable reporting query traceback with queries
+PJ_ENABLE_QUERY_TRACEBACK = False
+
+PJ_AUTO_CREATE_TABLES = True
 
 # set to True to automatically create IColumnSerialization columns
 # will also create tables regardless of the PJ_AUTO_CREATE_TABLES setting
 # so this is super expensive
 PJ_AUTO_CREATE_COLUMNS = True
+
 
 TABLE_LOG = logging.getLogger('pjpersist.table')
 
@@ -92,24 +97,14 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
         self.datamanager = datamanager
         self.flush = flush
 
-    def log_query(self, sql, args, duration):
-        if self.ADD_TB:
-            try:
-                raise ValueError('boom')
-            except:
-                # we need here exceptionformatter, otherwise __traceback_info__
-                # is not added
-                tb = ''.join(exceptionformatter.extract_stack(
-                    sys.exc_info()[2].tb_frame.f_back, limit=self.TB_LIMIT))
-        else:
-            tb = '  <omitted>'
+    def log_query(self, sql, args, duration, traceback=None):
 
         txn = transaction.get()
         txn = '%i - %s' % (id(txn), txn.description),
 
         TABLE_LOG.debug(
             "%s,\n args:%r,\n TXN:%s,\n tb:\n%s\n time:%sms",
-            sql, args, txn, tb, duration*1000)
+            sql, args, txn, traceback or '<omitted>', duration*1000)
 
     def execute(self, sql, args=None):
         # Convert SQLBuilder object to string
@@ -178,12 +173,25 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
             res = super(PJPersistCursor, self).execute(sql, args)
         finally:
             t1 = time.time()
+            tb = self._collect_traceback()
             if PJ_ACCESS_LOGGING:
-                self.log_query(sql, args, t1-t0)
+                self.log_query(sql, args, t1-t0, tb)
 
             if PJ_ENABLE_QUERY_STATS:
-                self.datamanager._query_report.record(sql, args, t1-t0)
+                self.datamanager._query_report.record(sql, args, t1-t0, tb)
         return res
+
+    def _collect_traceback(self):
+        if not PJ_ENABLE_QUERY_TRACEBACK:
+            return None
+        try:
+            raise ValueError('boom')
+        except:
+            # we need here exceptionformatter, otherwise __traceback_info__
+            # is not added
+            tb = ''.join(exceptionformatter.extract_stack(
+                sys.exc_info()[2].tb_frame.f_back, limit=self.TB_LIMIT))
+            return tb
 
 
 def check_for_conflict(e):
