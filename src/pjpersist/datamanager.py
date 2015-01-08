@@ -624,6 +624,13 @@ class PJDataManager(object):
 
     def commit(self, transaction):
         self.flush()
+        for obj in self._inserted_objects.values():
+            # newly inserted objects can't stay in the cache because
+            #   DatamanagerObjectCache survives transaction boundaries
+            #   state loading mangles types, most importantly
+            #   list -> PersistentList, dict -> PersistentDict
+            #   thus those objects will later fail detecting changes
+            self._new_obj_cache.del_object(obj)
         self._new_obj_cache.commit()
         try:
             self._conn.commit()

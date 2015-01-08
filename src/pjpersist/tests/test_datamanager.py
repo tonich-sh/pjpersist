@@ -750,7 +750,6 @@ def doctest_PJDataManager_sub_objects():
 
       >>> foo = dm.root['one']
       >>> foo._p_changed
-      False
 
       >>> foo.list = serialize.PersistentList()
       >>> foo.list._p_jar
@@ -1096,10 +1095,10 @@ def doctest_PJDataManager_long():
       >>> dm.root['app'].x = 1L
       >>> dm.tpc_finish(None)
 
-    Let's see how it is deserialzied?
+    Let's see how it is deserialized?
 
       >>> dm.root['app'].x
-      1L
+      1
 
     Let's now create a really long integer:
 
