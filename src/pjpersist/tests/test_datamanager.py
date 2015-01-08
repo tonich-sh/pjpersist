@@ -798,133 +798,199 @@ def doctest_PJDataManager_sub_objects():
     """
 
 
+def doctest_PJDataManager_complex_sub_objects_sets_jar():
+    """PJDataManager: Check that _p_jar gets set
+
+    Let's construct complex object with several levels of containment.
+
+      >>> foo1 = Foo('one')
+      >>> sup1 = Super('super1')
+      >>> bar1 = Bar('bar1')
+
+      >>> bar1._p_pj_sub_object = True
+      >>> sup1.bar = bar1
+
+      >>> sup1._p_pj_sub_object = True
+      >>> foo1.sup = sup1
+
+      >>> dm.root['one'] = foo1
+
+      >>> dm.tpc_finish(None)
+
+    Important is that all objects and subobjects get the _p_jar set:
+
+      >>> foo1._p_jar
+      <pjpersist.datamanager.PJDataManager object at ...>
+      >>> foo1.sup._p_jar
+      <pjpersist.datamanager.PJDataManager object at ...>
+      >>> foo1.sup.bar._p_jar
+      <pjpersist.datamanager.PJDataManager object at ...>
+"""
+
+
 def doctest_PJDataManager_complex_sub_objects():
     """PJDataManager: Never store objects marked as _p_pj_sub_object
 
-    Let's construct comlpex object with several levels of containment.
-    _p_pj_doc_object will point to an object, that is subobject itself.
+    Let's construct complex object with several levels of containment.
 
-      >>> foo = Foo('one')
-      >>> sup = Super('super')
-      >>> bar = Bar('bar')
+    `_p_pj_sub_object` decides whether the object state is stored on a 'parent'
 
-      >>> bar._p_pj_sub_object = True
-      >>> bar._p_pj_doc_object = sup
-      >>> sup.bar = bar
+    `_p_pj_doc_object` will point to an object which stores the state
+                       will get set by `ObjectWriter` automatically
 
-      >>> sup._p_pj_sub_object = True
-      >>> sup._p_pj_doc_object = foo
-      >>> foo.sup = sup
+    Construct the objects:
 
-      >>> dm.root['one'] = foo
+      >>> foo1 = Foo('one')
+      >>> sup1 = Super('super1')
+      >>> bar1 = Bar('bar1')
+
+      >>> bar1._p_pj_sub_object = True
+      >>> sup1.bar = bar1
+
+      >>> sup1._p_pj_sub_object = True
+      >>> foo1.sup = sup1
+
+    Store 'em:
+
+      >>> dm.root['one'] = foo1
       >>> dm.tpc_finish(None)
 
-      >>> cur = dm._conn.cursor()
-      >>> cur.execute('SELECT tablename from pg_tables;')
-      >>> sorted(e[0] for e in cur.fetchall()
-      ...        if (not e[0].startswith('pg_')
-      ...            and not e[0].startswith('sql_'))
-      ...            and not e[0].startswith('persistence_'))
+    Verify that _p_pj_doc_object gets set:
+
+      >>> sup1._p_pj_doc_object
+      <Foo one>
+
+      >>> bar1._p_pj_doc_object
+      <Foo one>
+
+    Verify that there's just one table
+
+      >>> dumpTableNames()
       [u'pjpersist_dot_tests_dot_test_datamanager_dot_foo']
 
-    Now, save foo first, and then add subobjects
 
-      >>> foo = Foo('two')
-      >>> dm.root['two'] = foo
+    And the table content
+
+      >>> dumpTable('pjpersist_dot_tests_dot_test_datamanager_dot_foo')
+      [{'data': {u'name': u'one',
+                 u'sup': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Super',
+                          u'bar': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Bar',
+                                   u'name': u'bar1'},
+                          u'name': u'super1'}},
+        'id': u'54ae4004b25d2b2a9b00a5c6'}]
+
+    Let's have an other tree, so we verify that the above does not get
+    messed up,
+    Also now first commit foo then add subobjects later.
+
+      >>> foo2 = Foo('two')
+      >>> dm.root['two'] = foo2
       >>> dm.tpc_finish(None)
 
-      >>> sup = Super('second super')
-      >>> bar = Bar('second bar')
+      >>> sup2 = Super('second super')
+      >>> bar2 = Bar('second bar')
 
-      >>> bar._p_pj_sub_object = True
-      >>> bar._p_pj_doc_object = sup
-      >>> sup.bar = bar
+      >>> bar2._p_pj_sub_object = True
+      >>> sup2.bar = bar2
 
-      >>> sup._p_pj_sub_object = True
-      >>> sup._p_pj_doc_object = foo
-      >>> foo.sup = sup
+      >>> sup2._p_pj_sub_object = True
+      >>> foo2.sup = sup2
       >>> dm.tpc_finish(None)
 
-      >>> cur.execute('SELECT tablename from pg_tables;')
-      >>> sorted(e[0] for e in cur.fetchall()
-      ...        if (not e[0].startswith('pg_')
-      ...            and not e[0].startswith('sql_'))
-      ...            and not e[0].startswith('persistence_'))
+    Verify that _p_pj_doc_object gets set:
+
+      >>> sup2._p_pj_doc_object
+      <Foo two>
+
+      >>> bar2._p_pj_doc_object
+      <Foo two>
+
+    All gets stored in one table:
+
+      >>> dumpTableNames()
       [u'pjpersist_dot_tests_dot_test_datamanager_dot_foo']
+
+      >>> dumpTable('pjpersist_dot_tests_dot_test_datamanager_dot_foo')
+      [{'data': {u'name': u'one',
+                 u'sup': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Super',
+                          u'bar': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Bar',
+                                   u'name': u'bar1'},
+                          u'name': u'super1'}},
+        'id': u'54ae447eb25d2b3963004520'},
+       {'data': {u'name': u'two',
+                 u'sup': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Super',
+                          u'bar': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Bar',
+                                   u'name': u'second bar'},
+                          u'name': u'second super'}},
+        'id': u'54ae447eb25d2b3963004521'}]
 
       >>> dm.root['two'].sup.bar
       <Bar second bar>
 
-      >>> cur = dm.getCursor()
-      >>> cur.execute(
-      ... '''SELECT * FROM pjpersist_dot_tests_dot_test_datamanager_dot_foo
-      ...    WHERE data @> '{"name": "one"}' ''')
-      >>> pprint([dict(e) for e in cur.fetchall()])
-      [{'data':
-          {u'name': u'one',
-           u'sup': {u'_py_persistent_type':
-                              u'pjpersist.tests.test_datamanager.Super',
-                    u'bar': {u'_py_persistent_type':
-                                     u'pjpersist.tests.test_datamanager.Bar',
-                             u'name': u'bar'},
-                    u'name': u'super'}},
-      'id': u'738744b8ae9da4ae92636fb1'}]
+      >>> dm.root['two'].sup.bar._p_pj_doc_object
+      <Foo two>
+
+
 
     Now, make changes to the subobjects and then commit
 
-      >>> foo = dm.root['one']
-      >>> foo.sup.name = 'new super'
-      >>> foo.sup._p_changed=True
-      >>> foo.sup._p_changed
-      False
-      >>> foo.sup.bar.name = 'new bar'
-      >>> foo.sup.bar._p_pj_doc_object
-      <Super new super>
+      >> dm.clear_cache()
+
+      >>> foo1 = dm.root['one']
+
+      >>> foo1._p_jar
+      <pjpersist.datamanager.PJDataManager object at ...>
+      >>> foo1.sup._p_jar
+      <pjpersist.datamanager.PJDataManager object at ...>
+
+      >>> foo1.sup.name = 'new super1'
+      >>> foo1.sup.bar.name = 'new bar1'
+      >>> foo1.sup.bar._p_pj_doc_object
+      <Foo one>
       >>> dm.tpc_finish(None)
 
-      >>> foo = dm.root['one']
-      >>> foo.sup
-      <Super new super>
-      >>> foo.sup._p_pj_sub_object
+      >>> foo1 = dm.root['one']
+      >>> foo1.sup
+      <Super new super1>
+      >>> foo1.sup._p_pj_sub_object
       True
-      >>> foo.sup._p_pj_doc_object
+      >>> foo1.sup._p_pj_doc_object
       <Foo one>
 
-      >>> foo.sup.bar
-      <Bar new bar>
+      >>> foo1.sup.bar
+      <Bar new bar1>
 
-      >>> foo.sup.bar._p_pj_sub_object
+      >>> foo1.sup.bar._p_pj_sub_object
       True
-      >>> foo.sup.bar._p_pj_doc_object
-      <Super new super>
+      >>> foo1.sup.bar._p_pj_doc_object
+      <Foo one>
 
-      >>> cur = dm.getCursor()
-      >>> cur.execute(
-      ... '''SELECT * FROM pjpersist_dot_tests_dot_test_datamanager_dot_foo
-      ...    WHERE data @> '{"name": "one"}' ''')
-      >>> pprint([dict(e) for e in cur.fetchall()])
-      
+      >>> dumpTable('pjpersist_dot_tests_dot_test_datamanager_dot_foo')
+      [{'data': {u'name': u'two',
+                 u'sup': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Super',
+                          u'bar': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Bar',
+                                   u'name': u'second bar'},
+                          u'name': u'second super'}},
+        'id': u'54ae4645b25d2b454b00a65c'},
+       {'data': {u'name': u'one',
+                 u'sup': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Super',
+                          u'bar': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Bar',
+                                   u'name': u'new bar1'},
+                          u'name': u'new super1'}},
+        'id': u'54ae4645b25d2b454b00a65b'}]
 
-      >>> cur.execute('SELECT tablename from pg_tables;')
-      >>> sorted(e[0] for e in cur.fetchall()
-      ...        if (not e[0].startswith('pg_')
-      ...            and not e[0].startswith('sql_'))
-      ...            and not e[0].startswith('persistence_'))
+      >>> dumpTableNames()
       [u'pjpersist_dot_tests_dot_test_datamanager_dot_foo']
 
     Even if _p_pj_doc_object is pointed to subobject, subobject does not get
     saved to its own table:
 
-      >>> foo.sup.bar._p_pj_doc_object = foo.sup
-      >>> foo.sup.bar.name = 'newer bar'
-      >>> foo.sup.name = 'newer sup'
+      >>> foo1.sup.bar._p_pj_doc_object = foo1.sup
+      >>> foo1.sup.bar.name = 'newer bar'
+      >>> foo1.sup.name = 'newer sup'
       >>> dm.tpc_finish(None)
 
-      >>> cur.execute('SELECT tablename from pg_tables;')
-      >>> sorted(e[0] for e in cur.fetchall()
-      ...        if (not e[0].startswith('pg_')
-      ...            and not e[0].startswith('sql_'))
-      ...            and not e[0].startswith('persistence_'))
+      >>> dumpTableNames()
       [u'pjpersist_dot_tests_dot_test_datamanager_dot_foo']
     """
 

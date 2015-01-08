@@ -295,7 +295,16 @@ class ObjectWriter(object):
                 if pobj is not None and \
                         getattr(pobj, '_p_jar', None) is not None:
                     obj._p_jar = pobj._p_jar
-                setattr(obj, interfaces.DOC_OBJECT_ATTR_NAME, pobj)
+                #setattr(obj, interfaces.DOC_OBJECT_ATTR_NAME, pobj)
+                store_obj = pobj
+                # walk up to find the real object that stores our state
+                while getattr(store_obj, interfaces.SUB_OBJECT_ATTR_NAME, False):
+                    sobj = getattr(store_obj, interfaces.DOC_OBJECT_ATTR_NAME)
+                    if sobj is not None:
+                        store_obj = sobj
+                    else:
+                        break
+                setattr(obj, interfaces.DOC_OBJECT_ATTR_NAME, store_obj)
 
         if isinstance(obj, (tuple, list, PersistentList)):
             # Make sure that all values within a list are serialized
@@ -349,6 +358,11 @@ class ObjectWriter(object):
         # data is not used right away,
         db_name, table_name = self.get_table_name(obj)
 
+        if obj._p_oid is None:
+            # set _p_jar before everything, self.get_state propagates
+            # this property down to subobjects!
+            obj._p_jar = self._jar
+
         if ref_only:
             # We only want to get OID quickly. Trying to reduce the full state
             # might cause infinite recursion loop. (Example: 2 new objects
@@ -378,7 +392,7 @@ class ObjectWriter(object):
             doc_id = self._jar._insert_doc(
                 db_name, table_name, doc, id, column_data)
             stored = True
-            obj._p_jar = self._jar
+            #obj._p_jar = self._jar
             obj._p_oid = DBRef(table_name, doc_id, db_name)
             # Make sure that any other code accessing this object in this
             # session, gets the same instance.

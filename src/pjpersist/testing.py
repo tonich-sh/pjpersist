@@ -132,6 +132,21 @@ def setUp(test):
             conn.close()
     test.globs['dumpTable'] = dumpTable
 
+    def dumpTableNames():
+        conn = test.globs['dm']._conn
+        with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
+            try:
+                cur.execute('SELECT tablename from pg_tables ORDER BY 1;')
+            except psycopg2.ProgrammingError, err:
+                print err
+            else:
+                res = [e[0] for e in cur.fetchall()
+                       if (not e[0].startswith('pg_')
+                           and not e[0].startswith('sql_')
+                           and not e[0].startswith('persistence_'))]
+                pprint(res)
+    test.globs['dumpTableNames'] = dumpTableNames
+
 
 def tearDown(test):
     module.tearDown(test)
