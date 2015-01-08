@@ -443,6 +443,12 @@ class PJContainer(contained.Contained,
         for key in self.keys():
             del self[key]
 
+    def __nonzero__(self):
+        qry = "SELECT COUNT(*) FROM %s" % self._pj_table
+        with self._pj_jar.getCursor() as cur:
+            cur.execute(qry)
+            return cur.fetchone()[0] > 0
+
 
 class IdNamesPJContainer(PJContainer):
     """A container that uses the PostGreSQL table UID as the name/key."""
