@@ -36,12 +36,17 @@ import zope.interface
 from zope.exceptions import exceptionformatter
 
 from pjpersist import interfaces, serialize
+from pjpersist.querystats import QueryReport
+
 
 PJ_ACCESS_LOGGING = False
 # set to True to automatically create tables if they don't exist
 # it is relatively expensive, so create your tables with a schema.sql
 # and turn this off for production
 PJ_AUTO_CREATE_TABLES = True
+
+# Enable query statistics reporting after transaction ends
+PJ_ENABLE_QUERY_STATS = False
 
 # set to True to automatically create IColumnSerialization columns
 # will also create tables regardless of the PJ_AUTO_CREATE_TABLES setting
@@ -172,10 +177,12 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
         try:
             res = super(PJPersistCursor, self).execute(sql, args)
         finally:
+            t1 = time.time()
             if PJ_ACCESS_LOGGING:
-                t1 = time.time()
                 self.log_query(sql, args, t1-t0)
 
+            if PJ_ENABLE_QUERY_STATS:
+                self.datamanager._query_report.record(sql, args, t1-t0)
         return res
 
 
@@ -288,6 +295,8 @@ class PJDataManager(object):
             self._init_name_map_table()
         if self.root is None:
             self.root = Root(self, root_table)
+
+        self._query_report = QueryReport()
 
     def getCursor(self, flush=True):
         def factory(*args, **kwargs):
@@ -606,6 +615,7 @@ class PJDataManager(object):
                 self._modified_objects[id(obj)] = obj
 
     def abort(self, transaction):
+        self._report_stats()
         try:
             self._conn.rollback()
         except psycopg2.InterfaceError:
@@ -616,6 +626,7 @@ class PJDataManager(object):
 
     def commit(self, transaction):
         self._flush_objects()
+        self._report_stats()
         try:
             self._conn.commit()
         except psycopg2.Error, e:
@@ -637,6 +648,13 @@ class PJDataManager(object):
 
     def sortKey(self):
         return ('PJDataManager', 0)
+
+    def _report_stats(self):
+        if not PJ_ENABLE_QUERY_STATS:
+            return
+
+        stats = self._query_report.calc_and_report()
+        TABLE_LOG.info(stats)
 
 
 def get_database_name_from_dsn(dsn):
