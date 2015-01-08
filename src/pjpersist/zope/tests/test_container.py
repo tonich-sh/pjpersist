@@ -17,6 +17,7 @@ import atexit
 import doctest
 import unittest
 
+import mock
 import ZODB
 import ZODB.DemoStorage
 import persistent
@@ -633,6 +634,33 @@ def doctest_PJContainer_add_IdNamesPJContainer():
       >>> stephan.__name__ == str(stephan._p_oid.id)
       True
 """
+
+
+def doctest_PJContainer_bool():
+  """PJContainers can be evaluated to boolean, however this
+  results in an extra query
+
+      >>> datamanager.PJ_ENABLE_QUERY_STATS = True
+      >>> dm.root['people'] = container.PJContainer('person')
+      >>> bool(dm.root['people'])
+      False
+
+      >>> dm.root['people'][u'stephan'] = Person(u'Stephan')
+      >>> dm.root['people'][u'roy'] = Person(u'Roy')
+
+  Enable query statistics and make sure we issue COUNT(*) query instead of
+  fetching all the data from the table.
+
+      >>> dm.flush()
+      >>> dm._query_report.qlog = []
+      >>> with mock.patch.object(datamanager, "PJ_ENABLE_QUERY_STATS", True):
+      ...   bool(dm.root['people'])
+      True
+
+      >>> dm._query_report.qlog[-1].query
+      'SELECT COUNT(*) FROM person'
+  """
+
 
 def doctest_PJContainer_find():
     r"""PJContainer: find
