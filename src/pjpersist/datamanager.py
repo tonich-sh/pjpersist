@@ -498,11 +498,11 @@ class PJDataManager(object):
         seen = []
         # Make sure we write the object representing a document in a
         # table and not a sub-object.
-        while getattr(obj, '_p_pj_sub_object', False):
+        while getattr(obj, interfaces.DOC_OBJECT_ATTR_NAME, False):
             if id(obj) in seen:
                 raise interfaces.CircularReferenceError(obj)
             seen.append(id(obj))
-            obj = obj._p_pj_doc_object
+            obj = getattr(obj, interfaces.DOC_OBJECT_ATTR_NAME)
         return obj
 
     def _join_txn(self):
