@@ -62,7 +62,7 @@ class QueryReport(object):
         p("%s most expensive queries:" % NUM_OF_QUERIES_TO_REPORT)
         for q in totals.sorted_queries[-NUM_OF_QUERIES_TO_REPORT:]:
             p("*** %s" % q.query)
-            p("... ARGS: %s" % q.args)
+            p("... ARGS: %s" % (q.args,))
             p("... TIME: %.4fms" % (q.time * 1000))
             if q.traceback:
                 p(q.traceback)
