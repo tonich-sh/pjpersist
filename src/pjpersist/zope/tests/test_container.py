@@ -640,7 +640,6 @@ def doctest_PJContainer_bool():
   """PJContainers can be evaluated to boolean, however this
   results in an extra query
 
-      >>> datamanager.PJ_ENABLE_QUERY_STATS = True
       >>> dm.root['people'] = container.PJContainer('person')
       >>> bool(dm.root['people'])
       False
