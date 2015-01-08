@@ -103,6 +103,13 @@ class IPJContainer(zope.interface.Interface):
         Note: The user is responsible of closing the cursor after use.
         """
 
+    def count(qry=None):
+        """Count items matching query conditions
+
+        Provides a quick way to count items without fetching them from
+        database.
+        """
+
     def add(value, key=None):
         """Add an object without necessarily knowing the key of the object.
 
