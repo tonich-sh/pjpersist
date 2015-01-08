@@ -40,6 +40,7 @@ setup(
             'zope.app.testing',
             'zope.testing',
             'ZODB3',
+            'mock'
         ),
         zope=(
             'rwproperty',
