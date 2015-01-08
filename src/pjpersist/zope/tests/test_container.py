@@ -832,6 +832,35 @@ def doctest_PJContainer_find():
       <Person Stephan>
     """
 
+def doctest_PJ_Container_count():
+  """
+  count() provides a quick way to count items without fetching them from database
+
+      >>> import pjpersist.sqlbuilder as sb
+
+      >>> transaction.commit()
+      >>> dm.root['people'] = container.PJContainer('person')
+      >>> dm.root['people'].count()
+      0L
+
+      >>> dm.root['people'][u'stephan'] = Person(u'Stephan')
+      >>> dm.root['people'][u'roy'] = Person(u'Roy')
+      >>> dm.root['people'][u'roger'] = Person(u'Roger')
+      >>> dm.root['people'][u'adam'] = Person(u'Adam')
+      >>> dm.root['people'][u'albertas'] = Person(u'Albertas')
+      >>> dm.root['people'][u'russ'] = Person(u'Russ')
+      >>> dm.root['people'].count()
+      6L
+
+      >>> table = Person._p_pj_table
+      >>> datafld = sb.Field('person', 'data')
+      >>> fld = sb.JSON_GETITEM_TEXT(datafld, 'name')
+      >>> qry = fld.startswith('Ro')
+      >>> dm.root['people'].count(qry)
+      2L
+  """
+
+
 def doctest_PJContainer_cache_complete():
     """PJContainer: _cache_complete
 

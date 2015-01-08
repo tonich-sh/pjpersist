@@ -439,6 +439,18 @@ class PJContainer(contained.Contained,
             return None
         return self._load_one(res['id'], res['data'])
 
+    def count(self, qry=None):
+        where = self._pj_add_items_filter(qry)
+        count = sb.func.COUNT(sb.Field(self._pj_table, '*'))
+        if where is None:
+            select = sb.Select(count)
+        else:
+            select = sb.Select(count, where=where)
+
+        with self._pj_jar.getCursor() as cur:
+            cur.execute(select)
+            return cur.fetchone()[0]
+
     def clear(self):
         for key in self.keys():
             del self[key]
