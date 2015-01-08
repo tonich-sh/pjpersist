@@ -27,13 +27,23 @@ PJ_NATIVE_TYPES = (
 REFERENCE_SAFE_TYPES = (
     datetime.datetime, datetime.date, datetime.time, decimal.Decimal)
 
+# +--------------
+# attribute names on the objects
+# the database name
 DATABASE_ATTR_NAME = '_p_pj_database'
+# the table name
 TABLE_ATTR_NAME = '_p_pj_table'
+# bool, whether the state dict stores the class type
 STORE_TYPE_ATTR_NAME = '_p_pj_store_type'
+# bool, whether the object is a subobject
 SUB_OBJECT_ATTR_NAME = '_p_pj_sub_object'
+# the object where the subobject state will be stored
+# this is not necessarily the direct 'parent', but somewhere up the chain
 DOC_OBJECT_ATTR_NAME = '_p_pj_doc_object'
 STATE_ATTR_NAME = '_p_pj_state'
+# the field in the state dict storing the class type
 PY_TYPE_ATTR_NAME = '_py_persistent_type'
+# +--------------
 
 
 class CircularReferenceError(Exception):
