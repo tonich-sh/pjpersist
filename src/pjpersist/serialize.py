@@ -633,12 +633,10 @@ class ObjectReader(object):
         # Check that we really have a state doc now.
         if doc is None:
             raise ImportError(obj._p_oid)
-        # Create a copy of the doc, so that we can modify it.
-        state_doc = copy.deepcopy(doc)
         # Remove unwanted attributes.
-        state_doc.pop(interfaces.PY_TYPE_ATTR_NAME, None)
+        doc.pop(interfaces.PY_TYPE_ATTR_NAME, None)
         # Now convert the document to a proper Python state dict.
-        state = dict(self.get_object(state_doc, obj))
+        state = dict(self.get_object(doc, obj))
         if obj._p_oid not in self._jar._latest_states:
             # Sometimes this method is called to update the object state
             # before storage. Only update the latest states when the object is
