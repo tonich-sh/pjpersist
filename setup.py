@@ -63,6 +63,7 @@ setup(
     zip_safe=False,
     entry_points='''
     [console_scripts]
-    profile = pjpersist.performance:main
+    profile = pjpersist.tests.performance:main
+    json_speed_test = pjpersist.tests.json_speed_test:main
     ''',
 )
