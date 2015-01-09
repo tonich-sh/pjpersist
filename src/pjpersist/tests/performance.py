@@ -45,6 +45,7 @@ PROFILE = False
 PROFILE_OUTPUT = '/tmp/cprofile'
 LOG_SQL = False
 BIGDATA = random_data.BIGDICT
+#BIGDATA = random_data.HUGEDICT
 CLEAR_CACHE = False
 
 
