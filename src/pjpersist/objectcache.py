@@ -167,7 +167,8 @@ class DatamanagerObjectCache(TransactionalObjectCache):
                     oref = serialize.DBRef.from_tuple(dbref)
                     try:
                         #print "INVALIDATE", oref
-                        del objs[dbref_key(oref)]
+                        #del objs[dbref_key(oref)]
+                        objs[dbref_key(oref)]._p_invalidate()
                     except KeyError:
                         pass
         #print "_read_invalidations", prev, "->", self.last_seen_txn, self._datamanager.database
