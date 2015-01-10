@@ -201,6 +201,7 @@ class DatamanagerObjectCache(TransactionalObjectCache):
                     (ser, dbrefs))
 
             self.last_seen_txn = ser
+            self.invalidations.clear()
         #print "commit", self._datamanager.database
         self.need_read_invalidations = True
 
