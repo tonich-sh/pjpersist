@@ -196,25 +196,44 @@ class PJContainer(contained.Contained,
     def _cache(self):
         if not USE_CONTAINER_CACHE:
             return {}
-        txn = transaction.manager.get()
-        if not hasattr(txn, '_v_pj_container_cache'):
-            txn._v_pj_container_cache = {}
-        return txn._v_pj_container_cache.setdefault(self, {})
+
+        # XXX: why we went to self._v_pj_container_cache?
+        #      if the object gets stored in ThreadedObjectCache, we want
+        #      the cache stored there too, because if the container
+        #      changes in an other thread it will get nuked from the cache
+        #      but until that point we WANT to have all items cached
+        #      otherwise every __getitem__ results in a DB query
+
+        if not hasattr(self, '_v_pj_container_cache'):
+            self._v_pj_container_cache = {}
+        return self._v_pj_container_cache
+
+        #txn = transaction.manager.get()
+        #if not hasattr(txn, '_v_pj_container_cache'):
+        #    txn._v_pj_container_cache = {}
+        #return txn._v_pj_container_cache.setdefault(self, {})
 
     @property
     def _cache_complete(self):
         if not USE_CONTAINER_CACHE:
             return False
-        txn = transaction.manager.get()
-        if not hasattr(txn, '_v_pj_container_cache_complete'):
-            txn._v_pj_container_cache_complete = {}
-        return txn._v_pj_container_cache_complete.get(self, False)
+
+        if not hasattr(self, '_v_pj_container_cache_complete'):
+            self._v_pj_container_cache_complete = False
+        return self._v_pj_container_cache_complete
+
+        #txn = transaction.manager.get()
+        #if not hasattr(txn, '_v_pj_container_cache_complete'):
+        #    txn._v_pj_container_cache_complete = {}
+        #return txn._v_pj_container_cache_complete.get(self, False)
 
     def _cache_mark_complete(self):
-        txn = transaction.manager.get()
-        if not hasattr(txn, '_v_pj_container_cache_complete'):
-            txn._v_pj_container_cache_complete = {}
-        txn._v_pj_container_cache_complete[self] = True
+        self._v_pj_container_cache_complete = True
+
+        #txn = transaction.manager.get()
+        #if not hasattr(txn, '_v_pj_container_cache_complete'):
+        #    txn._v_pj_container_cache_complete = {}
+        #txn._v_pj_container_cache_complete[self] = True
 
     def _cache_get_key(self, id, doc):
         return doc[self._pj_mapping_key]
