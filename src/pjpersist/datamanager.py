@@ -174,6 +174,7 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
         finally:
             t1 = time.time()
             tb = self._collect_traceback()
+            #print "SQL", round(t1-t0, 6), sql[:80]
             if PJ_ACCESS_LOGGING:
                 self.log_query(sql, args, t1-t0, tb)
 
