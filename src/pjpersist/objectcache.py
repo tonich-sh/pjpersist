@@ -102,6 +102,16 @@ class DatamanagerObjectCache(TransactionalObjectCache):
     # by the VERY SAME PJDataManager, therefore the cache must be kept
     # on the PJDataManager object
     # you want to keep the PJDataManager instance around by using a pool
+    #
+    # another important rule if you use PJ together with ZODB:
+    # the PJDataManager must be kept associated with the ZODB Connection
+    # because you can't avoid objects referencing between PJ and ZODB
+    # but all objects _p_jar must be the same as the DM which loaded the object
+    # IOW
+    # objects are put into the cache with their current state
+    # that state has a _p_jar, which is the DM which loaded the object
+    # on a cache hit the VERY same DM has to get the object from the cache
+    # otherwise there will be an exception
 
     table = 'persistence_invalidations'
     need_read_invalidations = False
@@ -196,6 +206,7 @@ class DatamanagerObjectCache(TransactionalObjectCache):
             dbrefs = [list(dbref.as_tuple()) for dbref in self.invalidations]
 
             with self._datamanager._conn.cursor() as cur:
+                #print "write_inv", self.invalidations
                 cur.execute(
                     "INSERT INTO %s (txn, dbrefs) values (%%s, %%s)" % self.table,
                     (ser, dbrefs))
