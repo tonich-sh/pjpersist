@@ -102,6 +102,12 @@ def JSONB_CONTAINS_ALL(jsonb, keys):
     """keys is an SQL array"""
     return SQLOp("?&", jsonb, PGArray(keys))
 
+def ARRAY_CONTAINS(arr, values):
+    return SQLOp("@>", arr, PGArray(values))
+
+def ARRAY_OVERLAPS(arr, values):
+    return SQLOp("&&", arr, PGArray(values))
+
 
 class JGET(object):
     """JSON field getter that JSONifies the second argument of comparisons.
