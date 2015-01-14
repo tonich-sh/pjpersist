@@ -463,7 +463,7 @@ class PJContainer(contained.Contained,
             qry = self.convert_mongo_query(qry)
 
         where = self._pj_add_items_filter(qry)
-        count = sb.func.COUNT(sb.Field(self._pj_table, '*'))
+        count = sb.func.COUNT(sb.Field(self._pj_table, 'id'))
         if where is None:
             select = sb.Select(count)
         else:
@@ -479,7 +479,7 @@ class PJContainer(contained.Contained,
 
     def __nonzero__(self):
         where = self._pj_add_items_filter(None)
-        select = sb.Select(sb.func.COUNT(sb.Field(self._pj_table, '*')),
+        select = sb.Select(sb.func.COUNT(sb.Field(self._pj_table, 'id')),
                            where=where)
         with self._pj_jar.getCursor() as cur:
             cur.execute(select)
