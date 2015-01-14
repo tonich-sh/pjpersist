@@ -322,12 +322,17 @@ class PJContainer(contained.Contained,
     def __contains__(self, key):
         if self._cache_complete:
             return key in self._cache
+
+        if key in self._cache:
+            return True
+
         datafld = sb.Field(self._pj_table, 'data')
         fld = sb.JGET(datafld, self._pj_mapping_key)
         qry = (fld == key)
 
-        res = self.raw_find(qry, fields=('id',), limit=1)
-        return (res.rowcount > 0)
+        res = self.count(qry)
+        return res > 0
+
 
     def __iter__(self):
         # If the cache contains all objects, we can just return the cache keys.
