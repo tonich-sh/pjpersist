@@ -205,7 +205,7 @@ class DatamanagerObjectCache(TransactionalObjectCache):
             # XXX: might need to batch later if a shitload of objs get changed
             dbrefs = [list(dbref.as_tuple()) for dbref in self.invalidations]
 
-            with self._datamanager._conn.cursor() as cur:
+            with self._datamanager.getCursor(False) as cur:
                 #print "write_inv", self.invalidations
                 cur.execute(
                     "INSERT INTO %s (txn, dbrefs) values (%%s, %%s)" % self.table,
