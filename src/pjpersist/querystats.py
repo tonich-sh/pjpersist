@@ -96,6 +96,7 @@ class QueryReport(object):
         except:
             # we need here exceptionformatter, otherwise __traceback_info__
             # is not added
-            tb = ''.join(exceptionformatter.extract_stack(
-                sys.exc_info()[2].tb_frame.f_back, limit=TB_LIMIT))
+            stack = exceptionformatter.extract_stack(
+                sys.exc_info()[2].tb_frame.f_back, limit=TB_LIMIT)
+            tb = ''.join(stack[:-2])
             return tb
