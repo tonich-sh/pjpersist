@@ -47,6 +47,12 @@ PJ_ACCESS_LOGGING = False
 # Enable query statistics reporting after transaction ends
 PJ_ENABLE_QUERY_STATS = False
 
+# Enable logging queries to global query statistics report. If you enable this,
+# make sure you set GLOBAL_QUERY_STATS.report to None after each report.
+PJ_ENABLE_GLOBAL_QUERY_STATS = False
+GLOBAL_QUERY_STATS = threading.local()
+GLOBAL_QUERY_STATS.report = None
+
 # Enable reporting query traceback with queries
 PJ_ENABLE_QUERY_TRACEBACK = False
 
@@ -72,6 +78,7 @@ LOG = logging.getLogger(__name__)
 
 psycopg2.extensions.register_type(psycopg2.extensions.UNICODE)
 psycopg2.extensions.register_type(psycopg2.extensions.UNICODEARRAY)
+
 
 
 class Json(psycopg2.extras.Json):
@@ -174,11 +181,18 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
         finally:
             t1 = time.time()
             tb = self._collect_traceback()
+            db = self.datamanager.database
+
             if PJ_ACCESS_LOGGING:
                 self.log_query(sql, args, t1-t0, tb)
 
             if PJ_ENABLE_QUERY_STATS:
-                self.datamanager._query_report.record(sql, args, t1-t0, tb)
+                self.datamanager._query_report.record(sql, args, t1-t0, tb, db)
+
+            if PJ_ENABLE_GLOBAL_QUERY_STATS:
+                if GLOBAL_QUERY_STATS.report is None:
+                    GLOBAL_QUERY_STATS.report = QueryReport()
+                GLOBAL_QUERY_STATS.report.record(sql, args, t1-t0, tb, db)
         return res
 
     def _collect_traceback(self):
