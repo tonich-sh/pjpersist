@@ -16,7 +16,8 @@
 
 from collections import namedtuple
 
-QueryStats = namedtuple("QueryStats", ["query", "args", "time", "traceback"])
+QueryStats = namedtuple("QueryStats",
+                        ["query", "args", "time", "traceback", "database"])
 
 QueryTotals = namedtuple('QueryTotals',
                          ["total_queries", "total_time", "sorted_queries"])
@@ -30,12 +31,13 @@ class QueryReport(object):
     def __init__(self):
         self.qlog = []
 
-    def record(self, query, args, elapsed_time, traceback=None):
+    def record(self, query, args, elapsed_time, traceback=None, database=None):
         """Record executed query
 
         elapsed_time is time, elapsed by executing query, in secodes
         """
-        self.qlog.append(QueryStats(query, args, elapsed_time, traceback))
+        self.qlog.append(QueryStats(query, args, elapsed_time,
+                                    traceback, database))
 
     def calc_totals(self):
         """Calculate totals and return QueryTotals object
@@ -72,3 +74,6 @@ class QueryReport(object):
         p("Time spent: %.4fms" % (totals.total_time * 1000))
 
         return "\n".join(report)
+
+    def clear(self):
+        self.qlog = []
