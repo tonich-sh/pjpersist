@@ -13,8 +13,13 @@
 #
 ##############################################################################
 """Statistics on executed queries"""
+from __future__ import absolute_import
 
+import sys
 from collections import namedtuple
+
+from zope.exceptions import exceptionformatter
+
 
 QueryStats = namedtuple("QueryStats",
                         ["query", "args", "time", "traceback", "database"])
@@ -26,16 +31,23 @@ QueryTotals = namedtuple('QueryTotals',
 # Number of most expensive queries to print out
 NUM_OF_QUERIES_TO_REPORT = 10
 
+REPORT_TRACEBACK = False
+
+# Traceback limit
+TB_LIMIT = 15  # 15 should be sufficient to figure
+
 
 class QueryReport(object):
     def __init__(self):
         self.qlog = []
+        self.report_traceback = REPORT_TRACEBACK
 
-    def record(self, query, args, elapsed_time, traceback=None, database=None):
+    def record(self, query, args, elapsed_time, database=None):
         """Record executed query
 
         elapsed_time is time, elapsed by executing query, in secodes
         """
+        traceback = self._collect_traceback()
         self.qlog.append(QueryStats(query, args, elapsed_time,
                                     traceback, database))
 
@@ -66,7 +78,7 @@ class QueryReport(object):
             p("*** %s" % q.query)
             p("... ARGS: %s" % (q.args,))
             p("... TIME: %.4fms" % (q.time * 1000))
-            if q.traceback:
+            if self.report_traceback and q.traceback:
                 p(q.traceback)
             p("")
         p(sep)
@@ -77,3 +89,13 @@ class QueryReport(object):
 
     def clear(self):
         self.qlog = []
+
+    def _collect_traceback(self):
+        try:
+            raise ValueError('boom')
+        except:
+            # we need here exceptionformatter, otherwise __traceback_info__
+            # is not added
+            tb = ''.join(exceptionformatter.extract_stack(
+                sys.exc_info()[2].tb_frame.f_back, limit=TB_LIMIT))
+            return tb

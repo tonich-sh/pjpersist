@@ -28,12 +28,10 @@ import random
 import re
 import socket
 import struct
-import sys
 import threading
 import time
 import transaction
 import zope.interface
-from zope.exceptions import exceptionformatter
 
 from pjpersist import interfaces, serialize
 from pjpersist.querystats import QueryReport
@@ -52,9 +50,6 @@ PJ_ENABLE_QUERY_STATS = False
 PJ_ENABLE_GLOBAL_QUERY_STATS = False
 GLOBAL_QUERY_STATS = threading.local()
 GLOBAL_QUERY_STATS.report = None
-
-# Enable reporting query traceback with queries
-PJ_ENABLE_QUERY_TRACEBACK = False
 
 PJ_AUTO_CREATE_TABLES = True
 
@@ -80,7 +75,6 @@ psycopg2.extensions.register_type(psycopg2.extensions.UNICODE)
 psycopg2.extensions.register_type(psycopg2.extensions.UNICODEARRAY)
 
 
-
 class Json(psycopg2.extras.Json):
     """In logs, we want to have the JSON value not just Json object at <>"""
     def __repr__(self):
@@ -95,23 +89,19 @@ class Json(psycopg2.extras.Json):
 
 
 class PJPersistCursor(psycopg2.extras.DictCursor):
-
-    ADD_TB = True
-    TB_LIMIT = 15  # 15 should be sufficient to figure
-
     def __init__(self, datamanager, flush, *args, **kwargs):
         super(PJPersistCursor, self).__init__(*args, **kwargs)
         self.datamanager = datamanager
         self.flush = flush
 
-    def log_query(self, sql, args, duration, traceback=None):
+    def log_query(self, sql, args, duration):
 
         txn = transaction.get()
         txn = '%i - %s' % (id(txn), txn.description),
 
         TABLE_LOG.debug(
-            "%s,\n args:%r,\n TXN:%s,\n tb:\n%s\n time:%sms",
-            sql, args, txn, traceback or '<omitted>', duration*1000)
+            "%s,\n args:%r,\n TXN:%s,\n time:%sms",
+            sql, args, txn, duration*1000)
 
     def execute(self, sql, args=None):
         # Convert SQLBuilder object to string
@@ -180,32 +170,19 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
             res = super(PJPersistCursor, self).execute(sql, args)
         finally:
             t1 = time.time()
-            tb = self._collect_traceback()
             db = self.datamanager.database
 
             if PJ_ACCESS_LOGGING:
-                self.log_query(sql, args, t1-t0, tb)
+                self.log_query(sql, args, t1-t0)
 
             if PJ_ENABLE_QUERY_STATS:
-                self.datamanager._query_report.record(sql, args, t1-t0, tb, db)
+                self.datamanager._query_report.record(sql, args, t1-t0, db)
 
             if PJ_ENABLE_GLOBAL_QUERY_STATS:
                 if GLOBAL_QUERY_STATS.report is None:
                     GLOBAL_QUERY_STATS.report = QueryReport()
-                GLOBAL_QUERY_STATS.report.record(sql, args, t1-t0, tb, db)
+                GLOBAL_QUERY_STATS.report.record(sql, args, t1-t0, db)
         return res
-
-    def _collect_traceback(self):
-        if not PJ_ENABLE_QUERY_TRACEBACK:
-            return None
-        try:
-            raise ValueError('boom')
-        except:
-            # we need here exceptionformatter, otherwise __traceback_info__
-            # is not added
-            tb = ''.join(exceptionformatter.extract_stack(
-                sys.exc_info()[2].tb_frame.f_back, limit=self.TB_LIMIT))
-            return tb
 
 
 def check_for_conflict(e):

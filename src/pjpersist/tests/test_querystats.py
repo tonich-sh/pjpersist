@@ -62,8 +62,9 @@ def doctest_calc_and_report_several():
 
         >>> qr = QueryReport()
         >>> qr.record("SELECT 1", [], 0.005)
-        >>> qr.record("SELECT 2", (1, 2, 3), 0.0001, "traceback")
+        >>> qr.record("SELECT 2", (1, 2, 3), 0.0001)
         >>> qr.record("SELECT 3", ["a", "b", 3], 0.8)
+        >>> qr.report_traceback = True
 
         >>> print qr.calc_and_report()
         Query report:
@@ -72,15 +73,17 @@ def doctest_calc_and_report_several():
         *** SELECT 2
         ... ARGS: (1, 2, 3)
         ... TIME: 0.1000ms
-        traceback
+        File ...
         <BLANKLINE>
         *** SELECT 1
         ... ARGS: []
         ... TIME: 5.0000ms
+        File ...
         <BLANKLINE>
         *** SELECT 3
         ... ARGS: ['a', 'b', 3]
         ... TIME: 800.0000ms
+        File ...
         <BLANKLINE>
         ------------------------------------------------------------
         Queries executed: 3
