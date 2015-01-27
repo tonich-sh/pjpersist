@@ -394,7 +394,7 @@ class PJContainer(contained.Contained,
     #      (in the means of returning the same dict)
     def convert_mongo_query(self, spec):
         warnings.warn("Using mongo queries is deprecated (%s)" % spec,
-                      DeprecationWarning, stacklevel=2)
+                      DeprecationWarning, stacklevel=3)
         c = Converter(self._pj_table, 'data')
         qry = c.convert(spec)
         return qry
