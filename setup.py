@@ -48,6 +48,7 @@ setup(
         ),
     ),
     install_requires=[
+        'persistent',
         'transaction >=1.1.0',
         'repoze.lru',
         'psycopg2',
