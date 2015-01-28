@@ -468,7 +468,7 @@ class PJContainer(contained.Contained,
             del self[key]
 
     def __nonzero__(self):
-        where = self._pj_add_items_filter(None)
+        where = self._pj_add_items_filter(None) or True
         select = sb.Select(sb.func.COUNT(sb.Field(self._pj_table, 'id')),
                            where=where)
         with self._pj_jar.getCursor() as cur:
