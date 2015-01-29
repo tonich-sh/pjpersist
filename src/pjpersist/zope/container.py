@@ -156,7 +156,7 @@ class PJContainer(contained.Contained,
             self._v_mdmp = zope.component.getUtility(
                     interfaces.IPJDataManagerProvider)
 
-        return self._v_mdmp.get()
+        return self._v_mdmp.get(None)
 
     def _pj_get_parent_key_value(self):
         if getattr(self, '_p_jar', None) is None:

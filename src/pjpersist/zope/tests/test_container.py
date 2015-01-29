@@ -1899,8 +1899,10 @@ def setUp(test):
     # a IPJDataManagerProvider
     class Provider(object):
         zope.interface.implements(interfaces.IPJDataManagerProvider)
-        def get(self):
+
+        def get(self, database):
             return test.globs['dm']
+
     zope.component.provideUtility(Provider())
 
     # silence this, otherwise half-baked objects raise exceptions
