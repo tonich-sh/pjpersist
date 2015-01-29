@@ -26,9 +26,11 @@ import transaction
 import unittest
 from pprint import pprint
 from StringIO import StringIO
+
+import zope.component
 from zope.testing import module, renormalizing
 
-from pjpersist import datamanager, serialize, serializers
+from pjpersist import datamanager, serialize, serializers, interfaces
 
 checker = renormalizing.RENormalizing([
     # Date/Time objects
@@ -50,6 +52,17 @@ OPTIONFLAGS = (
     )
 
 DBNAME = 'pjpersist_test'
+DBNAME_OTHER = 'pjpersist_test_other'
+
+
+@zope.interface.implementer(interfaces.IPJDataManagerProvider)
+class SimpleDataManagerProvider(object):
+    def __init__(self, dms, default=None):
+        self.idx = {dm.database: dm for dm in dms}
+        self.idx[None] = default
+
+    def get(self, database):
+        return self.idx[database]
 
 
 def getConnection(database=None):
@@ -66,16 +79,19 @@ def createDB():
     conn = getConnection()
     with conn.cursor() as cur:
         cur.execute('END')
-        cur.execute('CREATE DATABASE %s' %DBNAME)
+        cur.execute('CREATE DATABASE %s' % DBNAME)
+        cur.execute('CREATE DATABASE %s' % DBNAME_OTHER)
     conn.commit()
     conn.close()
+
 
 def dropDB():
     conn = getConnection()
     with conn.cursor() as cur:
         cur.execute('END')
         try:
-            cur.execute('DROP DATABASE %s' %DBNAME)
+            cur.execute('DROP DATABASE %s' % DBNAME_OTHER)
+            cur.execute('DROP DATABASE %s' % DBNAME)
         except psycopg2.ProgrammingError:
             pass
     conn.commit()
@@ -108,16 +124,20 @@ def setUp(test):
     module.setUp(test)
     setUpSerializers(test)
     #createDB()
-    test.globs['conn'] = getConnection(DBNAME)
-    cleanDB(test.globs['conn'])
-    test.globs['commit'] = transaction.commit
-    test.globs['dm'] = datamanager.PJDataManager(test.globs['conn'])
+    g = test.globs
+    g['conn'] = getConnection(DBNAME)
+    g['conn_other'] = getConnection(DBNAME_OTHER)
+    cleanDB(g['conn'])
+    cleanDB(g['conn_other'])
+    g['commit'] = transaction.commit
+    g['dm'] = datamanager.PJDataManager(g['conn'])
+    g['dm_other'] = datamanager.PJDataManager(g['conn_other'])
 
     def dumpTable(table, flush=True, isolate=False):
         if isolate:
             conn = getConnection(database=DBNAME)
         else:
-            conn = test.globs['dm']._conn
+            conn = g['dm']._conn
         with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
             try:
                 cur.execute('SELECT * FROM ' + table)
@@ -127,7 +147,10 @@ def setUp(test):
                 pprint([dict(e) for e in cur.fetchall()])
         if isolate:
             conn.close()
-    test.globs['dumpTable'] = dumpTable
+    g['dumpTable'] = dumpTable
+
+    dmp = SimpleDataManagerProvider([g['dm'], g['dm_other']], g['dm'])
+    zope.component.provideUtility(dmp)
 
 
 def tearDown(test):
@@ -135,7 +158,9 @@ def tearDown(test):
     tearDownSerializers(test)
     transaction.abort()
     cleanDB(test.globs['conn'])
+    cleanDB(test.globs['conn_other'])
     test.globs['conn'].close()
+    test.globs['conn_other'].close()
     #dropDB()
     resetCaches()
 

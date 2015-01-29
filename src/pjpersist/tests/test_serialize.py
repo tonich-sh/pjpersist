@@ -994,6 +994,47 @@ def doctest_deserialize_persistent_references():
     """
 
 
+def doctest_deserialize_persistent_foreign_references():
+    """
+    Make sure we can reference objects from other databases.
+
+    For this, we have to provide IPJDataManagerProvider
+
+    First, store some object in one database
+      >>> writer_other = serialize.ObjectWriter(dm_other)
+      >>> top_other = Top()
+      >>> top_other.name = 'top_other'
+      >>> top_other.state = {'complex_data': 'value'}
+      >>> writer_other.store(top_other)
+      DBRef('Top', '0001020304050607080a0b0c', 'pjpersist_test_other')
+
+    Store other object in datbase and refrence first one
+      >>> writer_other = serialize.ObjectWriter(dm)
+      >>> top = Top()
+      >>> top.name = 'main'
+      >>> top.other = top_other
+      >>> dm.root['top'] = top
+      >>> commit()
+
+      >>> dumpTable('Top')
+      [{'data': {u'name': u'main',
+                 u'other': {u'_py_type': u'DBREF',
+                            u'database': u'pjpersist_test_other',
+                            u'id': u'0001020304050607080a0b0c0',
+                            u'table': u'Top'}},
+        'id': u'0001020304050607080a0b0c0'}]
+
+      >>> top = dm.root['top']
+      >>> print top.name
+      main
+      >>> print top.other.name
+      top_other
+      >>> top.other.state
+      {'complex_data': 'value'}
+    """
+
+
+
 def doctest_PersistentDict_equality():
     """Test basic functions if PersistentDicts
 

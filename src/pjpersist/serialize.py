@@ -554,10 +554,11 @@ class ObjectReader(object):
             # convert back to binary when serializing again.
             return state['data'].decode('base64')
         if isinstance(state, dict) and state.get('_py_type') == 'DBREF':
-            # Load a persistent object. Using the get_ghost() method, so that
-            # caching is properly applied.
+            # Load a persistent object. Using the _jar.load() method to make
+            # sure we're loading from right database and caching is properly
+            # applied.
             dbref = DBRef(state['table'], state['id'], state['database'])
-            return self.get_ghost(dbref)
+            return self._jar.load(dbref)
         if isinstance(state, dict) and state.get('_py_type') == 'type':
             # Convert a simple object reference, mostly classes.
             return self.simple_resolve(state['path'])

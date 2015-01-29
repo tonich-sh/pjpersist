@@ -523,6 +523,15 @@ class PJDataManager(object):
         return res
 
     def load(self, dbref, klass=None):
+        dm = self
+        if dbref.database != self.database:
+            # This is a reference of object from different database! We need to
+            # locate the suitable data manager for this.
+            dmp = zope.component.getUtility(interfaces.IPJDataManagerProvider)
+            dm = dmp.get(dbref.database)
+            assert dm.database == dbref.database
+            return dm.load(dbref, klass)
+
         return self._reader.get_ghost(dbref, klass)
 
     def reset(self):
