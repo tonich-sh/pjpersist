@@ -91,6 +91,9 @@ class TransactionalObjectCache(object):
             raise ValueError('Object not yet added to database')
         self.objects[dbref_key(obj._p_oid)] = obj
 
+    def _read_invalidations(self):
+        pass
+
 
 class DatamanagerObjectCache(TransactionalObjectCache):
     #zope.interface.implements(interfaces.IObjectCache)
