@@ -198,6 +198,7 @@ def check_for_conflict(e):
         psycopg2.errorcodes.DEADLOCK_DETECTED
     )
     if e.pgcode in serialization_errors:
+        LOG.warning("Conflict detected with code %s", e.pgcode)
         raise interfaces.ConflictError(str(e))
 
 

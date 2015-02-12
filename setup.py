@@ -11,11 +11,11 @@ def read(*rnames):
 
 setup(
     name='pjpersist',
-    version='0.8.0',
+    version='0.8.1',
     author="Shoobx Team",
     author_email="dev@shoobx.com",
     url='https://github.com/Shoobx/pjpersist',
-    description="PostGresqL/JSONB Persistence Backend",
+    description="PostgreSQL/JSONB Persistence Backend",
     long_description=(
         read('src', 'pjpersist', 'README.txt')
         + '\n\n' +
