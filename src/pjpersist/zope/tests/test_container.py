@@ -275,7 +275,9 @@ def doctest_SimplePJContainer_basic():
       >>> dm.root['c'] = container.SimplePJContainer()
 
       >>> dumpTable(cn)
-      [{'data': {u'data': {}}, 'id': u'0001020304050607080a0b0c0'}]
+      [{'data': {u'_py_persistent_type': u'pjpersist.zope.container.SimplePJContainer',
+                 u'data': {}},
+        'id': u'0001020304050607080a0b0c0'}]
 
     As you can see, the serialization is very clean. Next we add a person.
 
@@ -304,14 +306,13 @@ def doctest_SimplePJContainer_basic():
       >>> transaction.commit()
 
       >>> dumpTable('person')
-      [{'data':
-          {u'__name__': u'stephan',
-           u'__parent__':
-               {u'_py_type': u'DBREF',
-                u'database': u'pjpersist_test',
-                u'id': u'0001020304050607080a0b0c0',
-                u'table': u'pjpersist_dot_zope_dot_container_dot_SimplePJContainer'},
-           u'name': u'Stephan'},
+      [{'data': {u'__name__': u'stephan',
+                 u'__parent__': {u'_py_type': u'DBREF',
+                                 u'database': u'pjpersist_test',
+                                 u'id': u'0001020304050607080a0b0c0',
+                                 u'table': u'pjpersist_dot_zope_dot_container_dot_SimplePJContainer'},
+                 u'_py_persistent_type': u'pjpersist.zope.tests.test_container.SimplePerson',
+                 u'name': u'Stephan'},
         'id': u'0001020304050607080a0b0c0'}]
 
       >>> dm.root['c'].keys()
@@ -322,11 +323,11 @@ def doctest_SimplePJContainer_basic():
       u'stephan'
 
       >>> dumpTable(cn)
-      [{'data': {u'data':
-          {u'stephan': {u'_py_type': u'DBREF',
-                        u'database': u'pjpersist_test',
-                        u'id': u'0001020304050607080a0b0c0',
-                        u'table': u'person'}}},
+      [{'data': {u'_py_persistent_type': u'pjpersist.zope.container.SimplePJContainer',
+                 u'data': {u'stephan': {u'_py_type': u'DBREF',
+                                        u'database': u'pjpersist_test',
+                                        u'id': u'0001020304050607080a0b0c0',
+                                        u'table': u'person'}}},
         'id': u'0001020304050607080a0b0c0'}]
 
       >>> dm.root['c'].items()
@@ -388,7 +389,9 @@ def doctest_PJContainer_basic():
       >>> dm.root['c'] = container.PJContainer('person')
 
       >>> dumpTable('pjpersist_dot_zope_dot_container_dot_PJContainer')
-      [{'data': {u'_pj_table': u'person'}, 'id': u'0001020304050607080a0b0c0'}]
+      [{'data': {u'_pj_table': u'person',
+                 u'_py_persistent_type': u'pjpersist.zope.container.PJContainer'},
+        'id': u'0001020304050607080a0b0c0'}]
 
     It is unfortunate that the '_pj_table' attribute is set. This is
     avoidable using a sub-class.
@@ -412,7 +415,8 @@ def doctest_PJContainer_basic():
       >>> transaction.commit()
 
       >>> dumpTable('person')
-      [{'data': {u'key': u'stephan',
+      [{'data': {u'_py_persistent_type': u'pjpersist.zope.tests.test_container.Person',
+                 u'key': u'stephan',
                  u'name': u'Stephan',
                  u'parent': {u'_py_type': u'DBREF',
                              u'database': u'pjpersist_test',
@@ -697,14 +701,16 @@ def doctest_PJContainer_find():
       >>> res = dm.root['people'].raw_find(qry)
       >>> pprint(list(res))
       [[u'0001020304050607080a0b0c0',
-        {u'key': u'roy',
+        {u'_py_persistent_type': u'pjpersist.zope.tests.test_container.Person',
+         u'key': u'roy',
          u'name': u'Roy',
          u'parent': {u'_py_type': u'DBREF',
                      u'database': u'pjpersist_test',
                      u'id': u'0001020304050607080a0b0c0',
                      u'table': u'pjpersist_dot_zope_dot_container_dot_PJContainer'}}],
        [u'0001020304050607080a0b0c0',
-        {u'key': u'roger',
+        {u'_py_persistent_type': u'pjpersist.zope.tests.test_container.Person',
+         u'key': u'roger',
          u'name': u'Roger',
          u'parent': {u'_py_type': u'DBREF',
                      u'database': u'pjpersist_test',
@@ -730,42 +736,48 @@ def doctest_PJContainer_find():
       >>> res = dm.root['people'].raw_find(orderBy=["(data->'name')"])
       >>> pprint(list(res))
       [[u'0001020304050607080a0b0c0',
-        {u'key': u'adam',
+        {u'_py_persistent_type': u'pjpersist.zope.tests.test_container.Person',
+         u'key': u'adam',
          u'name': u'Adam',
          u'parent': {u'_py_type': u'DBREF',
                      u'database': u'pjpersist_test',
                      u'id': u'0001020304050607080a0b0c0',
                      u'table': u'pjpersist_dot_zope_dot_container_dot_PJContainer'}}],
        [u'0001020304050607080a0b0c0',
-        {u'key': u'albertas',
+        {u'_py_persistent_type': u'pjpersist.zope.tests.test_container.Person',
+         u'key': u'albertas',
          u'name': u'Albertas',
          u'parent': {u'_py_type': u'DBREF',
                      u'database': u'pjpersist_test',
                      u'id': u'0001020304050607080a0b0c0',
                      u'table': u'pjpersist_dot_zope_dot_container_dot_PJContainer'}}],
        [u'0001020304050607080a0b0c0',
-        {u'key': u'roger',
+        {u'_py_persistent_type': u'pjpersist.zope.tests.test_container.Person',
+         u'key': u'roger',
          u'name': u'Roger',
          u'parent': {u'_py_type': u'DBREF',
                      u'database': u'pjpersist_test',
                      u'id': u'0001020304050607080a0b0c0',
                      u'table': u'pjpersist_dot_zope_dot_container_dot_PJContainer'}}],
        [u'0001020304050607080a0b0c0',
-        {u'key': u'roy',
+        {u'_py_persistent_type': u'pjpersist.zope.tests.test_container.Person',
+         u'key': u'roy',
          u'name': u'Roy',
          u'parent': {u'_py_type': u'DBREF',
                      u'database': u'pjpersist_test',
                      u'id': u'0001020304050607080a0b0c0',
                      u'table': u'pjpersist_dot_zope_dot_container_dot_PJContainer'}}],
        [u'0001020304050607080a0b0c0',
-        {u'key': u'russ',
+        {u'_py_persistent_type': u'pjpersist.zope.tests.test_container.Person',
+         u'key': u'russ',
          u'name': u'Russ',
          u'parent': {u'_py_type': u'DBREF',
                      u'database': u'pjpersist_test',
                      u'id': u'0001020304050607080a0b0c0',
                      u'table': u'pjpersist_dot_zope_dot_container_dot_PJContainer'}}],
        [u'0001020304050607080a0b0c0',
-        {u'key': u'stephan',
+        {u'_py_persistent_type': u'pjpersist.zope.tests.test_container.Person',
+         u'key': u'stephan',
          u'name': u'Stephan',
          u'parent': {u'_py_type': u'DBREF',
                      u'database': u'pjpersist_test',
@@ -775,7 +787,8 @@ def doctest_PJContainer_find():
       >>> res = dm.root['people'].raw_find(orderBy=["(data->'name') DESC"], limit=1)
       >>> pprint(list(res))
       [[u'0001020304050607080a0b0c0',
-        {u'key': u'stephan',
+        {u'_py_persistent_type': u'pjpersist.zope.tests.test_container.Person',
+         u'key': u'stephan',
          u'name': u'Stephan',
          u'parent': {u'_py_type': u'DBREF',
                      u'database': u'pjpersist_test',
@@ -803,7 +816,8 @@ def doctest_PJContainer_find():
       >>> res = dm.root['people'].raw_find_one(qry2)
       >>> pprint(res)
       [u'0001020304050607080a0b0c0',
-       {u'key': u'stephan',
+       {u'_py_persistent_type': u'pjpersist.zope.tests.test_container.Person',
+        u'key': u'stephan',
         u'name': u'Stephan',
         u'parent': {u'_py_type': u'DBREF',
                     u'database': u'pjpersist_test',
@@ -967,7 +981,8 @@ def doctest_IdNamesPJContainer_basic():
       >>> transaction.commit()
 
       >>> dumpTable('person')
-      [{'data': {u'name': u'Stephan',
+      [{'data': {u'_py_persistent_type': u'pjpersist.zope.tests.test_container.Person',
+                 u'name': u'Stephan',
                  u'parent': {u'_py_type': u'DBREF',
                              u'database': u'pjpersist_test',
                              u'id': u'0001020304050607080a0b0c0',
@@ -1069,12 +1084,11 @@ def doctest_SubDocumentPJContainer_basic():
       >>> transaction.commit()
       >>> dumpTable('root')
       [{'data':
-          {u'data':
-              {u'people':
-                  {u'_pj_table': u'person',
-                   u'_py_persistent_type':
-                       u'pjpersist.zope.container.SubDocumentPJContainer'}}},
-      'id': u'0001020304050607080a0b0c0'}]
+        {u'_py_persistent_type': u'pjpersist.zope.tests.test_container.ApplicationRoot',
+         u'data':
+           {u'people': {u'_pj_table': u'person',
+                        u'_py_persistent_type': u'pjpersist.zope.container.SubDocumentPJContainer'}}},
+        'id': u'0001020304050607080a0b0c0'}]
 
     It is unfortunate that the '_pj_table' attribute is set. This is
     avoidable using a sub-class. Let's make sure the container can be loaded
@@ -1140,10 +1154,11 @@ def doctest_PJContainer_with_ZODB():
       <pjpersist.zope.container.PJContainer object at 0x7f6b6273b7d0>
 
       >>> dumpTable('person')
-      [{'data': {u'key': u'stephan',
+      [{'data': {u'_py_persistent_type': u'pjpersist.zope.tests.test_container.Person',
+                 u'key': u'stephan',
                  u'name': u'Stephan',
-                 u'parent': u'zodb-04bc8095215afee7'},
-        'id': u'46a049949c9ba6eb139bfbde'}]
+                 u'parent': u'zodb-01af3b00c5
+        'id': u'0001020304050607080a0b0c0'}]
 
     Note that we produced a nice hex-presentation of the ZODB's OID.
     """
@@ -1207,7 +1222,9 @@ def doctest_Realworldish():
 
       >>> dumpTable(
       ...     'pjpersist_dot_zope_dot_tests_dot_test_container_dot_Campaigns')
-      [{'data': {u'name': u'foobar'}, 'id': u'0001020304050607080a0b0c0'}]
+      [{'data': {u'_py_persistent_type': u'pjpersist.zope.tests.test_container.Campaigns',
+                 u'name': u'foobar'},
+        'id': u'0001020304050607080a0b0c0'}]
 
     It is unfortunate that the '_pj_table' attribute is set. This is
     avoidable using a sub-class.
@@ -1231,7 +1248,8 @@ def doctest_Realworldish():
       >>> transaction.commit()
 
       >>> dumpTable(Campaigns._pj_table)
-      [{'data': {u'key': u'one',
+      [{'data': {u'_py_persistent_type': u'pjpersist.zope.tests.test_container.Campaign',
+                 u'key': u'one',
                  u'name': u'one',
                  u'parent': {u'_py_type': u'DBREF',
                              u'database': u'pjpersist_test',
@@ -1538,7 +1556,8 @@ def doctest_PJContainer_SimpleColumnSerialization():
       >>> pprint(list(people.raw_find(qry)))
       [[u'54894d3fb25d2b232e0046d6',
         u'Mr Number 00010',
-        {u'address': None,
+        {u'_py_persistent_type': u'pjpersist.zope.tests.test_container.ColumnPerson',
+         u'address': None,
          u'birthday': None,
          u'friends': {},
          u'name': u'Mr Number 00010',
@@ -1551,7 +1570,8 @@ def doctest_PJContainer_SimpleColumnSerialization():
       >>> pprint(people.raw_find_one(qry))
       [u'54894d80b25d2b240f00bbf6',
        u'Mr Number 00010',
-       {u'address': None,
+       {u'_py_persistent_type': u'pjpersist.zope.tests.test_container.ColumnPerson',
+        u'address': None,
         u'birthday': None,
         u'friends': {},
         u'name': u'Mr Number 00010',

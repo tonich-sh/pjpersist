@@ -135,8 +135,7 @@ def doctest_PJDataManager_object_dump_load_reset():
 
       >>> dm = datamanager.PJDataManager(
       ...     conn,
-      ...     root_table = 'proot',
-      ...     name_map_table = 'coll_pypath_map')
+      ...     root_table = 'proot')
 
     There are two convenience methods that let you serialize and de-serialize
     objects explicitly:
@@ -162,6 +161,8 @@ def doctest_PJDataManager_object_dump_load_reset():
       False
       >>> dm._registered_objects
       {}
+
+      >>> dm.commit(None)
 
     Let's now reset the data manager, so we do not hit a cache while loading
     the object again:
@@ -286,10 +287,12 @@ def doctest_PJDataManager_insert():
 
       >>> dm.flush()
       >>> dumpTable(dm._get_table_from_object(foo2)[1])
-      [{'data': {u'name': u'foo'},
-        'id': u'aa8e42b8a33ef7c8636dbfec'},
-       {'data': {u'name': u'Foo 2'},
-        'id': u'33854572bdfb5445858a8470'}]
+      [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Foo',
+                 u'name': u'foo'},
+        'id': u'0001020304050607080a0b0c0'},
+       {'data': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Foo',
+                 u'name': u'Foo 2'},
+        'id': u'0001020304050607080a0b0c0'}]
     """
 
 
@@ -557,8 +560,12 @@ def doctest_PJDataManager_abort():
 
       >>> dbanme, table = dm._get_table_from_object(Foo())
       >>> dumpTable(table)
-      [{'data': {u'name': u'one'}, 'id': u'0001020304050607080a0b0c'},
-       {'data': {u'name': u'two'}, 'id': u'0001020304050607080a0b0c'}]
+      [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Foo',
+                 u'name': u'one'},
+        'id': u'0001020304050607080a0b0c0'},
+       {'data': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Foo',
+                 u'name': u'two'},
+        'id': u'0001020304050607080a0b0c0'}]
 
     Now, in a second transaction we modify the state of objects in all three
     ways:
@@ -577,17 +584,24 @@ def doctest_PJDataManager_abort():
 
       >>> dm.flush()
       >>> dumpTable(table)
-      [{'data': {u'name': u'1'}, 'id': u'f40442f6870c0b84d78b7dd8'},
-       {'data': {u'name': u'three'}, 'id': u'cff24e7e99b7185fc9a98579'}]
-
+      [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Foo',
+                 u'name': u'1'},
+        'id': u'0001020304050607080a0b0c0'},
+       {'data': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Foo',
+                 u'name': u'three'},
+        'id': u'0001020304050607080a0b0c0'}]
 
     Let's now abort the transaction and everything should be back to what it
     was before:
 
       >>> dm.abort(transaction.get())
       >>> dumpTable(table)
-      [{'data': {u'name': u'one'}, 'id': u'0001020304050607080a0b0c'},
-       {'data': {u'name': u'two'}, 'id': u'0001020304050607080a0b0c'}]
+      [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Foo',
+                 u'name': u'one'},
+        'id': u'0001020304050607080a0b0c0'},
+       {'data': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Foo',
+                 u'name': u'two'},
+        'id': u'0001020304050607080a0b0c0'}]
     """
 
 
@@ -605,12 +619,11 @@ def doctest_PJDataManager_abort_subobjects():
 
       >>> dbname, table = dm._get_table_from_object(ComplexFoo())
       >>> dumpTable(table)
-      [{'data':
-        {u'item':
-          {u'_py_type': u'pjpersist.tests.test_datamanager.FooItem',
-           u'bar': 6},
-           u'name': u'complex'},
-        'id': u'0001020304050607080a0b0c'}]
+      [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.ComplexFoo',
+                 u'item': {u'_py_type': u'pjpersist.tests.test_datamanager.FooItem',
+                           u'bar': 6},
+                 u'name': u'complex'},
+        'id': u'0001020304050607080a0b0c0'}]
 
     2. Modify the item and flush it to database
 
@@ -619,23 +632,21 @@ def doctest_PJDataManager_abort_subobjects():
       >>> dm.flush()
 
       >>> dumpTable(table)
-      [{'data':
-        {u'item':
-          {u'_py_type': u'pjpersist.tests.test_datamanager.FooItem',
-           u'bar': 6},
-           u'name': u'modified'},
-       'id': u'0001020304050607080a0b0c'}]
+      [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.ComplexFoo',
+                 u'item': {u'_py_type': u'pjpersist.tests.test_datamanager.FooItem',
+                           u'bar': 6},
+                 u'name': u'modified'},
+        'id': u'0001020304050607080a0b0c0'}]
 
     3. Abort the current transaction and expect original state is restored
 
       >>> dm.abort(transaction.get())
       >>> dumpTable(table)
-      [{'data':
-        {u'item':
-          {u'_py_type': u'pjpersist.tests.test_datamanager.FooItem',
-           u'bar': 6},
-           u'name': u'complex'},
-        'id': u'0001020304050607080a0b0c'}]
+      [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.ComplexFoo',
+                 u'item': {u'_py_type': u'pjpersist.tests.test_datamanager.FooItem',
+                           u'bar': 6},
+                 u'name': u'complex'},
+        'id': u'0001020304050607080a0b0c0'}]
     """
 
 def doctest_PJDataManager_tpc_begin():
@@ -821,8 +832,7 @@ def doctest_PJDataManager_complex_sub_objects():
       >>> cur.execute('SELECT tablename from pg_tables;')
       >>> sorted(e[0] for e in cur.fetchall()
       ...        if not e[0].startswith('pg_') and not e[0].startswith('sql_'))
-      [u'persistence_name_map',
-       u'persistence_root',
+      [u'persistence_root',
        u'pjpersist_dot_tests_dot_test_datamanager_dot_foo']
 
     Now, save foo first, and then add subobjects
@@ -846,8 +856,7 @@ def doctest_PJDataManager_complex_sub_objects():
       >>> cur.execute('SELECT tablename from pg_tables;')
       >>> sorted(e[0] for e in cur.fetchall()
       ...        if not e[0].startswith('pg_') and not e[0].startswith('sql_'))
-      [u'persistence_name_map',
-       u'persistence_root',
+      [u'persistence_root',
        u'pjpersist_dot_tests_dot_test_datamanager_dot_foo']
 
       >>> dm.root['two'].sup.bar
@@ -858,15 +867,13 @@ def doctest_PJDataManager_complex_sub_objects():
       ... '''SELECT * FROM pjpersist_dot_tests_dot_test_datamanager_dot_foo
       ...    WHERE data @> '{"name": "one"}' ''')
       >>> pprint([dict(e) for e in cur.fetchall()])
-      [{'data':
-          {u'name': u'one',
-           u'sup': {u'_py_persistent_type':
-                              u'pjpersist.tests.test_datamanager.Super',
-                    u'bar': {u'_py_persistent_type':
-                                     u'pjpersist.tests.test_datamanager.Bar',
-                             u'name': u'bar'},
-                    u'name': u'super'}},
-      'id': u'738744b8ae9da4ae92636fb1'}]
+      [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Foo',
+                 u'name': u'one',
+                 u'sup': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Super',
+                          u'bar': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Bar',
+                                   u'name': u'bar'},
+                          u'name': u'super'}},
+        'id': u'0001020304050607080a0b0c0'}]
 
     Now, make changes to the subobjects and then commit
 
@@ -894,8 +901,7 @@ def doctest_PJDataManager_complex_sub_objects():
       >>> cur.execute('SELECT tablename from pg_tables;')
       >>> sorted(e[0] for e in cur.fetchall()
       ...        if not e[0].startswith('pg_') and not e[0].startswith('sql_'))
-      [u'persistence_name_map',
-       u'persistence_root',
+      [u'persistence_root',
        u'pjpersist_dot_tests_dot_test_datamanager_dot_foo']
 
     Even if _p_pj_doc_object is pointed to subobject, subobject does not get
@@ -909,8 +915,7 @@ def doctest_PJDataManager_complex_sub_objects():
       >>> cur.execute('SELECT tablename from pg_tables;')
       >>> sorted(e[0] for e in cur.fetchall()
       ...        if not e[0].startswith('pg_') and not e[0].startswith('sql_'))
-      [u'persistence_name_map',
-       u'persistence_root',
+      [u'persistence_root',
        u'pjpersist_dot_tests_dot_test_datamanager_dot_foo']
     """
 
@@ -951,17 +956,14 @@ def doctest_PJDataManager_table_sharing():
 
     Make sure that after a restart, the objects can still be stored.
 
-      >>> serialize.TABLES_WITH_TYPE = set()
       >>> serialize.AVAILABLE_NAME_MAPPINGS = set()
       >>> serialize.PATH_RESOLVE_CACHE = {}
-      >>> del Sub._p_pj_store_type
 
       >>> dm2 = datamanager.PJDataManager(conn)
 
       >>> dm2.root['app'].four = Sub('four')
       >>> dm2.tpc_finish(None)
 
-      >>> serialize.TABLES_WITH_TYPE = set()
       >>> serialize.AVAILABLE_NAME_MAPPINGS = set()
       >>> serialize.PATH_RESOLVE_CACHE = {}
 
