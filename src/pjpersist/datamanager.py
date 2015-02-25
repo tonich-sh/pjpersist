@@ -619,6 +619,9 @@ class PJDataManager(object):
         if obj is not None:
             if id(obj) not in self._registered_objects:
                 self._registered_objects[id(obj)] = obj
+                obj_registered = getattr(obj, '_pj_object_registered', None)
+                if obj_registered is not None:
+                    obj_registered(self)
             if id(obj) not in self._modified_objects:
                 obj = self._get_doc_object(obj)
                 self._modified_objects[id(obj)] = obj
