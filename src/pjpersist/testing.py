@@ -234,7 +234,7 @@ def log_sql_to_file(fname, add_tb=True, tb_limit=15):
     import logging
 
     datamanager.PJ_ACCESS_LOGGING = True
-    datamanager.LOG.setLevel(logging.DEBUG)
+    datamanager.TABLE_LOG.setLevel(logging.DEBUG)
     datamanager.PJPersistCursor.ADD_TB = add_tb
     datamanager.PJPersistCursor.TB_LIMIT = tb_limit
 
@@ -243,7 +243,7 @@ def log_sql_to_file(fname, add_tb=True, tb_limit=15):
     formatter = logging.Formatter(
         '%(name)s - %(levelname)s - %(message)s')
     fh.setFormatter(formatter)
-    datamanager.LOG.addHandler(fh)
+    datamanager.TABLE_LOG.addHandler(fh)
 
 
 class StdoutHandler(logging.StreamHandler):
