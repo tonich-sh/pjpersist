@@ -474,11 +474,12 @@ class PJDataManager(object):
     def _get_doc_py_type(self, database, table, id):
         tbl = sb.Table(table)
         with self.getCursor() as cur:
+            datafld = sb.Field(table, 'data')
             cur.execute(
-                sb.Select(sb.Field(table, interfaces.PY_TYPE_ATTR_NAME),
+                sb.Select(sb.JGET(datafld, interfaces.PY_TYPE_ATTR_NAME),
                           tbl.id == id))
             res = cur.fetchone()
-            return res[interfaces.PY_TYPE_ATTR_NAME] if res is not None else None
+            return res[0] if res is not None else None
 
     def _get_table_from_object(self, obj):
         return self._writer.get_table_name(obj)

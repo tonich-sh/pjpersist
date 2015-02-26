@@ -716,6 +716,7 @@ def doctest_ObjectReader_resolve_lookup_with_multiple_maps_dont_read_full():
     Let's clear dome caches and try again:
 
       >>> dm.commit(None)
+      >>> serialize.OID_CLASS_LRU.__init__(20000)
 
       >>> serialize.TABLES_WITH_TYPE.__init__()
 
