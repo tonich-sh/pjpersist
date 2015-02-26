@@ -32,9 +32,9 @@ ALWAYS_READ_FULL_DOC = True
 
 SERIALIZERS = []
 OID_CLASS_LRU = repoze.lru.LRUCache(20000)
-TABLES_WITH_TYPE = set()
 AVAILABLE_NAME_MAPPINGS = set()
 PATH_RESOLVE_CACHE = {}
+TABLE_KLASS_MAP = {}
 
 # actually we should extract this somehow from psycopg2
 PYTHON_TO_PG_TYPES = {
@@ -154,35 +154,6 @@ class ObjectWriter(object):
             table_name = getattr(obj, interfaces.TABLE_ATTR_NAME)
         except AttributeError:
             return db_name, get_dotted_name(obj.__class__, True)
-        # If the object writer is run without a datamager, there is no need to
-        # try to dump the table info into the database.
-        if self._jar is None:
-            return db_name, table_name
-        # Make sure that the table_name to class path mapping is available.
-        # Let's make sure we do the lookup only once, since the info will
-        # never change.
-        path = get_dotted_name(obj.__class__, True)
-        map = {'table': table_name, 'database': db_name, 'path': path}
-        map_hash = (db_name, table_name, path)
-        if map_hash in AVAILABLE_NAME_MAPPINGS:
-            return db_name, table_name
-        result = self._jar._get_name_map_entry(**map)
-        if result is None:
-            # If there is already a map for this table, the next map must
-            # force the object to store the type.
-            result = self._jar._get_name_map_entry(db_name, table_name)
-            if len(result):
-                setattr(obj.__class__, interfaces.STORE_TYPE_ATTR_NAME, True)
-            map['doc_has_type'] = getattr(
-                obj, interfaces.STORE_TYPE_ATTR_NAME, False)
-            self._jar._insert_name_map_entry(**map)
-            result = map
-        # Make sure that derived classes that share a table know they
-        # have to store their type.
-        if (result['doc_has_type'] and
-            not getattr(obj, interfaces.STORE_TYPE_ATTR_NAME, False)):
-            setattr(obj.__class__, interfaces.STORE_TYPE_ATTR_NAME, True)
-        AVAILABLE_NAME_MAPPINGS.add(map_hash)
         return db_name, table_name
 
     def get_non_persistent_state(self, obj, seen):
@@ -228,8 +199,7 @@ class ObjectWriter(object):
         elif factory == copy_reg.__newobj__ and args == (obj.__class__,):
             # Another simple case for persistent objects that do not want
             # their own document.
-            state = {
-                interfaces.PY_TYPE_ATTR_NAME: get_dotted_name(args[0])}
+            state = {interfaces.PY_TYPE_ATTR_NAME: get_dotted_name(args[0])}
         else:
             state = {'_py_factory': get_dotted_name(factory),
                      '_py_factory_args': self.get_state(args, obj, seen)}
@@ -329,9 +299,8 @@ class ObjectWriter(object):
 
     def get_full_state(self, obj):
         doc = self.get_state(obj.__getstate__(), obj)
-        # Add a persistent type info, if necessary.
-        if getattr(obj, interfaces.STORE_TYPE_ATTR_NAME, False):
-            doc[interfaces.PY_TYPE_ATTR_NAME] = get_dotted_name(obj.__class__)
+        # Always add a persistent type info
+        doc[interfaces.PY_TYPE_ATTR_NAME] = get_dotted_name(obj.__class__)
         # Return the full state document
         return doc
 
@@ -360,8 +329,8 @@ class ObjectWriter(object):
             # Go through each attribute and search for persistent references.
             doc = self.get_state(obj.__getstate__(), obj)
 
-        if getattr(obj, interfaces.STORE_TYPE_ATTR_NAME, False):
-            doc[interfaces.PY_TYPE_ATTR_NAME] = get_dotted_name(obj.__class__)
+        # Always add a persistent type info
+        doc[interfaces.PY_TYPE_ATTR_NAME] = get_dotted_name(obj.__class__)
 
         stored = False
         if interfaces.IColumnSerialization.providedBy(obj):
@@ -398,7 +367,6 @@ class ObjectReader(object):
 
     def __init__(self, jar):
         self._jar = jar
-        self._single_map_cache = {}
         self.preferPersistent = True
 
     def simple_resolve(self, path):
@@ -428,96 +396,48 @@ class ObjectReader(object):
         klass = OID_CLASS_LRU.get(hash(dbref))
         if klass is not None:
             return klass
-        # 2. Check the transient single map entry lookup cache.
-        try:
-            return self._single_map_cache[(dbref.database, dbref.table)]
-        except KeyError:
-            pass
-        # 3. If we have found the type within the document for a table before,
-        #    let's try again. This will only hit, if we have more than one
-        #    type for the table, otherwise the single map entry lookup failed.
-        table_key = (dbref.database, dbref.table)
-        if table_key in TABLES_WITH_TYPE:
-            if dbref.id is None:
-                raise ImportError(dbref)
-            if dbref in self._jar._latest_states:
-                obj_doc = self._jar._latest_states[dbref]
-            elif ALWAYS_READ_FULL_DOC:
-                obj_doc = self._jar._get_doc(
-                    dbref.database, dbref.table, dbref.id)
-                self._jar._latest_states[dbref] = obj_doc
-            else:
-                pytype = self._jar._get_doc_py_type(
-                    dbref.database, dbref.table, dbref.id)
-                obj_doc = {interfaces.PY_TYPE_ATTR_NAME: pytype}
-            if obj_doc is None:
-                # There is no document for this reference in the database.
-                raise ImportError(dbref)
-            if interfaces.PY_TYPE_ATTR_NAME in obj_doc:
-                klass = self.simple_resolve(
-                    obj_doc[interfaces.PY_TYPE_ATTR_NAME])
+        # 2. Try to optimize on whether there's just one class stored in one
+        #    table, that can save us one DB query
+        if dbref.table in TABLE_KLASS_MAP:
+            results = TABLE_KLASS_MAP[dbref.table]
+            if len(results) == 1:
+                # there must be just ONE, otherwise we need to check the JSONB
+                klass = list(results)[0]
                 OID_CLASS_LRU.put(hash(dbref), klass)
                 return klass
-        # 4. Try to resolve the path directly. We want to do this optimization
-        #    after all others, because trying it a lot is very expensive.
-        try:
-            return self.simple_resolve(dbref.table)
-        except ImportError:
-            pass
-        # 5. No simple hits, so we have to do some leg work.
-        # Let's now try to look up the path from the table to path mapping
-        result = self._jar._get_name_map_entry(dbref.database, dbref.table)
-        # Since the result sets should be typically very small, let's
-        # load them all.
-        count = len(result)
-        if count == 0:
+        # from this point on we need the dbref.id
+        if dbref.id is None:
             raise ImportError(dbref)
-        elif count == 1:
-            # Do not add these results to the LRU cache, since the count might
-            # change later. But storing it for the length of the transaction
-            # is fine, which is really useful if you load a lot of objects of
-            # the same type.
-            klass = self.simple_resolve(result[0]['path'])
-            self._single_map_cache[(dbref.database, dbref.table)] = klass
-            return klass
+        # 3. Get the class from the object state
+        #    Multiple object types are stored in the table. We have to
+        #    look at the object (JSONB) to find out the type.
+        if dbref in self._jar._latest_states:
+            # Optimization: If we have the latest state, then we just get
+            # this object document. This is used for fast loading or when
+            # resolving the same object path a second time. (The latter
+            # should never happen due to the object cache.)
+            obj_doc = self._jar._latest_states[dbref]
+        elif ALWAYS_READ_FULL_DOC:
+            # Optimization: Read the entire doc and stick it in the right
+            # place so that unghostifying the object later will not cause
+            # another database access.
+            obj_doc = self._jar._get_doc_by_dbref(dbref)
+            self._jar._latest_states[dbref] = obj_doc
         else:
-            if dbref.id is None:
-                raise ImportError(dbref)
-            # Multiple object types are stored in the table. We have to
-            # look at the object to find out the type.
-            if dbref in self._jar._latest_states:
-                # Optimization: If we have the latest state, then we just get
-                # this object document. This is used for fast loading or when
-                # resolving the same object path a second time. (The latter
-                # should never happen due to the object cache.)
-                obj_doc = self._jar._latest_states[dbref]
-            elif ALWAYS_READ_FULL_DOC:
-                # Optimization: Read the entire doc and stick it in the right
-                # place so that unghostifying the object later will not cause
-                # another database access.
-                obj_doc = self._jar._get_doc(
-                    dbref.database, dbref.table, dbref.id)
-                self._jar._latest_states[dbref] = obj_doc
-            else:
-                pytype = self._jar._get_doc_py_type(
-                    dbref.database, dbref.table, dbref.id)
-                obj_doc = {interfaces.PY_TYPE_ATTR_NAME: pytype}
-            if interfaces.PY_TYPE_ATTR_NAME in obj_doc:
-                TABLES_WITH_TYPE.add(table_key)
-                klass = self.simple_resolve(
-                    obj_doc[interfaces.PY_TYPE_ATTR_NAME])
-            else:
-                # Find the name-map entry where "doc_has_type" is False.
-                # Note: This case is really inefficient and does not allow any
-                # optimization. It should be avoided as much as possible.
-                for name_map_item in result:
-                    if not name_map_item['doc_has_type']:
-                        klass = self.simple_resolve(name_map_item['path'])
-                        break
-                else:
-                    raise ImportError(dbref)
-            OID_CLASS_LRU.put(hash(dbref), klass)
-            return klass
+            # Just read the type from the database, still requires one query
+            pytype = self._jar._get_doc_py_type(
+                dbref.database, dbref.table, dbref.id)
+            obj_doc = {interfaces.PY_TYPE_ATTR_NAME: pytype}
+        if obj_doc is None:
+            # There is no document for this reference in the database.
+            raise ImportError(dbref)
+        if interfaces.PY_TYPE_ATTR_NAME in obj_doc:
+            # We have always the path to the class in JSONB
+            klass = self.simple_resolve(obj_doc[interfaces.PY_TYPE_ATTR_NAME])
+        else:
+            raise ImportError(dbref)
+        OID_CLASS_LRU.put(hash(dbref), klass)
+        return klass
 
     def get_non_persistent_object(self, state, obj):
         if '_py_constant' in state:
@@ -652,3 +572,25 @@ class ObjectReader(object):
         # same object reference throughout the transaction.
         self._jar._object_cache[hash(dbref)] = obj
         return obj
+
+
+class table:
+    """Declare the table used by the class.
+
+    sets also the atrtibute interfaces.TABLE_ATTR_NAME
+    but register the fact also in TABLE_KLASS_MAP, this will allow pjpersist
+    to optimize class lookup when just one class is stored in one table
+    otherwise class lookup always needs the JSONB data from PG
+    """
+
+    def __init__(self, table_name):
+        self.table_name = table_name
+
+    def __call__(self, ob):
+        try:
+            setattr(ob, interfaces.TABLE_ATTR_NAME, self.table_name)
+            TABLE_KLASS_MAP.setdefault(self.table_name, set()).add(ob)
+        except AttributeError:
+            raise TypeError(
+                "Can't declare %s" % interfaces.TABLE_ATTR_NAME, ob)
+        return ob

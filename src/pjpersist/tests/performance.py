@@ -28,6 +28,7 @@ import cProfile
 
 from pjpersist import datamanager
 from pjpersist import testing
+from pjpersist import serialize
 from pjpersist.zope import container
 
 from pjpersist.tests import random_data
@@ -54,15 +55,16 @@ class People(container.PJContainer):
     _pj_table = 'person'
     _pj_mapping_key = 'name'
 
+@serialize.table('address')
 class Address(persistent.Persistent):
-    _p_pj_table = 'address'
+    #_p_pj_table = 'address'
 
     def __init__(self, city):
         self.city = city
 
+@serialize.table('person')
 class Person(persistent.Persistent, container.PJContained):
-    _p_pj_table = 'person'
-    _p_pj_store_type = True
+    #_p_pj_table = 'person'
 
     name = None
     age = None
@@ -81,6 +83,7 @@ class Person(persistent.Persistent, container.PJContained):
         return '<%s %s @ %s [%s]>' %(
             self.__class__.__name__, self.name, self.age, self.__name__)
 
+@serialize.table('person')
 class Person2(Person):
     pass
 

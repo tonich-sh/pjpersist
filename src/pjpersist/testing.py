@@ -226,9 +226,9 @@ class PJTestCase(unittest.TestCase):
 
 def resetCaches():
     serialize.OID_CLASS_LRU.__init__(20000)
-    serialize.TABLES_WITH_TYPE.__init__()
     serialize.AVAILABLE_NAME_MAPPINGS.__init__()
     serialize.PATH_RESOLVE_CACHE = {}
+    serialize.TABLE_KLASS_MAP = {}
 
 
 def log_sql_to_file(fname, add_tb=True, tb_limit=15):

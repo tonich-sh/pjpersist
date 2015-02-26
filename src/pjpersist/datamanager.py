@@ -265,11 +265,9 @@ class Root(UserDict.DictMixin):
 class PJDataManager(object):
     zope.interface.implements(interfaces.IPJDataManager)
 
-    name_map_table = 'persistence_name_map'
-    _has_name_map_table = False
     root = None
 
-    def __init__(self, conn, root_table=None, name_map_table=None):
+    def __init__(self, conn, root_table=None):
         self._conn = conn
         self.database = get_database_name_from_dsn(conn.dsn)
         self._reader = serialize.ObjectReader(self)
@@ -288,11 +286,7 @@ class PJDataManager(object):
         self._needs_to_join = True
         self._object_cache = {}
         self.annotations = {}
-        if name_map_table is not None:
-            self.name_map_table = name_map_table
         self.transaction_manager = transaction.manager
-        if not self._has_name_map_table and PJ_AUTO_CREATE_TABLES:
-            self._init_name_map_table()
         if self.root is None:
             self.root = Root(self, root_table)
 
@@ -322,49 +316,7 @@ class PJDataManager(object):
         id += struct.pack(">i", THREAD_COUNTERS[tidx])[-2:]
         return binascii.hexlify(id)
 
-    def _init_name_map_table(self):
-        with self.getCursor(False) as cur:
-            cur.execute(
-                "SELECT * FROM information_schema.tables where table_name=%s",
-                (self.name_map_table,))
-            if cur.rowcount:
-                self._has_name_map_table = True
-                return
-            LOG.info("Creating name map table %s" % self.name_map_table)
-            cur.execute('''
-                CREATE TABLE %s (
-                    database varchar,
-                    tbl varchar,
-                    path varchar,
-                    doc_has_type bool)
-                ''' % self.name_map_table)
-            self._has_name_map_table = True
-
-    def _get_name_map_entry(self, database, table, path=None):
-        name_map = sb.Table(self.name_map_table)
-        clause = (name_map.database == database) & (name_map.tbl == table)
-        if path is not None:
-            clause &= (name_map.path == path)
-        with self.getCursor(False) as cur:
-            cur.execute(sb.Select(sb.Field(self.name_map_table, '*'), clause))
-            if path is None:
-                return cur.fetchall()
-            return cur.fetchone() if cur.rowcount else None
-
-    def _insert_name_map_entry(self, database, table, path, doc_has_type):
-        with self.getCursor(False) as cur:
-            cur.execute(
-                sb.Insert(
-                    self.name_map_table, values={
-                        'database': database,
-                        'tbl': table,
-                        'path': path,
-                        'doc_has_type': doc_has_type})
-                )
-
     def create_tables(self, tables):
-        self._init_name_map_table()
-
         if isinstance(tables, basestring):
             tables = [tables]
 

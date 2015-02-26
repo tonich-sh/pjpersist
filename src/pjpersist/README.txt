@@ -72,7 +72,8 @@ Python path of the class:
 
   >>> transaction.commit()
   >>> dumpTable(person_cn)
-  [{'data': {u'address': None,
+  [{'data': {u'_py_persistent_type': u'__main__.Person',
+             u'address': None,
              u'birthday': None,
              u'friends': {},
              u'name': u'Stephan',
@@ -138,11 +139,14 @@ But once we commit the transaction, everything is available:
 
   >>> transaction.commit()
   >>> dumpTable('address')
-  [{'data': {u'city': u'Maynard', u'zip': u'01754'},
-   'id': u'0001020304050607080a0b0c0'}]
+  [{'data': {u'_py_persistent_type': u'__main__.Address',
+             u'city': u'Maynard',
+             u'zip': u'01754'},
+    'id': u'0001020304050607080a0b0c0'}]
 
   >>> dumpTable(person_cn)
-  [{'data': {u'address': {u'_py_type': u'DBREF',
+  [{'data': {u'_py_persistent_type': u'__main__.Person',
+             u'address': {u'_py_type': u'DBREF',
                           u'database': u'pjpersist_test',
                           u'id': u'0001020304050607080a0b0c0',
                           u'table': u'address'},
@@ -190,7 +194,8 @@ Let's now commit the transaction and look at the JSONB document again:
   <Phone +1-978-394-5124>
 
   >>> dumpTable(person_cn)
-  [{'data': {u'address': {u'_py_type': u'DBREF',
+  [{'data': {u'_py_persistent_type': u'__main__.Person',
+             u'address': {u'_py_type': u'DBREF',
                           u'database': u'pjpersist_test',
                           u'id': u'0001020304050607080a0b0c0',
                           u'table': u'address'},
@@ -229,7 +234,8 @@ always maintained as lists, since JSON does not have two sequence types.
   >>> import pprint
   >>> pprint.pprint(dict(
   ...     fetchone(person_cn, """data @> '{"name": "Stephan Richter"}'""")))
-  {'data': {u'address': {u'_py_type': u'DBREF',
+  {'data': {u'_py_persistent_type': u'__main__.Person',
+            u'address': {u'_py_type': u'DBREF',
                          u'database': u'pjpersist_test',
                          u'id': u'0001020304050607080a0b0c0',
                          u'table': u'address'},
@@ -296,14 +302,15 @@ Let's have a look again:
 
   >>> pprint.pprint(dict(
   ...     fetchone(person_cn, """data @> '{"name": "Stephan Richter"}'""")))
-  {'data': {u'address': {u'_py_type': u'DBREF',
+  {'data': {u'_py_persistent_type': u'__main__.Person',
+            u'address': {u'_py_type': u'DBREF',
                          u'database': u'pjpersist_test',
-                         u'id': u'0001020304050607080a0b0c',
+                         u'id': u'0001020304050607080a0b0c0',
                          u'table': u'address'},
             u'birthday': {u'_py_type': u'datetime.date', u'ordinal': 723205},
             u'friends': {u'roy': {u'_py_type': u'DBREF',
                                   u'database': u'pjpersist_test',
-                                  u'id': u'0001020304050607080a0b0c',
+                                  u'id': u'0001020304050607080a0b0c0',
                                   u'table': u'u__main___dot_Person'}},
             u'name': u'Stephan Richter',
             u'phone': {u'_py_type': u'__main__.Phone',
@@ -313,7 +320,7 @@ Let's have a look again:
             u'today': {u'_py_type': u'datetime.datetime',
                        u'value': u'2014-05-14T12:30:00'},
             u'visited': [u'Germany', u'USA']},
-   'id': u'0001020304050607080a0b0c'}
+   'id': u'0001020304050607080a0b0c0'}
 
 
 Much better!
@@ -351,7 +358,8 @@ of another document:
 
   >>> pprint.pprint(dict(
   ...     fetchone(person_cn, """data @> '{"name": "Stephan Richter"}'""")))
-  {'data': {u'address': {u'_py_type': u'DBREF',
+  {'data': {u'_py_persistent_type': u'__main__.Person',
+            u'address': {u'_py_type': u'DBREF',
                          u'database': u'pjpersist_test',
                          u'id': u'0001020304050607080a0b0c0',
                          u'table': u'address'},
@@ -503,7 +511,8 @@ extended to store the attribute and the person is added to the table:
   >>> transaction.commit()
 
   >>> dumpTable('cperson')
-  [{'data': {u'address': None,
+  [{'data': {u'_py_persistent_type': u'__main__.ColumnPerson',
+             u'address': None,
              u'birthday': None,
              u'friends': {},
              u'name': u'Anton',
