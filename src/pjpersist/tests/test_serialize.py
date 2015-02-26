@@ -656,6 +656,7 @@ def doctest_ObjectReader_resolve_lookup_with_multiple_maps_dont_read_full():
     Let's clear some caches and try again:
 
       >>> dm.commit(None)
+      >>> serialize.OID_CLASS_LRU.__init__(20000)
 
       >>> reader = serialize.ObjectReader(dm)
       >>> reader.resolve(top._p_oid)
