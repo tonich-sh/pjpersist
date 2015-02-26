@@ -241,36 +241,52 @@ class PerformanceBase(object):
         if CLEAR_CACHE:
             people = self.getPeople(options)
         self.slow_read(people, peopleCnt)
+        if LOG_SQL:
+            people._p_jar._report_stats()
 
         if CLEAR_CACHE:
             people = self.getPeople(options)
         self.read_list(people, peopleCnt)
+        if LOG_SQL:
+            people._p_jar._report_stats()
 
         if CLEAR_CACHE:
             people = self.getPeople(options)
         self.read_list_values(people, peopleCnt)
+        if LOG_SQL:
+            people._p_jar._report_stats()
 
         if CLEAR_CACHE:
             people = self.getPeople(options)
         self.fast_read_values(people, peopleCnt)
+        if LOG_SQL:
+            people._p_jar._report_stats()
 
         if CLEAR_CACHE:
             people = self.getPeople(options)
         self.fast_read(people, peopleCnt)
+        if LOG_SQL:
+            people._p_jar._report_stats()
 
         if CLEAR_CACHE:
             people = self.getPeople(options)
         self.object_caching(people, peopleCnt)
+        if LOG_SQL:
+            people._p_jar._report_stats()
 
         if options.modify:
             if CLEAR_CACHE:
                 people = self.getPeople(options)
             self.modify(people, peopleCnt)
+            if LOG_SQL:
+                people._p_jar._report_stats()
 
         if options.delete:
             if CLEAR_CACHE:
                 people = self.getPeople(options)
             self.delete(people, peopleCnt)
+            if LOG_SQL:
+                people._p_jar._report_stats()
 
 
 def getConnection(database=None):
