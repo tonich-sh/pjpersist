@@ -34,6 +34,7 @@ SERIALIZERS = []
 OID_CLASS_LRU = repoze.lru.LRUCache(20000)
 AVAILABLE_NAME_MAPPINGS = set()
 PATH_RESOLVE_CACHE = {}
+TABLE_KLASS_MAP = {}
 
 # actually we should extract this somehow from psycopg2
 PYTHON_TO_PG_TYPES = {
@@ -198,8 +199,7 @@ class ObjectWriter(object):
         elif factory == copy_reg.__newobj__ and args == (obj.__class__,):
             # Another simple case for persistent objects that do not want
             # their own document.
-            state = {
-                interfaces.PY_TYPE_ATTR_NAME: get_dotted_name(args[0])}
+            state = {interfaces.PY_TYPE_ATTR_NAME: get_dotted_name(args[0])}
         else:
             state = {'_py_factory': get_dotted_name(factory),
                      '_py_factory_args': self.get_state(args, obj, seen)}
@@ -299,7 +299,7 @@ class ObjectWriter(object):
 
     def get_full_state(self, obj):
         doc = self.get_state(obj.__getstate__(), obj)
-        # Add a persistent type info
+        # Always add a persistent type info
         doc[interfaces.PY_TYPE_ATTR_NAME] = get_dotted_name(obj.__class__)
         # Return the full state document
         return doc
@@ -329,6 +329,7 @@ class ObjectWriter(object):
             # Go through each attribute and search for persistent references.
             doc = self.get_state(obj.__getstate__(), obj)
 
+        # Always add a persistent type info
         doc[interfaces.PY_TYPE_ATTR_NAME] = get_dotted_name(obj.__class__)
 
         stored = False
@@ -395,17 +396,21 @@ class ObjectReader(object):
         klass = OID_CLASS_LRU.get(hash(dbref))
         if klass is not None:
             return klass
-        # 2. Get the class from the object state
-        if dbref.id is None:
-            raise ImportError(dbref)
+        # 2. Try to optimize on whether there's just one class stored in one
+        #    table, that can save us one DB query
         if dbref.table in TABLE_KLASS_MAP:
             results = TABLE_KLASS_MAP[dbref.table]
             if len(results) == 1:
+                # there must be just ONE, otherwise we need to check the JSONB
                 klass = list(results)[0]
                 OID_CLASS_LRU.put(hash(dbref), klass)
                 return klass
-        # Multiple object types are stored in the table. We have to
-        # look at the object to find out the type.
+        # from this point on we need the dbref.id
+        if dbref.id is None:
+            raise ImportError(dbref)
+        # 3. Get the class from the object state
+        #    Multiple object types are stored in the table. We have to
+        #    look at the object (JSONB) to find out the type.
         if dbref in self._jar._latest_states:
             # Optimization: If we have the latest state, then we just get
             # this object document. This is used for fast loading or when
@@ -419,6 +424,7 @@ class ObjectReader(object):
             obj_doc = self._jar._get_doc_by_dbref(dbref)
             self._jar._latest_states[dbref] = obj_doc
         else:
+            # Just read the type from the database, still requires one query
             pytype = self._jar._get_doc_py_type(
                 dbref.database, dbref.table, dbref.id)
             obj_doc = {interfaces.PY_TYPE_ATTR_NAME: pytype}
@@ -426,9 +432,8 @@ class ObjectReader(object):
             # There is no document for this reference in the database.
             raise ImportError(dbref)
         if interfaces.PY_TYPE_ATTR_NAME in obj_doc:
-            #TABLES_WITH_TYPE.add(table_key)
-            klass = self.simple_resolve(
-                obj_doc[interfaces.PY_TYPE_ATTR_NAME])
+            # We have always the path to the class in JSONB
+            klass = self.simple_resolve(obj_doc[interfaces.PY_TYPE_ATTR_NAME])
         else:
             raise ImportError(dbref)
         OID_CLASS_LRU.put(hash(dbref), klass)
@@ -572,8 +577,10 @@ class ObjectReader(object):
 class table:
     """Declare the table used by the class.
 
-    as interfaces.TABLE_ATTR_NAME was before
-    but register the fact also in TABLE_KLASS_MAP
+    sets also the atrtibute interfaces.TABLE_ATTR_NAME
+    but register the fact also in TABLE_KLASS_MAP, this will allow pjpersist
+    to optimize class lookup when just one class is stored in one table
+    otherwise class lookup always needs the JSONB data from PG
     """
 
     def __init__(self, table_name):
@@ -582,10 +589,8 @@ class table:
     def __call__(self, ob):
         try:
             setattr(ob, interfaces.TABLE_ATTR_NAME, self.table_name)
-            lst = TABLE_KLASS_MAP.setdefault(self.table_name, set())
-            lst.add(ob)
+            TABLE_KLASS_MAP.setdefault(self.table_name, set()).add(ob)
         except AttributeError:
-            raise TypeError("Can't declare table_name", ob)
+            raise TypeError(
+                "Can't declare %s" % interfaces.TABLE_ATTR_NAME, ob)
         return ob
-
-TABLE_KLASS_MAP = {}
