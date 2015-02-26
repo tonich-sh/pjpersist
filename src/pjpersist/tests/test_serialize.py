@@ -1092,6 +1092,13 @@ def doctest_table_decorator():
       [('barbar_table', [<class '__main__.Bar'>]),
        ('foobar_table', [<class '__main__.Foo'>, <class '__main__.FooFoo'>])]
 
+    Edge case, using the decorator on a non class fails:
+
+      >>> serialize.table('foobar_table')(object())
+      Traceback (most recent call last):
+      ...
+      TypeError: ("Can't declare _p_pj_table", <object object at ...>)
+
     """
 
 
