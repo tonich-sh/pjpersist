@@ -539,7 +539,7 @@ def doctest_ObjectReader_simple_resolve():
       ImportError: path.to.bad
     """
 
-def doctest_ObjectReader_resolve_simple():
+def doctest_ObjectReader_resolve_simple_dblookup():
     """ObjectReader: resolve(): simple
 
     This methods resolves a table name to its class. The table name
@@ -554,6 +554,57 @@ def doctest_ObjectReader_resolve_simple():
       Traceback (most recent call last):
       ...
       ImportError: DBRef('Top', '4eb1b3d337a08e2de7000100', None)
+    """
+
+def doctest_ObjectReader_resolve_simple_decorator():
+    """ObjectReader: resolve(): decorator declared table
+
+    This methods resolves a table name to its class. The table name
+    can be either any arbitrary string or a Python path.
+
+      >>> @serialize.table('foobar_table')
+      ... class Foo(object):
+      ...     pass
+
+      >>> reader = serialize.ObjectReader(dm)
+      >>> ref = serialize.DBRef('foobar_table', '4eb1b3d337a08e2de7000100')
+
+    Once we declared on the class which table it uses, it's easy to resolve
+    even without DB access.
+
+      >>> result = reader.resolve(ref)
+      >>> result
+      <class '__main__.Foo'>
+
+      >>> result is Foo
+      True
+    """
+
+def doctest_ObjectReader_resolve_simple_decorator_more():
+    """ObjectReader: resolve():
+    decorator declared table, more classes in one table
+
+    This methods resolves a table name to its class. The table name
+    can be either any arbitrary string or a Python path.
+
+      >>> @serialize.table('foobar_table')
+      ... class FooBase(object):
+      ...     pass
+
+      >>> @serialize.table('foobar_table')
+      ... class FooFoo(FooBase):
+      ...     pass
+
+      >>> reader = serialize.ObjectReader(dm)
+      >>> ref = serialize.DBRef('foobar_table', '4eb1b3d337a08e2de7000100')
+
+    As we have now more classes declared for the same table, we have to
+    lookup the JSONB from the DB
+
+      >>> result = reader.resolve(ref)
+      Traceback (most recent call last):
+      ...
+      ImportError: DBRef('foobar_table', '4eb1b3d337a08e2de7000100', None)
     """
 
 def doctest_ObjectReader_resolve_quick_when_type_in_doc():
