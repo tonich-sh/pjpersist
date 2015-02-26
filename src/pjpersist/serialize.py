@@ -98,25 +98,28 @@ class PersistentList(persistent.list.PersistentList):
 
 class DBRef(object):
 
-    def __init__(self, table, id, database=None):
+    def __init__(self, table, id, database=None, klass=None):
         self.table = table
         self.id = id
         self.database = database
+        self.klass = klass
         self.hash = hash(str(self.database)+str(self.table)+str(self.id))
 
     def __hash__(self):
         return self.hash
 
     def __repr__(self):
-        return 'DBRef(%r, %r, %r)' %(self.table, self.id, self.database)
+        return 'DBRef(%r, %r, %r, %r)' %(self.table, self.id, self.database,
+                                         self.klass)
     def as_tuple(self):
-        return self.database, self.table, self.id
+        return self.database, self.table, self.id, self.klass
 
     def as_json(self):
         return {'_py_type': 'DBREF',
                 'database': self.database,
                 'table': self.table,
-                'id': self.id}
+                'id': self.id,
+                'klass': self.klass}
 
 
 class Binary(str):
@@ -342,7 +345,8 @@ class ObjectWriter(object):
                 db_name, table_name, doc, id, column_data)
             stored = True
             obj._p_jar = self._jar
-            obj._p_oid = DBRef(table_name, doc_id, db_name)
+            obj._p_oid = DBRef(table_name, doc_id, db_name,
+                               get_dotted_name(obj.__class__))
             # Make sure that any other code accessing this object in this
             # session, gets the same instance.
             self._jar._object_cache[hash(obj._p_oid)] = obj
@@ -398,6 +402,9 @@ class ObjectReader(object):
         # 2. Get the class from the object state
         if dbref.id is None:
             raise ImportError(dbref)
+        if dbref.klass is not None:
+            klass = self.simple_resolve(dbref.klass)
+            return klass
         # Multiple object types are stored in the table. We have to
         # look at the object to find out the type.
         if dbref in self._jar._latest_states:
@@ -468,7 +475,8 @@ class ObjectReader(object):
             # Load a persistent object. Using the _jar.load() method to make
             # sure we're loading from right database and caching is properly
             # applied.
-            dbref = DBRef(state['table'], state['id'], state['database'])
+            dbref = DBRef(state['table'], state['id'], state['database'],
+                          state['klass'])
             return self._jar.load(dbref)
         if isinstance(state, dict) and state.get('_py_type') == 'type':
             # Convert a simple object reference, mostly classes.

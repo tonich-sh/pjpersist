@@ -236,8 +236,8 @@ class Root(UserDict.DictMixin):
                 sb.Select(sb.Field(self.table, 'dbref'), tbl.name == key))
             if not cur.rowcount:
                 raise KeyError(key)
-            db, tbl, id = cur.fetchone()['dbref']
-            dbref = serialize.DBRef(tbl, id, db)
+            db, tbl, id, klass = cur.fetchone()['dbref']
+            dbref = serialize.DBRef(tbl, id, db, klass)
             return self._jar.load(dbref)
 
     def __setitem__(self, key, value):

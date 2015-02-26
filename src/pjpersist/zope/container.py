@@ -235,7 +235,8 @@ class PJContainer(contained.Contained,
         if obj is not None:
             return obj
         # Create a DBRef object and then load the full state of the object.
-        dbref = serialize.DBRef(self._pj_table, id, self._pj_jar.database)
+        dbref = serialize.DBRef(self._pj_table, id, self._pj_jar.database,
+                                doc[interfaces.PY_TYPE_ATTR_NAME])
         # Stick the doc into the _latest_states:
         self._pj_jar._latest_states[dbref] = doc
         obj = self._pj_jar.load(dbref)
