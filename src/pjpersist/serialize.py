@@ -438,6 +438,8 @@ class ObjectReader(object):
         #    type for the table, otherwise the single map entry lookup failed.
         table_key = (dbref.database, dbref.table)
         if table_key in TABLES_WITH_TYPE:
+            if dbref.id is None:
+                raise ImportError(dbref)
             if dbref in self._jar._latest_states:
                 obj_doc = self._jar._latest_states[dbref]
             elif ALWAYS_READ_FULL_DOC:

@@ -701,9 +701,11 @@ def doctest_ObjectReader_resolve_lookup_with_multiple_maps_dont_read_full():
 
       >>> writer = serialize.ObjectWriter(dm)
       >>> top = Top()
+      >>> top._p_pj_store_type = True
       >>> writer.store(top)
       DBRef('Top', '0001020304050607080a0b0c0', 'pjpersist_test')
       >>> top2 = Top2()
+      >>> top2._p_pj_store_type = True
       >>> writer.store(top2)
       DBRef('Top', '000000000000000000000001', 'pjpersist_test')
 
