@@ -1032,9 +1032,13 @@ def doctest_table_decorator():
       ... class FooFoo(Foo):
       ...     pass
 
-      >>> pprint.pprint(serialize.TABLE_KLASS_MAP)
-      {'barbar_table': set([<class '__main__.Bar'>]),
-       'foobar_table': set([<class '__main__.Foo'>, <class '__main__.FooFoo'>])}
+    Dump TABLE_KLASS_MAP
+
+      >>> pprint.pprint(
+      ...     [(k, sorted(v, key=lambda cls:cls.__name__))
+      ...      for k, v in sorted(serialize.TABLE_KLASS_MAP.items())])
+      [('barbar_table', [<class '__main__.Bar'>]),
+       ('foobar_table', [<class '__main__.Foo'>, <class '__main__.FooFoo'>])]
 
     """
 
