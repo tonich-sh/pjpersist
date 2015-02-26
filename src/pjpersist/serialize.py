@@ -398,6 +398,12 @@ class ObjectReader(object):
         # 2. Get the class from the object state
         if dbref.id is None:
             raise ImportError(dbref)
+        if dbref.table in TABLE_KLASS_MAP:
+            results = TABLE_KLASS_MAP[dbref.table]
+            if len(results) == 1:
+                klass = list(results)[0]
+                OID_CLASS_LRU.put(hash(dbref), klass)
+                return klass
         # Multiple object types are stored in the table. We have to
         # look at the object to find out the type.
         if dbref in self._jar._latest_states:
@@ -561,3 +567,25 @@ class ObjectReader(object):
         # same object reference throughout the transaction.
         self._jar._object_cache[hash(dbref)] = obj
         return obj
+
+
+class table:
+    """Declare the table used by the class.
+
+    as interfaces.TABLE_ATTR_NAME was before
+    but register the fact also in TABLE_KLASS_MAP
+    """
+
+    def __init__(self, table_name):
+        self.table_name = table_name
+
+    def __call__(self, ob):
+        try:
+            setattr(ob, interfaces.TABLE_ATTR_NAME, self.table_name)
+            lst = TABLE_KLASS_MAP.setdefault(self.table_name, set())
+            lst.add(ob)
+        except AttributeError:
+            raise TypeError("Can't declare table_name", ob)
+        return ob
+
+TABLE_KLASS_MAP = {}
