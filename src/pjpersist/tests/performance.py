@@ -65,7 +65,6 @@ class Address(persistent.Persistent):
 @serialize.table('person')
 class Person(persistent.Persistent, container.PJContained):
     #_p_pj_table = 'person'
-    _p_pj_store_type = True
 
     name = None
     age = None

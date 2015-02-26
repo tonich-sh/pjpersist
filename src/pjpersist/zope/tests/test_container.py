@@ -1344,7 +1344,6 @@ class Address(persistent.Persistent):
 
 class PeoplePerson(persistent.Persistent, container.PJContained):
     _p_pj_table = 'person'
-    _p_pj_store_type = True
 
     def __init__(self, name, age):
         self.name = name
@@ -1938,14 +1937,6 @@ def noCacheSetUp(test):
 def tearDown(test):
     testing.tearDown(test)
     placelesssetup.tearDown(test)
-    try:
-        del Person._p_pj_store_type
-    except AttributeError:
-        pass
-    try:
-        del SimplePerson._p_pj_store_type
-    except AttributeError:
-        pass
     exceptionformatter.DEBUG_EXCEPTION_FORMATTER = \
         test.orig_DEBUG_EXCEPTION_FORMATTER
 

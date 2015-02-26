@@ -46,7 +46,6 @@ class Anything(persistent.Persistent):
 
 class StoreType(persistent.Persistent):
     _p_pj_table = 'storetype'
-    _p_pj_store_type = True
 
 class StoreType2(StoreType):
     pass
@@ -477,21 +476,6 @@ def doctest_ObjectWriter_store():
       [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_serialize.Top',
                  u'name': u'top'},
         'id': u'0001020304050607080a0b0c0'}]
-    """
-
-def doctest_ObjectWriter_store_with_pj_store_type():
-    """ObjectWriter: store(): _p_pj_store_type = True
-
-      >>> writer = serialize.ObjectWriter(dm)
-
-      >>> top = Top()
-      >>> top._p_pj_store_type = True
-      >>> writer.store(top)
-      DBRef('Top', '0001020304050607080a0b0c', 'pjpersist_test')
-      >>> dm.commit(None)
-      >>> dumpTable('Top')
-      [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_serialize.Top'},
-        'id': u'0001020304050607080a0b0c'}]
     """
 
 def doctest_ObjectWriter_store_with_new_object_references():
