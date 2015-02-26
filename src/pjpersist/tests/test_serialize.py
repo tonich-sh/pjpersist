@@ -991,7 +991,6 @@ def doctest_deserialize_persistent_foreign_references():
     """
 
 
-
 def doctest_PersistentDict_equality():
     """Test basic functions if PersistentDicts
 
@@ -1015,6 +1014,44 @@ def doctest_PersistentDict_equality():
 
       >>> obj3 == obj4
       False
+    """
+
+
+def doctest_table_decorator():
+    """Test serialize.table
+
+    This is our test class
+
+      >>> @serialize.table('foobar_table')
+      ... class Foo(object):
+      ...     pass
+
+    Check that TABLE_ATTR_NAME gets set
+
+      >>> getattr(Foo, interfaces.TABLE_ATTR_NAME)
+      'foobar_table'
+
+    Check that TABLE_KLASS_MAP gets updated
+
+      >>> serialize.TABLE_KLASS_MAP
+      {'foobar_table': set([<class '__main__.Foo'>])}
+
+    Add a few more classes
+
+      >>> @serialize.table('barbar_table')
+      ... class Bar(object):
+      ...     pass
+
+    Another typical case, base and subclass stored in the same table
+
+      >>> @serialize.table('foobar_table')
+      ... class FooFoo(Foo):
+      ...     pass
+
+      >>> pprint.pprint(serialize.TABLE_KLASS_MAP)
+      {'barbar_table': set([<class '__main__.Bar'>]),
+       'foobar_table': set([<class '__main__.Foo'>, <class '__main__.FooFoo'>])}
+
     """
 
 
