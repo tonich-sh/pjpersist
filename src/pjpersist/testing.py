@@ -234,6 +234,7 @@ def resetCaches():
 def log_sql_to_file(fname, add_tb=True, tb_limit=15):
     import logging
 
+    datamanager.PJ_ENABLE_QUERY_STATS = True
     datamanager.PJ_ACCESS_LOGGING = True
     datamanager.TABLE_LOG.setLevel(logging.DEBUG)
     datamanager.PJPersistCursor.ADD_TB = add_tb
