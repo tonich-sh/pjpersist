@@ -302,6 +302,3 @@ def run_in_thread(func):
     t.setDaemon(True)
     t.start()
     #TO_JOIN.append(t)
-
-
-atexit.register(dropDB)
