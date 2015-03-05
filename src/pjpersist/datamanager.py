@@ -179,7 +179,7 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
                 self.datamanager._query_report.record(sql, args, t1-t0, db)
 
             if PJ_ENABLE_GLOBAL_QUERY_STATS:
-                if GLOBAL_QUERY_STATS.report is None:
+                if getattr(GLOBAL_QUERY_STATS, 'report', None) is None:
                     GLOBAL_QUERY_STATS.report = QueryReport()
                 GLOBAL_QUERY_STATS.report.record(sql, args, t1-t0, db)
         return res
