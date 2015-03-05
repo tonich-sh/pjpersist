@@ -148,7 +148,7 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
                 # Join the transaction, because failed queries require
                 # aborting the transaction.
                 self.datamanager._join_txn()
-                check_for_conflict(e)
+                check_for_conflict(e, sql)
                 # otherwise let it fly away
                 raise
         else:
@@ -159,7 +159,7 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
                 # Join the transaction, because failed queries require
                 # aborting the transaction.
                 self.datamanager._join_txn()
-                check_for_conflict(e)
+                check_for_conflict(e, sql)
                 raise
 
     def _execute_and_log(self, sql, args):
@@ -185,7 +185,7 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
         return res
 
 
-def check_for_conflict(e):
+def check_for_conflict(e, sql):
     """Check whether exception indicates serialization failure and raise
     ConflictError in this case.
 
@@ -198,8 +198,8 @@ def check_for_conflict(e):
         psycopg2.errorcodes.DEADLOCK_DETECTED
     )
     if e.pgcode in serialization_errors:
-        LOG.warning("Conflict detected with code %s", e.pgcode)
-        raise interfaces.ConflictError(str(e))
+        LOG.warning("Conflict detected with code %s sql: %s", e.pgcode, sql)
+        raise interfaces.ConflictError(str(e), sql)
 
 
 class Root(UserDict.DictMixin):
@@ -595,7 +595,7 @@ class PJDataManager(object):
         try:
             self._conn.commit()
         except psycopg2.Error, e:
-            check_for_conflict(e)
+            check_for_conflict(e, "DataManager.commit")
             raise
         self.__init__(self._conn)
 
