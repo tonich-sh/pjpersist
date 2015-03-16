@@ -14,9 +14,12 @@
 """PJ Data Manager Tests"""
 import doctest
 import persistent
-import transaction
 import unittest
+import logging
 from pprint import pprint
+
+import transaction
+import mock
 from zope.testing import module
 
 from pjpersist import interfaces, serialize, testing, datamanager
@@ -1377,6 +1380,54 @@ class DatamanagerConflictTest(testing.PJTestCase):
             transaction.commit()
 
 
+class QueryLoggingTestCase(testing.PJTestCase):
+    def setUp(self):
+        super(QueryLoggingTestCase, self).setUp()
+        self.log = testing.setUpLogging(datamanager.TABLE_LOG)
+
+        with self.conn.cursor() as cur:
+            cur.execute("DROP TABLE IF EXISTS mytab")
+            cur.execute("CREATE TABLE mytab (class int NOT NULL, value varchar NOT NULL )")
+
+        pjal_patch = mock.patch("pjpersist.datamanager.PJ_ACCESS_LOGGING",
+                                True)
+        self.patches = [pjal_patch]
+        for p in self.patches:
+            p.start()
+
+    def tearDown(self):
+        for p in self.patches:
+            p.stop()
+
+        super(QueryLoggingTestCase, self).tearDown()
+        testing.tearDownLogging(datamanager.TABLE_LOG)
+
+    def test_logging(self):
+        with self.dm.getCursor() as cur:
+            cur.execute("INSERT INTO mytab VALUES (1, '10')")
+
+        lines = self.log.getvalue().split('\n')
+        self.assertEqual(lines[0], "INSERT INTO mytab VALUES (1, '10'),")
+        self.assertEqual(lines[1], " args:None,")
+
+    def test_params(self):
+        with self.dm.getCursor() as cur:
+            cur.execute("INSERT INTO mytab VALUES (%s, %s)", [1, '10'])
+
+        lines = self.log.getvalue().split('\n')
+        self.assertEqual(lines[0], "INSERT INTO mytab VALUES (%s, %s),")
+        self.assertEqual(lines[1], " args:[1, '10'],")
+
+    def test_long_params(self):
+        hugeparam = "1234567890" * 20000
+        with self.dm.getCursor() as cur:
+            cur.execute("INSERT INTO mytab VALUES (%s, %s)", [1, hugeparam])
+
+        lines = self.log.getvalue().split('\n')
+        self.assertEqual(lines[0], "INSERT INTO mytab VALUES (%s, %s),")
+        self.assertLess(len(lines[1]), 1000)
+
+
 def test_suite():
     dtsuite = doctest.DocTestSuite(
         setUp=testing.setUp, tearDown=testing.tearDown,
@@ -1387,4 +1438,5 @@ def test_suite():
     return unittest.TestSuite((
         dtsuite,
         unittest.makeSuite(DatamanagerConflictTest),
+        unittest.makeSuite(QueryLoggingTestCase),
         ))

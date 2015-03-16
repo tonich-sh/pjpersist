@@ -51,6 +51,10 @@ PJ_ENABLE_GLOBAL_QUERY_STATS = False
 GLOBAL_QUERY_STATS = threading.local()
 GLOBAL_QUERY_STATS.report = None
 
+# Maximum query length to output qith query log
+MAX_QUERY_ARGUMENT_LENGTH = 500
+
+
 PJ_AUTO_CREATE_TABLES = True
 
 # set to True to automatically create IColumnSerialization columns
@@ -162,6 +166,13 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
                 check_for_conflict(e, sql)
                 raise
 
+    def _sanitize_arg(self, arg):
+        r = repr(arg)
+        if len(r) > MAX_QUERY_ARGUMENT_LENGTH:
+            r = r[:MAX_QUERY_ARGUMENT_LENGTH] + "..."
+            return r
+        return arg
+
     def _execute_and_log(self, sql, args):
         # Very useful logging of every SQL command with traceback to code.
         __traceback_info__ = (self.datamanager.database, sql, args)
@@ -172,16 +183,24 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
             t1 = time.time()
             db = self.datamanager.database
 
+            debug = (PJ_ACCESS_LOGGING or
+                     PJ_ENABLE_QUERY_STATS or
+                     PJ_ENABLE_QUERY_STATS)
+
+            if debug:
+                saneargs = [self._sanitize_arg(a) for a in args] \
+                    if args else args
+
             if PJ_ACCESS_LOGGING:
-                self.log_query(sql, args, t1-t0)
+                self.log_query(sql, saneargs, t1-t0)
 
             if PJ_ENABLE_QUERY_STATS:
-                self.datamanager._query_report.record(sql, args, t1-t0, db)
+                self.datamanager._query_report.record(sql, saneargs, t1-t0, db)
 
             if PJ_ENABLE_GLOBAL_QUERY_STATS:
                 if getattr(GLOBAL_QUERY_STATS, 'report', None) is None:
                     GLOBAL_QUERY_STATS.report = QueryReport()
-                GLOBAL_QUERY_STATS.report.record(sql, args, t1-t0, db)
+                GLOBAL_QUERY_STATS.report.record(sql, saneargs, t1-t0, db)
         return res
 
 
