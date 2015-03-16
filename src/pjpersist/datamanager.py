@@ -305,16 +305,54 @@ class PJDataManager(object):
         self._needs_to_join = True
         self._object_cache = {}
         self.annotations = {}
+
+        self._txn_active = False
+        self.requestTransactionOptions()  # No special options
+
         self.transaction_manager = transaction.manager
         if self.root is None:
             self.root = Root(self, root_table)
 
         self._query_report = QueryReport()
 
+    def requestTransactionOptions(self, readonly=None, deferrable=None,
+                                  isolation=None):
+        if self._txn_active:
+            LOG.warning("Cannot set transaction options while transaction "
+                        "is already active.")
+        self._txn_readonly = readonly
+        self._txn_deferrable = deferrable
+        self._txn_isolation = isolation
+
+    def _setTransactionOptions(self, cur):
+        modes = []
+        if self._txn_readonly:
+            dfr = "DEFERRABLE" if self._txn_deferrable else ""
+            modes.append("READ ONLY %s" % dfr)
+
+        if self._txn_isolation:
+            assert self._txn_isolation in ["SERIALIZABLE",
+                                           "REPEATABLE READ",
+                                           "READ COMMITTED",
+                                           "READ UNCOMMITTED"]
+            modes.append("ISOLATION LEVEL %s" % self._txn_isolation)
+
+        if not modes:
+            return
+
+        stmt = "SET TRANSACTION %s" % (", ".join(modes))
+        cur.execute("BEGIN")
+        cur.execute(stmt)
+
     def getCursor(self, flush=True):
         def factory(*args, **kwargs):
             return PJPersistCursor(self, flush, *args, **kwargs)
-        return self._conn.cursor(cursor_factory=factory)
+        cur = self._conn.cursor(cursor_factory=factory)
+
+        if not self._txn_active:
+            self._setTransactionOptions(cur)
+            self._txn_active = True
+        return cur
 
     def createId(self):
         # 4 bytes current time

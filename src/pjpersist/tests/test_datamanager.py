@@ -373,6 +373,7 @@ def doctest_PJDataManager_insert_remove():
 
     """
 
+
 def doctest_PJDataManager_insert_remove_modify():
     r"""PJDataManager: insert and remove in the same transaction
 
@@ -1428,6 +1429,47 @@ class QueryLoggingTestCase(testing.PJTestCase):
         self.assertLess(len(lines[1]), 1000)
 
 
+class TransactionOptionsTestCase(testing.PJTestCase):
+    def setUp(self):
+        super(TransactionOptionsTestCase, self).setUp()
+
+        # Transaction options feature isn't really compatible with table
+        # autocreation, because transaction features has to be set before any
+        # statement is executed in transaction. So we turn it off in these
+        # tests.
+        pjact_patch = mock.patch("pjpersist.datamanager.PJ_AUTO_CREATE_TABLES",
+                                 False)
+        pjacc_patch = mock.patch("pjpersist.datamanager.PJ_AUTO_CREATE_COLUMNS",
+                                 False)
+        self.patches = [pjact_patch, pjacc_patch]
+        for p in self.patches:
+            p.start()
+
+        with self.conn.cursor() as cur:
+            cur.execute("DROP TABLE IF EXISTS mytab")
+            cur.execute("CREATE TABLE mytab (class int NOT NULL, value varchar NOT NULL )")
+        transaction.commit()
+        self.dm.reset()
+
+    def tearDown(self):
+        for p in self.patches:
+            p.stop()
+
+        super(TransactionOptionsTestCase, self).tearDown()
+
+    def test_requestTransactionOptions(self):
+        """It is possible to request transaction options before first
+        statement is executed
+        """
+
+        self.dm.requestTransactionOptions(isolation="READ COMMITTED")
+
+        cur = self.dm.getCursor()
+        cur.execute('SHOW transaction_isolation')
+        res = cur.fetchone()
+        self.assertEqual(res[0], 'read committed')
+
+
 def test_suite():
     dtsuite = doctest.DocTestSuite(
         setUp=testing.setUp, tearDown=testing.tearDown,
@@ -1439,4 +1481,5 @@ def test_suite():
         dtsuite,
         unittest.makeSuite(DatamanagerConflictTest),
         unittest.makeSuite(QueryLoggingTestCase),
+        unittest.makeSuite(TransactionOptionsTestCase),
         ))
