@@ -540,7 +540,7 @@ class PJDataManager(object):
             # locate the suitable data manager for this.
             dmp = zope.component.getUtility(interfaces.IPJDataManagerProvider)
             dm = dmp.get(dbref.database)
-            assert dm.database == dbref.database
+            assert dm.database == dbref.database, (dm.database, dbref.database)
             return dm.load(dbref, klass)
 
         return self._reader.get_ghost(dbref, klass)
