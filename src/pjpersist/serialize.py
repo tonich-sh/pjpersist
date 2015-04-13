@@ -108,8 +108,15 @@ class DBRef(object):
     def __hash__(self):
         return self.hash
 
+    def __eq__(self, other):
+        return self.hash == other.hash
+
+    def __neq__(self, other):
+        return self.hash != other.hash
+
     def __repr__(self):
         return 'DBRef(%r, %r, %r)' %(self.table, self.id, self.database)
+
     def as_tuple(self):
         return self.database, self.table, self.id
 

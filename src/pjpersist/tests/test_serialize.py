@@ -65,6 +65,52 @@ copy_reg.pickle(CopyReggedConstant, CopyReggedConstant.custom_reduce_fn)
 CopyReggedConstant = CopyReggedConstant()
 
 
+def doctest_DBRef():
+    """DBRef class
+
+    Create a simple DBRef to start with:
+
+      >>> dbref1 = serialize.DBRef('table1', '0001', 'database1')
+      >>> dbref1
+      DBRef('table1', '0001', 'database1')
+
+    We can also convert the ref quickly to a JSON structure or a simple tuple:
+
+      >>> dbref1.as_tuple()
+      ('database1', 'table1', '0001')
+
+      >>> dbref1.as_json()
+      {'id': '0001',
+       'table': 'table1',
+       '_py_type': 'DBREF',
+       'database': 'database1'}
+
+    Note that the hash of a ref is consistent over all DBRef instances:
+
+      >>> dbref11 = serialize.DBRef('table1', '0001', 'database1')
+      >>> hash(dbref1) == hash(dbref11)
+      True
+
+    Let's make sure that some other comparisons work as well:
+
+      >>> dbref1 == dbref11
+      True
+
+      >>> dbref1 in [dbref11]
+      True
+
+    Let's now compare to a truely different DB Ref instance:
+
+      >>> dbref2 = serialize.DBRef('table1', '0002', 'database1')
+
+      >>> hash(dbref1) == hash(dbref2)
+      False
+      >>> dbref1 == dbref2
+      False
+      >>> dbref1 in [dbref2]
+      False
+    """
+
 def doctest_ObjectSerializer():
     """Test the abstract ObjectSerializer class.
 
