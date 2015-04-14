@@ -105,6 +105,16 @@ class DBRef(object):
         self.database = database
         self.hash = hash(str(self.database)+str(self.table)+str(self.id))
 
+    def __setstate__(self, state):
+        # Ensure that the hash is recalculated, since it is not consistent
+        # accross Python processes.
+        self.__init__(state['table'], state['id'], state['database'])
+
+    def __getstate__(self):
+        return {'database': self.database,
+                'table': self.table,
+                'id': self.id}
+
     def __hash__(self):
         return self.hash
 

@@ -17,6 +17,7 @@ import doctest
 import persistent
 import pprint
 import copy_reg
+import pickle
 
 from pjpersist import interfaces, serialize, testing
 
@@ -108,6 +109,42 @@ def doctest_DBRef():
       >>> dbref1 == dbref2
       False
       >>> dbref1 in [dbref2]
+      False
+
+    Serialization also works well.
+
+      >>> refp = pickle.dumps(dbref1)
+      >>> print refp
+      ccopy_reg
+      _reconstructor
+      p0
+      (cpjpersist.serialize
+      DBRef
+      p1
+      c__builtin__
+      object
+      p2
+      Ntp3
+      Rp4
+      (dp5
+      S'table'
+      p6
+      S'table1'
+      p7
+      sS'id'
+      p8
+      S'0001'
+      p9
+      sS'database'
+      p10
+      S'database1'
+      p11
+      sb.
+
+      >>> dbref11 = pickle.loads(refp)
+      >>> dbref1 == dbref11
+      True
+      >>> id(dbref1) == id(dbref11)
       False
     """
 
