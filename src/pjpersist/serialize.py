@@ -100,14 +100,42 @@ class PersistentList(persistent.list.PersistentList):
 class DBRef(object):
 
     def __init__(self, table, id, database=None):
-        self.table = table
-        self.id = id
-        self.database = database
+        self._table = table
+        self._id = id
+        self._database = database
+        self.__calculate_hash()
+
+    def __calculate_hash(self):
         self.hash = hash(str(self.database)+str(self.table)+str(self.id))
 
+    @property
+    def database(self):
+        return self._database
+
+    @database.setter
+    def database(self, value):
+        self._database = value
+        self.__calculate_hash()
+
+    @property
+    def table(self):
+        return self._table
+
+    @table.setter
+    def table(self, value):
+        self._table = value
+        self.__calculate_hash()
+
+    @property
+    def id(self):
+        return self._id
+
+    @id.setter
+    def id(self, value):
+        self._id = value
+        self.__calculate_hash()
+
     def __setstate__(self, state):
-        # Ensure that the hash is recalculated, since it is not consistent
-        # accross Python processes.
         self.__init__(state['table'], state['id'], state['database'])
 
     def __getstate__(self):
