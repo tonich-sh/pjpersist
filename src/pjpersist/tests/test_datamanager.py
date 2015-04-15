@@ -497,6 +497,50 @@ def doctest_PJDataManager_setstate():
       False
     """
 
+
+def doctest_PJDataManager_setstate_twice():
+    r"""PJDataManager: setstate()
+
+    `setstate` and in turn `set_ghost_state` must not muck with the state
+    stored in `_latest_states` otherwise the next setstate will fail badly
+    IOW `get_non_persistent_object` must not change it's parameter `state`
+    this is a more high level test for the same
+
+      >>> foo = Foo(u'foo')
+
+      >>> import zope.interface
+      >>> ifaces = (zope.interface.Interface, )
+      >>> zope.interface.directlyProvides(foo, tuple(ifaces))
+
+      >>> zope.interface.Interface.providedBy(foo)
+      True
+
+      >>> ref = dm.dump(foo)
+
+      >>> dm.commit(None)
+      >>> dm._needs_to_join
+      True
+
+      >>> foo2 = Foo()
+      >>> foo2._p_oid = ref
+      >>> dm.setstate(foo2)
+      >>> foo2.name
+      u'foo'
+
+      >>> zope.interface.Interface.providedBy(foo2)
+      True
+
+      >>> foo3 = Foo()
+      >>> foo3._p_oid = ref
+      >>> dm.setstate(foo3)
+      >>> foo3.name
+      u'foo'
+
+      >>> zope.interface.Interface.providedBy(foo3)
+      True
+    """
+
+
 def doctest_PJDataManager_oldstate():
     r"""PJDataManager: oldstate()
 

@@ -486,7 +486,10 @@ class ObjectReader(object):
 
     def get_non_persistent_object(self, state, obj):
         if '_py_constant' in state:
-            return self.simple_resolve(state.pop('_py_constant'))
+            return self.simple_resolve(state['_py_constant'])
+
+        # this method must NOT change the passed in state dict
+        state = dict(state)
         if '_py_type' in state:
             # Handle the simplified case.
             klass = self.simple_resolve(state.pop('_py_type'))

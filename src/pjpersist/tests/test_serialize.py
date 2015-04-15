@@ -16,6 +16,7 @@ import datetime
 import doctest
 import persistent
 import pprint
+import copy
 import copy_reg
 import pickle
 
@@ -819,18 +820,31 @@ def doctest_ObjectReader_get_non_persistent_object_py_type():
     The simplest case is a document with a _py_type:
 
       >>> reader = serialize.ObjectReader(dm)
-      >>> reader.get_non_persistent_object(
-      ...    {'_py_type': 'pjpersist.tests.test_serialize.Simple'}, None)
+      >>> state = {'_py_type': 'pjpersist.tests.test_serialize.Simple'}
+      >>> save_state = copy.deepcopy(state)
+      >>> reader.get_non_persistent_object(state, None)
       <pjpersist.tests.test_serialize.Simple object at 0x306f410>
+
+    Make sure that state is unchanged:
+
+      >>> state == save_state
+      True
 
     It is a little bit more interesting when there is some additional state:
 
-      >>> simple = reader.get_non_persistent_object(
-      ...    {u'_py_type': 'pjpersist.tests.test_serialize.Simple',
-      ...     u'name': u'Here'},
-      ...    None)
+      >>> state = {u'_py_type': 'pjpersist.tests.test_serialize.Simple',
+      ...          u'name': u'Here'}
+      >>> save_state = copy.deepcopy(state)
+
+      >>> simple = reader.get_non_persistent_object(state, None)
       >>> simple.name
       u'Here'
+
+    Make sure that state is unchanged:
+
+      >>> state == save_state
+      True
+
     """
 
 def doctest_ObjectReader_get_non_persistent_object_py_persistent_type():
@@ -842,10 +856,11 @@ def doctest_ObjectReader_get_non_persistent_object_py_persistent_type():
       >>> top = Top()
 
       >>> reader = serialize.ObjectReader(dm)
-      >>> tier2 = reader.get_non_persistent_object(
-      ...    {'_py_persistent_type': 'pjpersist.tests.test_serialize.Tier2',
-      ...     'name': 'Number 2'},
-      ...    top)
+      >>> state = {'_py_persistent_type': 'pjpersist.tests.test_serialize.Tier2',
+      ...          'name': 'Number 2'}
+      >>> save_state = copy.deepcopy(state)
+
+      >>> tier2 = reader.get_non_persistent_object(state, top)
       >>> tier2
       <pjpersist.tests.test_serialize.Tier2 object at 0x306f410>
 
@@ -856,6 +871,12 @@ def doctest_ObjectReader_get_non_persistent_object_py_persistent_type():
       <pjpersist.tests.test_serialize.Top object at 0x7fa30b534050>
       >>> tier2._p_jar
       <pjpersist.datamanager.PJDataManager object at 0x7fc3cab375d0>
+
+    Make sure that state is unchanged:
+
+      >>> state == save_state
+      True
+
     """
 
 def doctest_ObjectReader_get_non_persistent_object_py_factory():
@@ -864,14 +885,22 @@ def doctest_ObjectReader_get_non_persistent_object_py_factory():
     This is the case of last resort. Specify a factory and its arguments:
 
       >>> reader = serialize.ObjectReader(dm)
-      >>> top = reader.get_non_persistent_object(
-      ...    {'_py_factory': 'pjpersist.tests.test_serialize.create_top',
-      ...     '_py_factory_args': ('TOP',)},
-      ...    None)
+
+      >>> state = {'_py_factory': 'pjpersist.tests.test_serialize.create_top',
+      ...          '_py_factory_args': ('TOP',)}
+      >>> save_state = copy.deepcopy(state)
+
+      >>> top = reader.get_non_persistent_object(state, None)
       >>> top
       <pjpersist.tests.test_serialize.Top object at 0x306f410>
       >>> top.name
       'TOP'
+
+    Make sure that state is unchanged:
+
+      >>> state == save_state
+      True
+
     """
 
 def doctest_ObjectReader_get_object_binary():
