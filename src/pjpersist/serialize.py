@@ -467,7 +467,10 @@ class ObjectReader(object):
             # place so that unghostifying the object later will not cause
             # another database access.
             obj_doc = self._jar._get_doc_by_dbref(dbref)
-            self._jar._latest_states[dbref] = obj_doc
+            # Do not pollute the latest states because the ref could not be
+            # found.
+            if obj_doc is not None:
+                self._jar._latest_states[dbref] = obj_doc
         else:
             # Just read the type from the database, still requires one query
             pytype = self._jar._get_doc_py_type(
