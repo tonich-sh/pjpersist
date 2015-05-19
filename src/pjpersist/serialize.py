@@ -25,6 +25,7 @@ import repoze.lru
 import types
 import zope.interface
 from zope.dottedname.resolve import resolve
+from decimal import Decimal
 
 from pjpersist import interfaces
 
@@ -44,7 +45,7 @@ PYTHON_TO_PG_TYPES = {
     float: "double",
     int: "integer",
     long: "bigint",
-    #Decimal: "number",
+    Decimal: "numeric",
     datetime.date: "date",
     datetime.time: "time",
     datetime.datetime: "timestamptz",
