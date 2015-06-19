@@ -39,7 +39,7 @@ class CircularReferenceError(Exception):
     pass
 
 
-class ConflictError(Exception):
+class ConflictError(transaction.interfaces.TransientError):
     pass
 
 
