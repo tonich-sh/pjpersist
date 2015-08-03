@@ -8,6 +8,8 @@ install:
     - env/bin/pip install -U setuptools distribute
     - env/bin/python bootstrap.py
     - bin/buildout
+before_script:
+    - psql -c "create user pjpersist with createdb password 'pjpersist';" -U postgres
 script:
     - bin/test -v1
 notifications:
