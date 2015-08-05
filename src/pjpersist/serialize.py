@@ -510,7 +510,7 @@ class ObjectReader(object):
         if len(state):
             sub_obj_state = self.get_object(state, obj)
             if hasattr(sub_obj, '__setstate__'):
-                sub_obj.__setstate__(sub_obj_state)
+                sub_obj.__setstate__(dict(sub_obj_state))
             else:
                 sub_obj.__dict__.update(sub_obj_state)
             if isinstance(sub_obj, persistent.Persistent):
