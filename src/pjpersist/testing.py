@@ -68,7 +68,7 @@ class SimpleDataManagerProvider(object):
 def getConnection(database=None):
     conn = psycopg2.connect(
         database=database or 'template1',
-        host='localhost', port=5432,
+        host=os.getenv('PJ_DB_HOST', 'localhost'), port=5432,
         user='pjpersist', password='pjpersist')
     conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_SERIALIZABLE)
     return conn
