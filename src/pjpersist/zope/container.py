@@ -137,7 +137,7 @@ class PJContainer(contained.Contained,
 
     def __init__(self, table=None,
                  mapping_key=None, parent_key=None):
-        if table:
+        if table is not None:
             self._pj_table = table
         if mapping_key is not None:
             self._pj_mapping_key = mapping_key

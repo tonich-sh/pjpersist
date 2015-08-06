@@ -248,6 +248,20 @@ class Root(UserDict.DictMixin):
                     dbref TEXT[])
                 ''' % self.table)
 
+    def __getattr__(self, item):
+        try:
+            return self.__dict__[item]
+        except KeyError:
+            return self.__getitem__(item)
+
+    def __setattr__(self, key, value):
+        if key.startswith('__') or key in ('table', '_jar'):
+            self.__dict__[key] = value
+            return
+        if key in self.__dict__:
+            raise AttributeError("Reserved attribute name %s" % key)
+        self.__setitem__(key, value)
+
     def __getitem__(self, key):
         with self._jar.getCursor(False) as cur:
             tbl = sb.Table(self.table)

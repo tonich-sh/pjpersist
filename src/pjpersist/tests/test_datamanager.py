@@ -93,6 +93,8 @@ def doctest_Root():
       [u'foo']
       >>> root['foo'] == foo
       True
+      >>> root.foo == foo
+      True
 
     Root objects can be overridden:
 
