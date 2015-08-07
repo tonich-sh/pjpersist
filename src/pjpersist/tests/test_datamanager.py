@@ -146,9 +146,9 @@ def doctest_PJDataManager_object_dump_load_reset():
     objects explicitly:
 
       >>> foo = Foo()
-      >>> dm.dump(foo)
+      >>> dm.dump(foo)  # doctest: +ELLIPSIS
       DBRef('pjpersist_dot_tests_dot_test_datamanager_dot_Foo',
-            '0001020304050607080a0b0c',
+            ...L,
             'pjpersist_test')
 
     When the object is modified, ``dump()`` will remove it from the list of
@@ -291,13 +291,13 @@ def doctest_PJDataManager_insert():
     But storing works as expected (flush is implicit before find):
 
       >>> dm.flush()
-      >>> dumpTable(dm._get_table_from_object(foo2)[1])
+      >>> dumpTable(dm._get_table_from_object(foo2)[1])  # doctest: +ELLIPSIS
       [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Foo',
                  u'name': u'foo'},
-        'id': u'0001020304050607080a0b0c0'},
+        'id': ...L},
        {'data': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Foo',
                  u'name': u'Foo 2'},
-        'id': u'0001020304050607080a0b0c0'}]
+        'id': ...L}]
     """
 
 
@@ -609,13 +609,13 @@ def doctest_PJDataManager_abort():
       >>> dm.commit(None)
 
       >>> dbanme, table = dm._get_table_from_object(Foo())
-      >>> dumpTable(table)
+      >>> dumpTable(table)  # docstring: +ELLIPSIS
       [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Foo',
                  u'name': u'one'},
-        'id': u'0001020304050607080a0b0c0'},
+        'id': ...L},
        {'data': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Foo',
                  u'name': u'two'},
-        'id': u'0001020304050607080a0b0c0'}]
+        'id': ...L}]
 
     Now, in a second transaction we modify the state of objects in all three
     ways:
@@ -633,25 +633,25 @@ def doctest_PJDataManager_abort():
       >>> foo3_ref = dm.insert(Foo('three'))
 
       >>> dm.flush()
-      >>> dumpTable(table)
+      >>> dumpTable(table)  # docstring: +ELLIPSIS
       [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Foo',
                  u'name': u'1'},
-        'id': u'0001020304050607080a0b0c0'},
+        'id': ...L},
        {'data': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Foo',
                  u'name': u'three'},
-        'id': u'0001020304050607080a0b0c0'}]
+        'id': ...L}]
 
     Let's now abort the transaction and everything should be back to what it
     was before:
 
       >>> dm.abort(transaction.get())
-      >>> dumpTable(table)
+      >>> dumpTable(table)  # docstring: +ELLIPSIS
       [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Foo',
                  u'name': u'one'},
-        'id': u'0001020304050607080a0b0c0'},
+        'id': ...L},
        {'data': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Foo',
                  u'name': u'two'},
-        'id': u'0001020304050607080a0b0c0'}]
+        'id': ...L}]
     """
 
 
@@ -668,12 +668,12 @@ def doctest_PJDataManager_abort_subobjects():
       >>> dm.commit(None)
 
       >>> dbname, table = dm._get_table_from_object(ComplexFoo())
-      >>> dumpTable(table)
+      >>> dumpTable(table)  # docstring: +ELLIPSIS
       [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.ComplexFoo',
                  u'item': {u'_py_type': u'pjpersist.tests.test_datamanager.FooItem',
                            u'bar': 6},
                  u'name': u'complex'},
-        'id': u'0001020304050607080a0b0c0'}]
+        'id': ...L}]
 
     2. Modify the item and flush it to database
 
@@ -681,22 +681,22 @@ def doctest_PJDataManager_abort_subobjects():
       >>> foo1.name = 'modified'
       >>> dm.flush()
 
-      >>> dumpTable(table)
+      >>> dumpTable(table)  # docstring: +ELLIPSIS
       [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.ComplexFoo',
                  u'item': {u'_py_type': u'pjpersist.tests.test_datamanager.FooItem',
                            u'bar': 6},
                  u'name': u'modified'},
-        'id': u'0001020304050607080a0b0c0'}]
+        'id': ...L}]
 
     3. Abort the current transaction and expect original state is restored
 
       >>> dm.abort(transaction.get())
-      >>> dumpTable(table)
+      >>> dumpTable(table)  # docstring: +ELLIPSIS
       [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.ComplexFoo',
                  u'item': {u'_py_type': u'pjpersist.tests.test_datamanager.FooItem',
                            u'bar': 6},
                  u'name': u'complex'},
-        'id': u'0001020304050607080a0b0c0'}]
+        'id': ...L}]
     """
 
 def doctest_PJDataManager_tpc_begin():
@@ -916,14 +916,14 @@ def doctest_PJDataManager_complex_sub_objects():
       >>> cur.execute(
       ... '''SELECT * FROM pjpersist_dot_tests_dot_test_datamanager_dot_foo
       ...    WHERE data @> '{"name": "one"}' ''')
-      >>> pprint([dict(e) for e in cur.fetchall()])
+      >>> pprint([dict(e) for e in cur.fetchall()])  # doctest: +ELLIPSIS
       [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Foo',
                  u'name': u'one',
                  u'sup': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Super',
                           u'bar': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Bar',
                                    u'name': u'bar'},
                           u'name': u'super'}},
-        'id': u'0001020304050607080a0b0c0'}]
+        'id': ...L}]
 
     Now, make changes to the subobjects and then commit
 
@@ -1508,6 +1508,7 @@ class TransactionOptionsTestCase(testing.PJTestCase):
         statement is executed
         """
 
+        self.dm._id_sequence_exists = True
         self.dm.requestTransactionOptions(isolation="READ COMMITTED")
 
         cur = self.dm.getCursor()

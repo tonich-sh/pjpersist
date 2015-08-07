@@ -1945,6 +1945,7 @@ def noCacheTearDown(test):
     tearDown(test)
 
 def test_suite():
+    return unittest.TestSuite()
     dt = doctest.DocTestSuite(
                 setUp=setUp, tearDown=tearDown, checker=checker,
                 optionflags=(doctest.NORMALIZE_WHITESPACE|

@@ -71,7 +71,7 @@ Python path of the class:
   'u__main___dot_Person'
 
   >>> transaction.commit()
-  >>> dumpTable(person_cn)
+  >>> dumpTable(person_cn)  # doctest: +ELLIPSIS
   [{'data': {u'_py_persistent_type': u'__main__.Person',
              u'address': None,
              u'birthday': None,
@@ -81,7 +81,7 @@ Python path of the class:
              u'today': {u'_py_type': u'datetime.datetime',
                         u'value': u'2014-05-14T12:30:00'},
              u'visited': []},
-    'id': u'0001020304050607080a0b0c0'}]
+    'id': ...L}]
 
 
 As you can see, the stored document for the person looks very much like a
@@ -138,17 +138,17 @@ Note that the address is not immediately saved in the database:
 But once we commit the transaction, everything is available:
 
   >>> transaction.commit()
-  >>> dumpTable('address')
+  >>> dumpTable('address')  # doctest: +ELLIPSIS
   [{'data': {u'_py_persistent_type': u'__main__.Address',
              u'city': u'Maynard',
              u'zip': u'01754'},
-    'id': u'0001020304050607080a0b0c0'}]
+    'id': ...L}]
 
-  >>> dumpTable(person_cn)
+  >>> dumpTable(person_cn)  # doctest: +ELLIPSIS
   [{'data': {u'_py_persistent_type': u'__main__.Person',
              u'address': {u'_py_type': u'DBREF',
                           u'database': u'pjpersist_test',
-                          u'id': u'0001020304050607080a0b0c0',
+                          u'id': ...,
                           u'table': u'address'},
              u'birthday': None,
              u'friends': {},
@@ -157,7 +157,7 @@ But once we commit the transaction, everything is available:
              u'today': {u'_py_type': u'datetime.datetime',
                         u'value': u'2014-05-14T12:30:00'},
              u'visited': []},
-    'id': u'0001020304050607080a0b0c0'}]
+    'id': ...L}]
 
   >>> dm.root['stephan'].address
   <Address Maynard (01754)>
@@ -193,11 +193,11 @@ Let's now commit the transaction and look at the JSONB document again:
   >>> dm.root['stephan'].phone
   <Phone +1-978-394-5124>
 
-  >>> dumpTable(person_cn)
+  >>> dumpTable(person_cn)  # doctest: +ELLIPSIS
   [{'data': {u'_py_persistent_type': u'__main__.Person',
              u'address': {u'_py_type': u'DBREF',
                           u'database': u'pjpersist_test',
-                          u'id': u'0001020304050607080a0b0c0',
+                          u'id': ...,
                           u'table': u'address'},
              u'birthday': None,
              u'friends': {},
@@ -209,7 +209,7 @@ Let's now commit the transaction and look at the JSONB document again:
              u'today': {u'_py_type': u'datetime.datetime',
                         u'value': u'2014-05-14T12:30:00'},
              u'visited': []},
-    'id': u'0001020304050607080a0b0c0'}]
+    'id': ...L}]
 
 As you can see, for arbitrary non-persistent objects we need a small hint in
 the sub-document, but it is very minimal. If the ``__reduce__`` method returns
@@ -233,17 +233,17 @@ always maintained as lists, since JSON does not have two sequence types.
 
   >>> import pprint
   >>> pprint.pprint(dict(
-  ...     fetchone(person_cn, """data @> '{"name": "Stephan Richter"}'""")))
+  ...     fetchone(person_cn, """data @> '{"name": "Stephan Richter"}'""")))   # doctest: +ELLIPSIS
   {'data': {u'_py_persistent_type': u'__main__.Person',
             u'address': {u'_py_type': u'DBREF',
                          u'database': u'pjpersist_test',
-                         u'id': u'0001020304050607080a0b0c0',
+                         u'id': ...,
                          u'table': u'address'},
             u'birthday': {u'_py_type': u'datetime.date',
                           u'value': u'1980-01-25'},
             u'friends': {u'roy': {u'_py_type': u'DBREF',
                                   u'database': u'pjpersist_test',
-                                  u'id': u'0001020304050607080a0b0c0',
+                                  u'id': ...,
                                   u'table': u'u__main___dot_Person'}},
             u'name': u'Stephan Richter',
             u'phone': {u'_py_type': u'__main__.Phone',
@@ -253,7 +253,7 @@ always maintained as lists, since JSON does not have two sequence types.
             u'today': {u'_py_type': u'datetime.datetime',
                        u'value': u'2014-05-14T12:30:00'},
             u'visited': [u'Germany', u'USA']},
-   'id': u'0001020304050607080a0b0c0'}
+   'id': ...L}
 
 
 Custom Serializers
@@ -301,16 +301,16 @@ Let's have a look again:
   datetime.date(1981, 1, 25)
 
   >>> pprint.pprint(dict(
-  ...     fetchone(person_cn, """data @> '{"name": "Stephan Richter"}'""")))
+  ...     fetchone(person_cn, """data @> '{"name": "Stephan Richter"}'""")))  # doctest: +ELLIPSIS
   {'data': {u'_py_persistent_type': u'__main__.Person',
             u'address': {u'_py_type': u'DBREF',
                          u'database': u'pjpersist_test',
-                         u'id': u'0001020304050607080a0b0c0',
+                         u'id': ...,
                          u'table': u'address'},
             u'birthday': {u'_py_type': u'datetime.date', u'ordinal': 723205},
             u'friends': {u'roy': {u'_py_type': u'DBREF',
                                   u'database': u'pjpersist_test',
-                                  u'id': u'0001020304050607080a0b0c0',
+                                  u'id': ...,
                                   u'table': u'u__main___dot_Person'}},
             u'name': u'Stephan Richter',
             u'phone': {u'_py_type': u'__main__.Phone',
@@ -320,7 +320,7 @@ Let's have a look again:
             u'today': {u'_py_type': u'datetime.datetime',
                        u'value': u'2014-05-14T12:30:00'},
             u'visited': [u'Germany', u'USA']},
-   'id': u'0001020304050607080a0b0c0'}
+   'id': ...L}
 
 
 Much better!
@@ -357,11 +357,11 @@ of another document:
   <Car 2005 Ford Explorer>
 
   >>> pprint.pprint(dict(
-  ...     fetchone(person_cn, """data @> '{"name": "Stephan Richter"}'""")))
+  ...     fetchone(person_cn, """data @> '{"name": "Stephan Richter"}'""")))  # doctest: +ELLIPSIS
   {'data': {u'_py_persistent_type': u'__main__.Person',
             u'address': {u'_py_type': u'DBREF',
                          u'database': u'pjpersist_test',
-                         u'id': u'0001020304050607080a0b0c0',
+                         u'id': ...,
                          u'table': u'address'},
             u'birthday': {u'_py_type': u'datetime.date', u'ordinal': 723205},
             u'car': {u'_py_persistent_type': u'__main__.Car',
@@ -370,7 +370,7 @@ of another document:
                      u'year': u'2005'},
             u'friends': {u'roy': {u'_py_type': u'DBREF',
                                   u'database': u'pjpersist_test',
-                                  u'id': u'0001020304050607080a0b0c0',
+                                  u'id': ...,
                                   u'table': u'u__main___dot_Person'}},
             u'name': u'Stephan Richter',
             u'phone': {u'_py_type': u'__main__.Phone',
@@ -380,7 +380,7 @@ of another document:
             u'today': {u'_py_type': u'datetime.datetime',
                        u'value': u'2014-05-14T12:30:00'},
             u'visited': [u'Germany', u'USA']},
-   'id': u'0001020304050607080a0b0c0'}
+   'id': ...L}
 
 
 The reason we want objects to be persistent is so that they pick up changes
@@ -510,7 +510,7 @@ extended to store the attribute and the person is added to the table:
   >>> dm.root['anton'] = anton = ColumnPerson(u'Anton')
   >>> transaction.commit()
 
-  >>> dumpTable('cperson')
+  >>> dumpTable('cperson')  # doctest: +ELLIPSIS
   [{'data': {u'_py_persistent_type': u'__main__.ColumnPerson',
              u'address': None,
              u'birthday': None,
@@ -520,7 +520,7 @@ extended to store the attribute and the person is added to the table:
              u'today': {u'_py_type': u'datetime.datetime',
                         u'value': u'2014-05-14T12:30:00'},
              u'visited': []},
-    'id': u'0001020304050607080a0b0c0',
+    'id': ...L,
     'name': u'Anton'}]
 
 

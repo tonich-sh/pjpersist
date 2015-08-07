@@ -348,29 +348,29 @@ def doctest_ObjectWriter_get_persistent_state():
       >>> foo = Foo()
       >>> foo._p_oid
 
-      >>> pprint.pprint(writer.get_persistent_state(foo, []))
+      >>> pprint.pprint(writer.get_persistent_state(foo, []))  # doctest: +ELLIPSIS
       {'_py_type': 'DBREF',
        'database': 'pjpersist_test',
-       'id': '0001020304050607080a0b0c0',
+       'id': ...L,
        'table': 'Foo'}
 
       >>> dm.commit(None)
-      >>> foo._p_oid
-      DBRef('Foo', '0001020304050607080a0b0c0', 'pjpersist_test')
-      >>> dumpTable('Foo')
+      >>> foo._p_oid  # doctest: +ELLIPSIS
+      DBRef('Foo', ...L, 'pjpersist_test')
+      >>> dumpTable('Foo')  # doctest: +ELLIPSIS
       [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_serialize.Foo'},
-        'id': u'0001020304050607080a0b0c0'}]
+        'id': ...L}]
 
     The next time the object simply returns its reference:
 
-      >>> pprint.pprint(writer.get_persistent_state(foo, []))
+      >>> pprint.pprint(writer.get_persistent_state(foo, []))  # doctest: +ELLIPSIS
       {'_py_type': 'DBREF',
        'database': 'pjpersist_test',
-       'id': '0001020304050607080a0b0c0',
+       'id': ...L,
        'table': 'Foo'}
-      >>> dumpTable('Foo')
+      >>> dumpTable('Foo')  # doctest: +ELLIPSIS
       [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_serialize.Foo'},
-        'id': u'0001020304050607080a0b0c0'}]
+        'id': ...L}]
     """
 
 
@@ -456,8 +456,8 @@ def doctest_ObjectWriter_get_state_Persistent():
       >>> writer = serialize.ObjectWriter(dm)
 
       >>> top = Top()
-      >>> writer.get_state(top)
-      {'id': '0001020304050607080a0b0c',
+      >>> writer.get_state(top)  # doctest: +ELLIPSIS
+      {'id': ...L,
        'table': 'Top',
        '_py_type': 'DBREF',
        'database': 'pjpersist_test'}
@@ -542,24 +542,24 @@ def doctest_ObjectWriter_store():
     Simply store an object:
 
       >>> top = Top()
-      >>> writer.store(top)
-      DBRef('Top', '0001020304050607080a0b0c', 'pjpersist_test')
+      >>> writer.store(top)  # doctest: +ELLIPSIS
+      DBRef('Top', ...L, 'pjpersist_test')
       >>> dm.commit(None)
-      >>> dumpTable('Top')
+      >>> dumpTable('Top')  # doctest: +ELLIPSIS
       [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_serialize.Top'},
-        'id': u'0001020304050607080a0b0c0'}]
+        'id': ...L}]
 
     Now that we have an object, storing an object simply means updating the
     existing document:
 
       >>> top.name = 'top'
-      >>> writer.store(top)
-      DBRef('Top', '0001020304050607080a0b0c', 'pjpersist_test')
+      >>> writer.store(top)  # doctest: +ELLIPSIS
+      DBRef('Top', ...L, 'pjpersist_test')
       >>> dm.commit(None)
-      >>> dumpTable('Top')
+      >>> dumpTable('Top')  # doctest: +ELLIPSIS
       [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_serialize.Top',
                  u'name': u'top'},
-        'id': u'0001020304050607080a0b0c0'}]
+        'id': ...L}]
     """
 
 def doctest_ObjectWriter_store_with_new_object_references():
@@ -574,16 +574,16 @@ def doctest_ObjectWriter_store_with_new_object_references():
       >>> top = Top()
       >>> top.foo = Foo()
       >>> top.foo.top = top
-      >>> writer.store(top)
-      DBRef('Top', '0001020304050607080a0b0c', 'pjpersist_test')
+      >>> writer.store(top)  # doctest: +ELLIPSIS
+      DBRef('Top', ...L, 'pjpersist_test')
       >>> dm.commit(None)
-      >>> dumpTable('Top')
+      >>> dumpTable('Top')  # doctest: +ELLIPSIS
       [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_serialize.Top',
                  u'foo': {u'_py_type': u'DBREF',
                           u'database': u'pjpersist_test',
-                          u'id': u'0001020304050607080a0b0c0',
+                          u'id': ...,
                           u'table': u'Foo'}},
-        'id': u'0001020304050607080a0b0c0'}]
+        'id': ...L}]
     """
 
 def doctest_ObjectReader_simple_resolve():
@@ -630,14 +630,14 @@ def doctest_ObjectReader_resolve_simple_dblookup():
     can be either any arbitrary string or a Python path.
 
       >>> reader = serialize.ObjectReader(dm)
-      >>> ref = serialize.DBRef('Top', '4eb1b3d337a08e2de7000100')
+      >>> ref = serialize.DBRef('Top', 10000L)
 
     Now we need the doc to exist in the DB to be able to tell it's class.
 
       >>> reader.resolve(ref)
       Traceback (most recent call last):
       ...
-      ImportError: DBRef('Top', '4eb1b3d337a08e2de7000100', None)
+      ImportError: DBRef('Top', 10000L, None)
     """
 
 def doctest_ObjectReader_resolve_simple_decorator():
@@ -680,7 +680,7 @@ def doctest_ObjectReader_resolve_simple_decorator_more():
       ...     pass
 
       >>> reader = serialize.ObjectReader(dm)
-      >>> ref = serialize.DBRef('foobar_table', '4eb1b3d337a08e2de7000100')
+      >>> ref = serialize.DBRef('foobar_table', 10000L)
 
     As we have now more classes declared for the same table, we have to
     lookup the JSONB from the DB
@@ -688,7 +688,7 @@ def doctest_ObjectReader_resolve_simple_decorator_more():
       >>> result = reader.resolve(ref)
       Traceback (most recent call last):
       ...
-      ImportError: DBRef('foobar_table', '4eb1b3d337a08e2de7000100', None)
+      ImportError: DBRef('foobar_table', 10000L, None)
     """
 
 def doctest_ObjectReader_resolve_quick_when_type_in_doc():
@@ -740,11 +740,11 @@ def doctest_ObjectReader_resolve_lookup_with_multiple_maps():
 
       >>> writer = serialize.ObjectWriter(dm)
       >>> top = Top()
-      >>> writer.store(top)
-      DBRef('Top', '0001020304050607080a0b0c', 'pjpersist_test')
+      >>> writer.store(top)  # doctest: +ELLIPSIS
+      DBRef('Top', ...L, 'pjpersist_test')
       >>> top2 = Top2()
-      >>> writer.store(top2)
-      DBRef('Top', '000000000000000000000001', 'pjpersist_test')
+      >>> writer.store(top2)  # doctest: +ELLIPSIS
+      DBRef('Top', ...L, 'pjpersist_test')
       >>> dm.commit(None)
 
       >>> reader = serialize.ObjectReader(dm)
@@ -753,11 +753,11 @@ def doctest_ObjectReader_resolve_lookup_with_multiple_maps():
       >>> reader.resolve(top2._p_oid)
       <class 'pjpersist.tests.test_serialize.Top2'>
 
-      >>> dumpTable('Top')
+      >>> dumpTable('Top')  # doctest: +ELLIPSIS
       [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_serialize.Top'},
-        'id': u'0001020304050607080a0b0c0'},
+        'id': ...L},
        {'data': {u'_py_persistent_type': u'pjpersist.tests.test_serialize.Top2'},
-        'id': u'0001020304050607080a0b0c0'}]
+        'id': ...L}]
 
     If the DBRef does not have an object id, then an import error is raised:
 
@@ -777,12 +777,12 @@ def doctest_ObjectReader_resolve_lookup_with_multiple_maps_dont_read_full():
       >>> writer = serialize.ObjectWriter(dm)
       >>> top = Top()
       >>> top._p_pj_store_type = True
-      >>> writer.store(top)
-      DBRef('Top', '0001020304050607080a0b0c0', 'pjpersist_test')
+      >>> writer.store(top)  # doctest: +ELLIPSIS
+      DBRef('Top', ...L, 'pjpersist_test')
       >>> top2 = Top2()
       >>> top2._p_pj_store_type = True
-      >>> writer.store(top2)
-      DBRef('Top', '000000000000000000000001', 'pjpersist_test')
+      >>> writer.store(top2)  # doctest: +ELLIPSIS
+      DBRef('Top', ...L, 'pjpersist_test')
 
       >>> reader = serialize.ObjectReader(dm)
       >>> reader.resolve(top._p_oid)
@@ -919,8 +919,8 @@ def doctest_ObjectReader_get_object_dbref():
 
       >>> writer = serialize.ObjectWriter(dm)
       >>> top = Top()
-      >>> writer.store(top)
-      DBRef('Top', '0001020304050607080a0b0c', 'pjpersist_test')
+      >>> writer.store(top)  # doctest: +ELLIPSIS
+      DBRef('Top', ...L, 'pjpersist_test')
 
     Database references load the ghost state of the object they represent:
 
@@ -1004,8 +1004,8 @@ def doctest_ObjectReader_get_ghost():
 
       >>> writer = serialize.ObjectWriter(dm)
       >>> top = Top()
-      >>> writer.store(top)
-      DBRef('Top', '0001020304050607080a0b0c', 'pjpersist_test')
+      >>> writer.store(top)  # doctest: +ELLIPSIS
+      DBRef('Top', ...L, 'pjpersist_test')
 
     The ghost object is a shell without any loaded object state:
 
@@ -1029,8 +1029,8 @@ def doctest_ObjectReader_set_ghost_state():
       >>> writer = serialize.ObjectWriter(dm)
       >>> top = Top()
       >>> top.name = 'top'
-      >>> writer.store(top)
-      DBRef('Top', '0001020304050607080a0b0c', 'pjpersist_test')
+      >>> writer.store(top)  # doctest: +ELLIPSIS
+      DBRef('Top', ...L, 'pjpersist_test')
 
     The ghost object is a shell without any loaded object state:
 
@@ -1068,19 +1068,19 @@ def doctest_deserialize_persistent_references():
 
     Let's check that the objects were properly serialized.
 
-      >>> dumpTable('Top')
+      >>> dumpTable('Top')  # doctest: +ELLIPSIS
       [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_serialize.Top',
                  u'foo': {u'_py_type': u'DBREF',
                           u'database': u'pjpersist_test',
-                          u'id': u'0001020304050607080a0b0c0',
+                          u'id': ...,
                           u'table': u'Foo'},
                  u'name': u'top'},
-        'id': u'0001020304050607080a0b0c0'}]
+        'id': ...L}]
 
-      >>> dumpTable('Foo')
+      >>> dumpTable('Foo')  # doctest: +ELLIPSIS
       [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_serialize.Foo',
                  u'name': u'foo'},
-        'id': u'0001020304050607080a0b0c0'}]
+        'id': ...L}]
 
     Now we access the objects objects again to see whether they got properly
     deserialized.
@@ -1111,8 +1111,8 @@ def doctest_deserialize_persistent_foreign_references():
       >>> top_other = Top()
       >>> top_other.name = 'top_other'
       >>> top_other.state = {'complex_data': 'value'}
-      >>> writer_other.store(top_other)
-      DBRef('Top', '0001020304050607080a0b0c', 'pjpersist_test_other')
+      >>> writer_other.store(top_other)  # doctest: +ELLIPSIS
+      DBRef('Top', ...L, 'pjpersist_test_other')
 
     Store other object in datbase and refrence first one
       >>> writer_other = serialize.ObjectWriter(dm)
@@ -1122,14 +1122,14 @@ def doctest_deserialize_persistent_foreign_references():
       >>> dm.root['top'] = top
       >>> commit()
 
-      >>> dumpTable('Top')
+      >>> dumpTable('Top')  # doctest: +ELLIPSIS
       [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_serialize.Top',
                  u'name': u'main',
                  u'other': {u'_py_type': u'DBREF',
                             u'database': u'pjpersist_test_other',
-                            u'id': u'0001020304050607080a0b0c0',
+                            u'id': ...,
                             u'table': u'Top'}},
-        'id': u'0001020304050607080a0b0c0'}]
+        'id': ...L}]
 
       >>> top = dm.root['top']
       >>> print top.name

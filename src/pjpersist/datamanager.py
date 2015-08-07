@@ -245,7 +245,7 @@ class Root(UserDict.DictMixin):
                 CREATE TABLE %s (
                     id SERIAL PRIMARY KEY,
                     name TEXT,
-                    dbref TEXT[])
+                    dbref JSONB)
                 ''' % self.table)
 
     def __getattr__(self, item):
@@ -269,8 +269,8 @@ class Root(UserDict.DictMixin):
                 sb.Select(sb.Field(self.table, 'dbref'), tbl.name == key))
             if not cur.rowcount:
                 raise KeyError(key)
-            db, tbl, id = cur.fetchone()['dbref']
-            dbref = serialize.DBRef(tbl, id, db)
+            kw = cur.fetchone()['dbref']
+            dbref = serialize.DBRef(kw['table'], kw['id'], kw['database'])
             return self._jar.load(dbref)
 
     def __setitem__(self, key, value):
@@ -280,7 +280,7 @@ class Root(UserDict.DictMixin):
         with self._jar.getCursor(False) as cur:
             cur.execute(
                 'INSERT INTO %s (name, dbref) VALUES (%%s, %%s)' % self.table,
-                (key, list(dbref.as_tuple()))
+                (key, Json(dbref.as_json()))
                 )
 
     def __delitem__(self, key):
@@ -296,7 +296,10 @@ class Root(UserDict.DictMixin):
 
 
 class PJDataManager(object):
-    zope.interface.implements(interfaces.IPJDataManager)
+    zope.interface.implements(
+        interfaces.IPJDataManager,
+        transaction.interfaces.IDataManager
+    )
 
     root = None
 
@@ -328,6 +331,7 @@ class PJDataManager(object):
             self.root = Root(self, root_table)
 
         self._query_report = QueryReport()
+        self._id_sequence_exists = None
 
     def requestTransactionOptions(self, readonly=None, deferrable=None,
                                   isolation=None):
@@ -358,6 +362,15 @@ class PJDataManager(object):
         cur.execute("BEGIN")
         cur.execute(stmt)
 
+    def _ensure_id_sequence(self):
+        if self._id_sequence_exists is not None:
+            return
+        with self.getCursor(False) as cur:
+            cur.execute("SELECT * FROM pg_catalog.pg_class WHERE relkind='S' AND relname='main_id_seq'")
+            if not cur.rowcount:
+                cur.execute("CREATE SEQUENCE main_id_seq")
+            self._id_sequence_exists = True
+
     def getCursor(self, flush=True):
         def factory(*args, **kwargs):
             return PJPersistCursor(self, flush, *args, **kwargs)
@@ -369,23 +382,12 @@ class PJDataManager(object):
         return cur
 
     def createId(self):
-        # 4 bytes current time
-        id = struct.pack(">i", int(time.time()))
-        # 3 bytes machine
-        id += HOSTNAME_HASH
-        # 2 bytes pid
-        id += PID_HASH
-        # 1 byte thread id
-        tname = threading.currentThread().name
-        if tname not in THREAD_NAMES:
-            THREAD_NAMES.append(tname)
-        tidx = THREAD_NAMES.index(tname)
-        id += struct.pack(">i", tidx)[-1]
-        # 2 bytes counter
-        THREAD_COUNTERS.setdefault(tidx, random.randint(0, 0xFFFF))
-        THREAD_COUNTERS[tidx] += 1 % 0xFFFF
-        id += struct.pack(">i", THREAD_COUNTERS[tidx])[-2:]
-        return binascii.hexlify(id)
+        self._ensure_id_sequence()
+        with self.getCursor(False) as cur:
+            cur.execute("SELECT NEXTVAL('main_id_seq')")
+            # _id = str(cur.fetchone()[0]).rjust(24, '0')
+            _id = cur.fetchone()[0]
+        return _id
 
     def create_tables(self, tables):
         if isinstance(tables, basestring):
@@ -413,7 +415,7 @@ class PJDataManager(object):
                     extra_columns += ', '
                 cur.execute('''
                     CREATE TABLE %s (
-                        id VARCHAR(24) NOT NULL PRIMARY KEY, %s
+                        id BIGINT NOT NULL PRIMARY KEY, %s
                         data JSONB)''' % (table, extra_columns))
                 # this index helps a tiny bit with JSONB_CONTAINS queries
                 cur.execute('''

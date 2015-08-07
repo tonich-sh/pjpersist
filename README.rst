@@ -50,7 +50,7 @@ the class. Since table names cannot statewith an underscore and contain dots,
 we have to escpae the path a little bit. Let's see what got stored in
 PostGreSQL:
 
-  >>> dumpTable('u__main___dot_Person')
+  >>> dumpTable('u__main___dot_Person')  # doctest: +ELLIPSIS
   [{'data': {u'_py_persistent_type': u'__main__.Person',
              u'address': None,
              u'birthday': None,
@@ -60,7 +60,7 @@ PostGreSQL:
              u'today': {u'_py_type': u'datetime.datetime',
                         u'value': u'2014-12-04T12:30:00'},
              u'visited': []},
-    'id': u'0001020304050607080a0b0c0'}]
+    'id': ...L}]
 
 Let's now add an address for Stephan. Addresses are also persistent objects:
 
@@ -80,20 +80,20 @@ We need to commit the transaction, to push the data to PostGreSQL:
 
   >>> transaction.commit()
 
-  >>> dumpTable('address')
+  >>> dumpTable('address')  # doctest: +ELLIPSIS
   [{'data': {u'_py_persistent_type': u'__main__.Address',
              u'city': u'Maynard',
              u'zip': u'01754'},
-    'id': u'0001020304050607080a0b0c0'}]
+    'id': ...L}]
 
 As you can see, even the reference to the Address object looks nice and uses
 the standard PostGreSQL reference construct.
 
-  >>> dumpTable('u__main___dot_Person')
+  >>> dumpTable('u__main___dot_Person')  # doctest: +ELLIPSIS
   [{'data': {u'_py_persistent_type': u'__main__.Person',
              u'address': {u'_py_type': u'DBREF',
                           u'database': u'pjpersist_test',
-                          u'id': u'0001020304050607080a0b0c0',
+                          u'id': ...,
                           u'table': u'address'},
              u'birthday': None,
              u'friends': {},
@@ -102,7 +102,7 @@ the standard PostGreSQL reference construct.
              u'today': {u'_py_type': u'datetime.datetime',
                         u'value': u'2014-12-04T12:30:00'},
              u'visited': []},
-    'id': u'0001020304050607080a0b0c0'}]
+    'id': ...L}]
 
 But what about arbitrary non-persistent, but picklable, objects?
 Well, let's create a phone number object for that:
@@ -121,11 +121,11 @@ Well, let's create a phone number object for that:
   >>> stephan.phone = Phone('+1', '978', '394-5124')
   >>> transaction.commit()
 
-  >>> dumpTable('u__main___dot_Person')
+  >>> dumpTable('u__main___dot_Person')  # doctest: +ELLIPSIS
   [{'data': {u'_py_persistent_type': u'__main__.Person',
              u'address': {u'_py_type': u'DBREF',
                           u'database': u'pjpersist_test',
-                          u'id': u'0001020304050607080a0b0c0',
+                          u'id': ...,
                           u'table': u'address'},
              u'birthday': None,
              u'friends': {},
@@ -137,7 +137,7 @@ Well, let's create a phone number object for that:
              u'today': {u'_py_type': u'datetime.datetime',
                         u'value': u'2014-12-04T12:30:00'},
              u'visited': []},
-    'id': u'0001020304050607080a0b0c0'}]
+    'id': ...L}]
 
 Let's now set various attributes:
 
@@ -149,17 +149,17 @@ Let's now set various attributes:
 Push the data to PostGreSQL, and dump the results:
 
   >>> transaction.commit()
-  >>> dumpTable('u__main___dot_Person')
+  >>> dumpTable('u__main___dot_Person')  # doctest: +ELLIPSIS
   [{'data': {u'_py_persistent_type': u'__main__.Person',
              u'address': {u'_py_type': u'DBREF',
                           u'database': u'pjpersist_test',
-                          u'id': u'0001020304050607080a0b0c0',
+                          u'id': ...,
                           u'table': u'address'},
              u'birthday': {u'_py_type': u'datetime.date',
                            u'value': u'1980-01-25'},
              u'friends': {u'roy': {u'_py_type': u'DBREF',
                                    u'database': u'pjpersist_test',
-                                   u'id': u'0001020304050607080a0b0c0',
+                                   u'id': ...,
                                    u'table': u'u__main___dot_Person'}},
              u'name': u'Stephan',
              u'phone': {u'_py_type': u'__main__.Phone',
@@ -169,7 +169,7 @@ Push the data to PostGreSQL, and dump the results:
              u'today': {u'_py_type': u'datetime.datetime',
                         u'value': u'2014-12-04T12:30:00'},
              u'visited': [u'Germany', u'USA']},
-    'id': u'0001020304050607080a0b0c0'},
+    'id': ...L},
    {'data': {u'_py_persistent_type': u'__main__.Person',
              u'address': None,
              u'birthday': None,
@@ -179,7 +179,7 @@ Push the data to PostGreSQL, and dump the results:
              u'today': {u'_py_type': u'datetime.datetime',
                         u'value': u'2014-12-04T12:30:00'},
              u'visited': []},
-    'id': u'0001020304050607080a0b0c0'}]
+    'id': ...L}]
 
 Of course all properties can be retrieved as python objects:
 
