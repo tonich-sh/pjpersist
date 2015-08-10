@@ -129,58 +129,58 @@ def doctest_PJDataManager_get_table_from_object():
       ('pjpersist_test', 'pjpersist_dot_tests_dot_test_datamanager_dot_Foo')
     """
 
-def doctest_PJDataManager_object_dump_load_reset():
-    r"""PJDataManager: dump(), load(), reset()
-
-    The PJ Data Manager is a persistent data manager that manages object
-    states in a PostGreSQL database accross Python transactions.
-
-    There are several arguments to create the data manager, but only the
-    psycopg2 connection is required:
-
-      >>> dm = datamanager.PJDataManager(
-      ...     conn,
-      ...     root_table = 'proot')
-
-    There are two convenience methods that let you serialize and de-serialize
-    objects explicitly:
-
-      >>> foo = Foo()
-      >>> dm.dump(foo)  # doctest: +ELLIPSIS
-      DBRef('pjpersist_dot_tests_dot_test_datamanager_dot_Foo',
-            ...L,
-            'pjpersist_test')
-
-    When the object is modified, ``dump()`` will remove it from the list of
-    registered objects.
-
-      >>> foo.name = 'Foo'
-      >>> foo._p_changed
-      True
-      >>> dm._registered_objects.values()
-      [<Foo Foo>]
-
-      >>> foo_ref = dm.dump(foo)
-
-      >>> foo._p_changed
-      False
-      >>> dm._registered_objects
-      {}
-
-      >>> dm.commit(None)
-
-    Let's now reset the data manager, so we do not hit a cache while loading
-    the object again:
-
-      >>> dm.reset()
-
-    We can now load the object:
-
-      >>> foo2 = dm.load(foo._p_oid)
-      >>> foo == foo2
-      False
-      >>> foo._p_oid = foo2._p_oid
-    """
+# def doctest_PJDataManager_object_dump_load_reset():
+#     r"""PJDataManager: dump(), load(), reset()
+#
+#     The PJ Data Manager is a persistent data manager that manages object
+#     states in a PostGreSQL database accross Python transactions.
+#
+#     There are several arguments to create the data manager, but only the
+#     psycopg2 connection is required:
+#
+#       >>> dm = datamanager.PJDataManager(
+#       ...     conn,
+#       ...     root_table = 'proot')
+#
+#     There are two convenience methods that let you serialize and de-serialize
+#     objects explicitly:
+#
+#       >>> foo = Foo()
+#       >>> dm.dump(foo)  # doctest: +ELLIPSIS
+#       DBRef('pjpersist_dot_tests_dot_test_datamanager_dot_Foo',
+#             ...L,
+#             'pjpersist_test')
+#
+#     When the object is modified, ``dump()`` will remove it from the list of
+#     registered objects.
+#
+#       >>> foo.name = 'Foo'
+#       >>> foo._p_changed
+#       True
+#       >>> dm._registered_objects.values()
+#       [<Foo Foo>]
+#
+#       >>> foo_ref = dm.dump(foo)
+#
+#       >>> foo._p_changed
+#       False
+#       >>> dm._registered_objects
+#       {}
+#
+#       >>> dm.commit(None)
+#
+#     Let's now reset the data manager, so we do not hit a cache while loading
+#     the object again:
+#
+#       >>> dm.reset()
+#
+#     We can now load the object:
+#
+#       >>> foo2 = dm.load(foo._p_oid)
+#       >>> foo == foo2
+#       False
+#       >>> foo._p_oid = foo2._p_oid
+#     """
 
 
 def doctest_PJDataManager_insertWithExplicitId():
@@ -198,51 +198,51 @@ def doctest_PJDataManager_insertWithExplicitId():
   """
 
 
-def doctest_PJDataManager_flush():
-    r"""PJDataManager: flush()
-
-    This method writes all registered objects to PsotGreSQL. It can be used at
-    any time during the transaction when a dump is necessary, but is also used
-    at the end of the transaction to dump all remaining objects.
-
-    Let's now add an object to the database and reset the manager like it is
-    done at the end of a transaction:
-
-      >>> foo = Foo('foo')
-      >>> foo_ref = dm.dump(foo)
-      >>> dm.commit(None)
-
-    Let's now load the object again and make a modification:
-
-      >>> foo_new = dm.load(foo._p_oid)
-      >>> foo_new.name = 'Foo'
-
-    The object is now registered with the data manager:
-
-      >>> dm._registered_objects.values()
-      [<Foo Foo>]
-
-    Let's now flush the registered objects:
-
-      >>> dm.flush()
-
-    There are several side effects that should be observed:
-
-    * During a given transaction, we guarantee that the user will always receive
-      the same Python object. This requires that flush does not reset the object
-      cache.
-
-        >>> id(dm.load(foo._p_oid)) == id(foo_new)
-        True
-
-    * The object is removed from the registered objects and the ``_p_changed``
-      flag is set to ``False``.
-
-        >>> dm._registered_objects
-        {}
-        >>> foo_new._p_changed
-        False
-    """
+# def doctest_PJDataManager_flush():
+#     r"""PJDataManager: flush()
+#
+#     This method writes all registered objects to PsotGreSQL. It can be used at
+#     any time during the transaction when a dump is necessary, but is also used
+#     at the end of the transaction to dump all remaining objects.
+#
+#     Let's now add an object to the database and reset the manager like it is
+#     done at the end of a transaction:
+#
+#       >>> foo = Foo('foo')
+#       >>> foo_ref = dm.dump(foo)
+#       >>> dm.commit(None)
+#
+#     Let's now load the object again and make a modification:
+#
+#       >>> foo_new = dm.load(foo._p_oid)
+#       >>> foo_new.name = 'Foo'
+#
+#     The object is now registered with the data manager:
+#
+#       >>> dm._registered_objects.values()
+#       [<Foo Foo>]
+#
+#     Let's now flush the registered objects:
+#
+#       >>> dm.flush()
+#
+#     There are several side effects that should be observed:
+#
+#     * During a given transaction, we guarantee that the user will always receive
+#       the same Python object. This requires that flush does not reset the object
+#       cache.
+#
+#         >>> id(dm.load(foo._p_oid)) == id(foo_new)
+#         True
+#
+#     * The object is removed from the registered objects and the ``_p_changed``
+#       flag is set to ``False``.
+#
+#         >>> dm._registered_objects
+#         {}
+#         >>> foo_new._p_changed
+#         False
+#     """
 
 def doctest_PJDataManager_insert():
     r"""PJDataManager: insert(obj)
@@ -483,10 +483,10 @@ def doctest_PJDataManager_setstate():
     transaction.
 
       >>> foo = Foo(u'foo')
-      >>> ref = dm.dump(foo)
+      >>> ref = dm.insert(foo)
 
       >>> dm.commit(None)
-      >>> dm._needs_to_join
+      >>> dm._transaction_id is None
       True
 
       >>> foo2 = Foo()
@@ -495,7 +495,7 @@ def doctest_PJDataManager_setstate():
       >>> foo2.name
       u'foo'
 
-      >>> dm._needs_to_join
+      >>> dm._transaction_id is None
       False
     """
 
@@ -517,10 +517,10 @@ def doctest_PJDataManager_setstate_twice():
       >>> zope.interface.Interface.providedBy(foo)
       True
 
-      >>> ref = dm.dump(foo)
+      >>> ref = dm.insert(foo)
 
       >>> dm.commit(None)
-      >>> dm._needs_to_join
+      >>> dm._transaction_id is None
       True
 
       >>> foo2 = Foo()
@@ -562,7 +562,7 @@ def doctest_PJDataManager_register():
     Registers an object to be stored.
 
       >>> dm.reset()
-      >>> dm._needs_to_join
+      >>> dm._transaction_id is None
       True
       >>> len(dm._registered_objects)
       0
@@ -570,7 +570,7 @@ def doctest_PJDataManager_register():
       >>> foo = Foo(u'foo')
       >>> dm.register(foo)
 
-      >>> dm._needs_to_join
+      >>> dm._transaction_id is None
       False
       >>> len(dm._registered_objects)
       1
@@ -589,12 +589,13 @@ def doctest_PJDataManager_abort():
 
       >>> foo = Foo()
       >>> dm._registered_objects = {id(foo): foo}
-      >>> dm._needs_to_join = False
+      >>> dm._transaction_id = 1
 
       >>> dm.abort(transaction.get())
 
-      >>> dm._needs_to_join
+      >>> dm._transaction_id is None
       True
+
       >>> len(dm._registered_objects)
       0
 
@@ -722,13 +723,9 @@ def doctest_PJDataManager_tpc_finish():
     ``tpc_finish()`` is the same as ``commit()``. So let's store a simple object:
 
       >>> foo = Foo()
-      >>> dm._registered_objects = {id(foo): foo}
-      >>> dm.tpc_finish(transaction.get())
+      >>> dm.insert(foo, id(foo))  # doctest: +ELLIPSIS
+      DBRef('pjpersist_dot_tests_dot_test_datamanager_dot_Foo', ...L, 'pjpersist_test')
 
-    Note that objects cannot be stored twice in the same transaction:
-
-      >>> dm.reset()
-      >>> dm._registered_objects = {id(foo): foo, id(foo): foo}
       >>> dm.tpc_finish(transaction.get())
 
     Also, when a persistent sub-object is stored that does not want its own
@@ -1383,48 +1380,48 @@ class DatamanagerConflictTest(testing.PJTestCase):
         conn2.close()
         conn1.close()
 
-    def test_conflict_commit_1(self):
-        """Test conflict on commit
-
-        The typical detail string for such failures is:
-
-        DETAIL:  Reason code: Canceled on identification as a pivot, during commit
-        attempt.
-        """
-
-        # We will not reproduce the full scenario with pjpersist, however we will
-        # pretend the right exception is thrown by commit.
-        #
-        # First, get the error, that psycopg throws in such case
-        # The example is taken from https://wiki.postgresql.org/wiki/SSI
-        import psycopg2
-
-        conn1 = self.conn
-        conn2 = testing.getConnection(testing.DBNAME)
-
-        with conn1.cursor() as cur:
-            cur.execute("DROP TABLE IF EXISTS mytab")
-            cur.execute("CREATE TABLE mytab (class int NOT NULL, value int NOT NULL )")
-            cur.execute("INSERT INTO mytab VALUES (1, 10), (1, 20), (2, 100), (2, 200)")
-        conn1.commit()
-
-        with conn1.cursor() as cur1, conn2.cursor() as cur2:
-            cur1.execute("SELECT SUM(value) FROM mytab WHERE class = 1")
-            cur1.execute("INSERT INTO mytab VALUES (2, 30)")
-
-            cur2.execute("SELECT SUM(value) FROM mytab WHERE class = 2")
-            cur2.execute("INSERT INTO mytab VALUES (1, 300)")
-
-        conn2.commit()
-        conn2.close()
-
-        # Now datamanager, holding conn1 is in doomed state. it is expected to
-        # fail on commit attempt.
-        txn = transaction.get()
-        txn.join(self.dm)
-
-        with self.assertRaises(interfaces.ConflictError):
-            transaction.commit()
+    # def test_conflict_commit_1(self):
+    #     """Test conflict on commit
+    #
+    #     The typical detail string for such failures is:
+    #
+    #     DETAIL:  Reason code: Canceled on identification as a pivot, during commit
+    #     attempt.
+    #     """
+    #
+    #     # We will not reproduce the full scenario with pjpersist, however we will
+    #     # pretend the right exception is thrown by commit.
+    #     #
+    #     # First, get the error, that psycopg throws in such case
+    #     # The example is taken from https://wiki.postgresql.org/wiki/SSI
+    #     import psycopg2
+    #
+    #     conn1 = self.conn
+    #     conn2 = testing.getConnection(testing.DBNAME)
+    #
+    #     with conn1.cursor() as cur:
+    #         cur.execute("DROP TABLE IF EXISTS mytab")
+    #         cur.execute("CREATE TABLE mytab (class int NOT NULL, value int NOT NULL )")
+    #         cur.execute("INSERT INTO mytab VALUES (1, 10), (1, 20), (2, 100), (2, 200)")
+    #     conn1.commit()
+    #
+    #     with conn1.cursor() as cur1, conn2.cursor() as cur2:
+    #         cur1.execute("SELECT SUM(value) FROM mytab WHERE class = 1")
+    #         cur1.execute("INSERT INTO mytab VALUES (2, 30)")
+    #
+    #         cur2.execute("SELECT SUM(value) FROM mytab WHERE class = 2")
+    #         cur2.execute("INSERT INTO mytab VALUES (1, 300)")
+    #
+    #     conn2.commit()
+    #     conn2.close()
+    #
+    #     # Now datamanager, holding conn1 is in doomed state. it is expected to
+    #     # fail on commit attempt.
+    #     txn = transaction.get()
+    #     txn.join(self.dm)
+    #
+    #     with self.assertRaises(interfaces.ConflictError):
+    #         transaction.commit()
 
 
 class QueryLoggingTestCase(testing.PJTestCase):

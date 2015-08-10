@@ -88,10 +88,10 @@ def doctest_PJTableMapping_filter():
 
     Let's now add some items:
 
-      >>> ref11 = dm.dump(Item('1-1', 'site1'))
-      >>> ref12 = dm.dump(Item('1-2', 'site1'))
-      >>> ref13 = dm.dump(Item('1-3', 'site1'))
-      >>> ref21 = dm.dump(Item('2-1', 'site2'))
+      >>> ref11 = dm.insert(Item('1-1', 'site1'))
+      >>> ref12 = dm.insert(Item('1-2', 'site1'))
+      >>> ref13 = dm.insert(Item('1-3', 'site1'))
+      >>> ref21 = dm.insert(Item('2-1', 'site2'))
 
     And accessing the items works as expected:
 

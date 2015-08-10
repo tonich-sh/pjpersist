@@ -127,9 +127,6 @@ class IPJDataManager(persistent.interfaces.IPersistentDataManager):
     def reset():
         """Reset the datamanager for the next transaction."""
 
-    def dump(obj):
-        """Store the object to PostGreSQL/JSONB and return its DBRef."""
-
     def load(dbref):
         """Load the object from PostGreSQL/JSONB by using its DBRef.
 

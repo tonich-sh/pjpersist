@@ -521,7 +521,8 @@ extended to store the attribute and the person is added to the table:
                         u'value': u'2014-05-14T12:30:00'},
              u'visited': []},
     'id': ...L,
-    'name': u'Anton'}]
+    'name': u'Anton',
+    'tid': ...L}]
 
 
 Tricky Cases

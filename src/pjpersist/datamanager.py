@@ -309,6 +309,9 @@ class PJDataManager(object):
         self._object_cache = {}
         self.annotations = {}
 
+        # transaction related
+        self._transaction_id = None
+        self._prev_transaction_id = None
         self._txn_active = False
         self.requestTransactionOptions()  # No special options
 
@@ -317,7 +320,10 @@ class PJDataManager(object):
             self.root = Root(self, root_table)
 
         self._query_report = QueryReport()
+
+        # auto population flags
         self._id_sequence_exists = None
+        self._tid_sequence_exists = None
 
     def requestTransactionOptions(self, readonly=None, deferrable=None,
                                   isolation=None):
@@ -356,6 +362,15 @@ class PJDataManager(object):
             if not cur.rowcount:
                 cur.execute("CREATE SEQUENCE main_id_seq")
             self._id_sequence_exists = True
+
+    def _ensure_tid_sequence(self):
+        if self._tid_sequence_exists is not None:
+            return
+        with self.getCursor(False) as cur:
+            cur.execute("SELECT * FROM pg_catalog.pg_class WHERE relkind='S' AND relname='transaction_id_seq'")
+            if not cur.rowcount:
+                cur.execute("CREATE SEQUENCE transaction_id_seq")
+            self._tid_sequence_exists = True
 
     def getCursor(self, flush=True):
         def factory(*args, **kwargs):
@@ -401,7 +416,9 @@ class PJDataManager(object):
                     extra_columns += ', '
                 cur.execute('''
                     CREATE TABLE %s (
-                        id BIGSERIAL PRIMARY KEY, %s
+                        id BIGSERIAL PRIMARY KEY,
+                        tid BIGINT NOT NULL,
+                        %s
                         data JSONB)''' % (table, extra_columns))
                 # this index helps a tiny bit with JSONB_CONTAINS queries
                 cur.execute('''
@@ -445,8 +462,8 @@ class PJDataManager(object):
                 values.append(value)
             placeholders = ', '.join(['%s'] * len(columns))
             columns = ', '.join(columns)
-            sql = "INSERT INTO %s (%s) VALUES (%s) RETURNING id" % (
-                table, columns, placeholders)
+            sql = "INSERT INTO %s (tid, %s) VALUES (%d, %s) RETURNING id" % (
+                table, columns, self._transaction_id, placeholders)
 
             cur.execute(sql, tuple(values))
             id = cur.fetchone()[0]
@@ -524,16 +541,13 @@ class PJDataManager(object):
         return obj
 
     def _join_txn(self):
-        if self._needs_to_join:
+        if self._transaction_id is None:
             self.transaction_manager.get().join(self)
-            self._needs_to_join = False
 
-    def dump(self, obj):
-        res = self._writer.store(obj)
-        if id(obj) in self._registered_objects:
-            obj._p_changed = False
-            del self._registered_objects[id(obj)]
-        return res
+            self._ensure_tid_sequence()
+            with self.getCursor(False) as cur:
+                cur.execute("SELECT NEXTVAL('transaction_id_seq')")
+                self._transaction_id = cur.fetchone()[0]
 
     def load(self, dbref, klass=None):
         dm = self
@@ -649,6 +663,16 @@ class PJDataManager(object):
         self.__init__(self._conn)
 
     def commit(self, transaction):
+        self.tpc_begin(transaction)
+        self.tpc_finish(transaction)
+
+    def tpc_begin(self, transaction):
+        self._join_txn()
+
+    def tpc_vote(self, transaction):
+        pass
+
+    def tpc_finish(self, transaction):
         self._flush_objects()
         self._report_stats()
         try:
@@ -657,18 +681,12 @@ class PJDataManager(object):
             check_for_conflict(e, "DataManager.commit")
             raise
         self.__init__(self._conn)
-
-    def tpc_begin(self, transaction):
-        pass
-
-    def tpc_vote(self, transaction):
-        pass
-
-    def tpc_finish(self, transaction):
-        self.commit(transaction)
+        self._prev_transaction_id = self._transaction_id
+        self._transaction_id = None
 
     def tpc_abort(self, transaction):
         self.abort(transaction)
+        self._transaction_id = None
 
     def sortKey(self):
         return ('PJDataManager', 0)

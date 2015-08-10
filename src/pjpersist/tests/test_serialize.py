@@ -537,12 +537,10 @@ def doctest_ObjectWriter_get_full_state():
 def doctest_ObjectWriter_store():
     """ObjectWriter: store()
 
-      >>> writer = serialize.ObjectWriter(dm)
-
     Simply store an object:
 
       >>> top = Top()
-      >>> writer.store(top)  # doctest: +ELLIPSIS
+      >>> dm.insert(top)  # doctest: +ELLIPSIS
       DBRef('Top', ...L, 'pjpersist_test')
       >>> dm.commit(None)
       >>> dumpTable('Top')  # doctest: +ELLIPSIS
@@ -553,8 +551,6 @@ def doctest_ObjectWriter_store():
     existing document:
 
       >>> top.name = 'top'
-      >>> writer.store(top)  # doctest: +ELLIPSIS
-      DBRef('Top', ...L, 'pjpersist_test')
       >>> dm.commit(None)
       >>> dumpTable('Top')  # doctest: +ELLIPSIS
       [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_serialize.Top',
@@ -738,12 +734,11 @@ def doctest_ObjectReader_resolve_lookup_with_multiple_maps():
     are more interesting. In this case, we need to lookup the object, if it
     stores its persistent type otherwise we use the first map entry.
 
-      >>> writer = serialize.ObjectWriter(dm)
       >>> top = Top()
-      >>> writer.store(top)  # doctest: +ELLIPSIS
+      >>> dm.insert(top)  # doctest: +ELLIPSIS
       DBRef('Top', ...L, 'pjpersist_test')
       >>> top2 = Top2()
-      >>> writer.store(top2)  # doctest: +ELLIPSIS
+      >>> dm.insert(top2)  # doctest: +ELLIPSIS
       DBRef('Top', ...L, 'pjpersist_test')
       >>> dm.commit(None)
 
@@ -774,14 +769,13 @@ def doctest_ObjectReader_resolve_lookup_with_multiple_maps_dont_read_full():
 
       >>> serialize.ALWAYS_READ_FULL_DOC = False
 
-      >>> writer = serialize.ObjectWriter(dm)
       >>> top = Top()
       >>> top._p_pj_store_type = True
-      >>> writer.store(top)  # doctest: +ELLIPSIS
+      >>> dm.insert(top)  # doctest: +ELLIPSIS
       DBRef('Top', ...L, 'pjpersist_test')
       >>> top2 = Top2()
       >>> top2._p_pj_store_type = True
-      >>> writer.store(top2)  # doctest: +ELLIPSIS
+      >>> dm.insert(top2)  # doctest: +ELLIPSIS
       DBRef('Top', ...L, 'pjpersist_test')
 
       >>> reader = serialize.ObjectReader(dm)
@@ -917,9 +911,8 @@ def doctest_ObjectReader_get_object_binary():
 def doctest_ObjectReader_get_object_dbref():
     """ObjectReader: get_object(): DBRef
 
-      >>> writer = serialize.ObjectWriter(dm)
       >>> top = Top()
-      >>> writer.store(top)  # doctest: +ELLIPSIS
+      >>> dm.insert(top)  # doctest: +ELLIPSIS
       DBRef('Top', ...L, 'pjpersist_test')
 
     Database references load the ghost state of the object they represent:
@@ -1002,9 +995,8 @@ def doctest_ObjectReader_get_object_constant():
 def doctest_ObjectReader_get_ghost():
     """ObjectReader: get_ghost()
 
-      >>> writer = serialize.ObjectWriter(dm)
       >>> top = Top()
-      >>> writer.store(top)  # doctest: +ELLIPSIS
+      >>> dm.insert(top)  # doctest: +ELLIPSIS
       DBRef('Top', ...L, 'pjpersist_test')
 
     The ghost object is a shell without any loaded object state:
@@ -1026,10 +1018,9 @@ def doctest_ObjectReader_get_ghost():
 def doctest_ObjectReader_set_ghost_state():
     r"""ObjectReader: set_ghost_state()
 
-      >>> writer = serialize.ObjectWriter(dm)
       >>> top = Top()
       >>> top.name = 'top'
-      >>> writer.store(top)  # doctest: +ELLIPSIS
+      >>> dm.insert(top)  # doctest: +ELLIPSIS
       DBRef('Top', ...L, 'pjpersist_test')
 
     The ghost object is a shell without any loaded object state:
@@ -1107,15 +1098,15 @@ def doctest_deserialize_persistent_foreign_references():
     For this, we have to provide IPJDataManagerProvider
 
     First, store some object in one database
-      >>> writer_other = serialize.ObjectWriter(dm_other)
       >>> top_other = Top()
       >>> top_other.name = 'top_other'
       >>> top_other.state = {'complex_data': 'value'}
-      >>> writer_other.store(top_other)  # doctest: +ELLIPSIS
+      >>> dm_other.insert(top_other)  # doctest: +ELLIPSIS
       DBRef('Top', ...L, 'pjpersist_test_other')
 
     Store other object in datbase and refrence first one
-      >>> writer_other = serialize.ObjectWriter(dm)
+    #  >>> writer_other = serialize.ObjectWriter(dm)
+
       >>> top = Top()
       >>> top.name = 'main'
       >>> top.other = top_other
@@ -1137,7 +1128,7 @@ def doctest_deserialize_persistent_foreign_references():
       >>> print top.other.name
       top_other
       >>> top.other.state
-      {'complex_data': 'value'}
+      {u'complex_data': u'value'}
     """
 
 
