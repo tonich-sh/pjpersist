@@ -188,13 +188,13 @@ def doctest_PJDataManager_insertWithExplicitId():
     Objects can be inserted by specifying new object id explicitly.
 
       >>> foo = Foo('foo')
-      >>> foo_ref = dm.insert(foo, '000000000000000000000001')
+      >>> foo_ref = dm.insert(foo, 10000)
       >>> dm.tpc_finish(None)
 
     Now, Foo object should be have the provided id
 
       >>> foo._p_oid.id
-      '000000000000000000000001'
+      10000L
   """
 
 

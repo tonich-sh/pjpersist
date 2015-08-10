@@ -13,12 +13,19 @@
 #
 ##############################################################################
 """PostGreSQL/JSONB Persistence Zope Containers"""
+import os
 import UserDict
-import json
 import persistent
 import transaction
 import zope.component
 import warnings
+import hashlib
+import struct
+import socket
+import threading
+import time
+import binascii
+import random
 
 from rwproperty import getproperty, setproperty
 from zope.container import contained, sample
@@ -30,6 +37,14 @@ from pjpersist.zope import interfaces as zinterfaces
 from pjpersist.mquery import Converter
 
 USE_CONTAINER_CACHE = True
+
+mhash = hashlib.md5()
+mhash.update(socket.gethostname())
+HOSTNAME_HASH = mhash.digest()[:3]
+PID_HASH = struct.pack(">H", os.getpid() % 0xFFFF)
+
+THREAD_NAMES = []
+THREAD_COUNTERS = {}
 
 
 class PJContained(contained.Contained):
@@ -278,11 +293,35 @@ class PJContainer(contained.Contained,
         if self._pj_parent_key is not None:
             setattr(value, self._pj_parent_key, self._pj_get_parent_key_value())
 
+    # @classmethod
+    # def _create_id(cls):
+    #     # 4 bytes current time
+    #     id = struct.pack(">i", int(time.time()))
+    #     # 3 bytes machine
+    #     id += HOSTNAME_HASH
+    #     # 2 bytes pid
+    #     id += PID_HASH
+    #     # 1 byte thread id
+    #     tname = threading.currentThread().name
+    #     if tname not in THREAD_NAMES:
+    #         THREAD_NAMES.append(tname)
+    #     tidx = THREAD_NAMES.index(tname)
+    #     id += struct.pack(">i", tidx)[-1]
+    #     # 2 bytes counter
+    #     THREAD_COUNTERS.setdefault(tidx, random.randint(0, 0xFFFF))
+    #     THREAD_COUNTERS[tidx] += 1 % 0xFFFF
+    #     id += struct.pack(">i", THREAD_COUNTERS[tidx])[-2:]
+    #     return binascii.hexlify(id)
+
     def __setitem__(self, key, value):
         # When the key is None, we need to determine it.
         if key is None:
             if self._pj_mapping_key is None:
-                key = self._pj_jar.createId()
+                if value._p_oid is None:
+                    self._pj_jar.dump(value)
+                key = value._p_oid.id
+
+                # key = self._create_id()
             else:
                 # we have _pj_mapping_key, use that attribute
                 key = getattr(value, self._pj_mapping_key)

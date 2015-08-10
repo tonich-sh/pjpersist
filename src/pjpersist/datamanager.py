@@ -15,19 +15,13 @@
 """PostGreSQL/JSONB Persistent Data Manager"""
 from __future__ import absolute_import
 import UserDict
-import binascii
-import hashlib
 import logging
-import os
 import psycopg2
 import psycopg2.extensions
 import psycopg2.extras
 import psycopg2.errorcodes
 import pjpersist.sqlbuilder as sb
-import random
 import re
-import socket
-import struct
 import threading
 import time
 import transaction
@@ -64,14 +58,6 @@ PJ_AUTO_CREATE_COLUMNS = True
 
 
 TABLE_LOG = logging.getLogger('pjpersist.table')
-
-THREAD_NAMES = []
-THREAD_COUNTERS = {}
-
-mhash = hashlib.md5()
-mhash.update(socket.gethostname())
-HOSTNAME_HASH = mhash.digest()[:3]
-PID_HASH = struct.pack(">H", os.getpid() % 0xFFFF)
 
 LOG = logging.getLogger(__name__)
 
@@ -415,7 +401,7 @@ class PJDataManager(object):
                     extra_columns += ', '
                 cur.execute('''
                     CREATE TABLE %s (
-                        id BIGINT NOT NULL PRIMARY KEY, %s
+                        id BIGSERIAL PRIMARY KEY, %s
                         data JSONB)''' % (table, extra_columns))
                 # this index helps a tiny bit with JSONB_CONTAINS queries
                 cur.execute('''
@@ -442,12 +428,11 @@ class PJDataManager(object):
                 self._create_doc_table(self.database, table, columns)
 
     def _insert_doc(self, database, table, doc, id=None, column_data=None):
-        # Create id if it is None.
-        if id is None:
-            id = self.createId()
         # Insert the document into the table.
         with self.getCursor() as cur:
-            builtins = dict(id=id, data=Json(doc))
+            builtins = dict(data=Json(doc))
+            if id is not None:
+                builtins['id'] = id
             if column_data is None:
                 column_data = builtins
             else:
@@ -460,10 +445,11 @@ class PJDataManager(object):
                 values.append(value)
             placeholders = ', '.join(['%s'] * len(columns))
             columns = ', '.join(columns)
-            sql = "INSERT INTO %s (%s) VALUES (%s)" % (
+            sql = "INSERT INTO %s (%s) VALUES (%s) RETURNING id" % (
                 table, columns, placeholders)
 
             cur.execute(sql, tuple(values))
+            id = cur.fetchone()[0]
         return id
 
     def _update_doc(self, database, table, doc, id, column_data=None):
