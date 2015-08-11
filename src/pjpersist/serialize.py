@@ -54,7 +54,7 @@ PYTHON_TO_PG_TYPES = {
 }
 
 
-def get_dotted_name(obj, escape=False):
+def get_dotted_name(obj, escape=False, state=False):
     name = obj.__module__ + '.' + obj.__name__
     if not escape:
         return name
@@ -63,6 +63,8 @@ def get_dotted_name(obj, escape=False):
     # XXX: Circumventing a bug in sqlobject.sqlbuilder that prohibits names to
     # start with _.
     name = 'u'+name if name.startswith('_') else name
+    if state:
+        name += '_state'
     return name
 
 class PersistentDict(persistent.dict.PersistentDict):

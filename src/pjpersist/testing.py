@@ -140,7 +140,7 @@ def setUp(test):
             conn = g['dm']._conn
         with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
             try:
-                cur.execute('SELECT * FROM ' + table)
+                cur.execute('SELECT * FROM %s m join %s_state s on m.id = s.pid and m.tid = s.tid' % (table, table))
             except psycopg2.ProgrammingError, err:
                 print err
             else:

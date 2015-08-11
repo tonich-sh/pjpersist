@@ -101,6 +101,9 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
         if self.flush and sql.strip().split()[0].lower() == 'select':
             self.datamanager.flush()
 
+        # import sys
+        # sys.stderr.write("******* execute: %s\n" % sql)
+
         # XXX: Optimization opportunity to store returned JSONB docs in the
         # cache of the data manager. (SR)
 
@@ -312,7 +315,7 @@ class PJDataManager(object):
         # transaction related
         self._transaction_id = None
         self._prev_transaction_id = None
-        self._txn_active = False
+        self.__txn_active = False
         self.requestTransactionOptions()  # No special options
 
         self.transaction_manager = transaction.manager
@@ -324,6 +327,18 @@ class PJDataManager(object):
         # auto population flags
         self._id_sequence_exists = None
         self._tid_sequence_exists = None
+
+    @property
+    def _txn_active(self):
+        return self.__txn_active
+
+    @_txn_active.setter
+    def _txn_active(self, value):
+        # import sys
+        # import traceback
+        # sys.stderr.write('***** _txn_active is set to %s\n' % value.__str__())
+        # sys.stderr.write(''.join(traceback.format_stack()))
+        self.__txn_active = value
 
     def requestTransactionOptions(self, readonly=None, deferrable=None,
                                   isolation=None):
@@ -372,6 +387,14 @@ class PJDataManager(object):
                 cur.execute("CREATE SEQUENCE transaction_id_seq")
             self._tid_sequence_exists = True
 
+    def get_transaction_id(self):
+        if self._transaction_id is None:
+            self._ensure_tid_sequence()
+            with self.getCursor(False) as cur:
+                cur.execute("SELECT NEXTVAL('transaction_id_seq')")
+                self._transaction_id = cur.fetchone()[0]
+        return self._transaction_id
+
     def getCursor(self, flush=True):
         def factory(*args, **kwargs):
             return PJPersistCursor(self, flush, *args, **kwargs)
@@ -417,12 +440,19 @@ class PJDataManager(object):
                 cur.execute('''
                     CREATE TABLE %s (
                         id BIGSERIAL PRIMARY KEY,
+                        tid BIGINT NOT NULL
+                    )''' % (table, ))
+                cur.execute('''
+                    CREATE TABLE %s_state (
+                        id BIGSERIAL PRIMARY KEY,
+                        pid BIGINT NOT NULL,
                         tid BIGINT NOT NULL,
                         %s
-                        data JSONB)''' % (table, extra_columns))
+                        data JSONB,
+                        CONSTRAINT pid_tid_unique UNIQUE (pid, tid))''' % (table, extra_columns))
                 # this index helps a tiny bit with JSONB_CONTAINS queries
                 cur.execute('''
-                    CREATE INDEX %s_data_gin ON %s USING GIN (data);
+                    CREATE INDEX %s_data_gin ON %s_state USING GIN (data);
                     ''' % (table, table))
 
     def _ensure_sql_columns(self, obj, table):
@@ -444,12 +474,22 @@ class PJDataManager(object):
 
                 self._create_doc_table(self.database, table, columns)
 
-    def _insert_doc(self, database, table, doc, id=None, column_data=None):
+    def _insert_doc(self, database, table, doc, _id=None, column_data=None):
+
         # Insert the document into the table.
         with self.getCursor() as cur:
+            if _id is None:
+                sql = "INSERT INTO %s (tid) VALUES (%d) RETURNING id" % (
+                    table, self.get_transaction_id())
+            else:
+                sql = "INSERT INTO %s (id, tid) VALUES (%d, %d) RETURNING id" % (
+                    table, _id, self.get_transaction_id())
+
+            cur.execute(sql)
+            _id = cur.fetchone()[0]
+
             builtins = dict(data=Json(doc))
-            if id is not None:
-                builtins['id'] = id
+
             if column_data is None:
                 column_data = builtins
             else:
@@ -462,14 +502,13 @@ class PJDataManager(object):
                 values.append(value)
             placeholders = ', '.join(['%s'] * len(columns))
             columns = ', '.join(columns)
-            sql = "INSERT INTO %s (tid, %s) VALUES (%d, %s) RETURNING id" % (
-                table, columns, self._transaction_id, placeholders)
+            sql = "INSERT INTO %s_state (tid, pid, %s) VALUES (%d, %d, %s)" % (
+                table, columns, self.get_transaction_id(), _id, placeholders)
 
             cur.execute(sql, tuple(values))
-            id = cur.fetchone()[0]
-        return id
+        return _id
 
-    def _update_doc(self, database, table, doc, id, column_data=None):
+    def _update_doc(self, database, table, doc, _id, column_data=None):
         # Insert the document into the table.
         with self.getCursor() as cur:
             builtins = dict(data=Json(doc))
@@ -481,18 +520,37 @@ class PJDataManager(object):
             columns = []
             values = []
             for colname, value in column_data.items():
-                columns.append(colname+'=%s')
+                columns.append(colname)
                 values.append(value)
+            placeholders = ', '.join(['%s'] * len(columns))
             columns = ', '.join(columns)
-            sql = "UPDATE %s SET %s WHERE id = %%s" % (table, columns)
+            sql = "INSERT INTO %s_state (tid, pid, %s) VALUES (%d, %d, %s)" % (
+                table, columns, self.get_transaction_id(), _id, placeholders)
 
-            cur.execute(sql, tuple(values) + (id,))
-        return id
+            psycopg2.extras.DictCursor.execute(cur, "SAVEPOINT before_insert;")
+            try:
+                cur.execute(sql, tuple(values))
+            except psycopg2.IntegrityError:
+                psycopg2.extras.DictCursor.execute(cur, "ROLLBACK TO SAVEPOINT before_insert;")
+                columns = []
+                values = []
+                for colname, value in column_data.items():
+                    columns.append(colname + '=%s')
+                    values.append(value)
+                columns = ', '.join(columns)
+                sql = "UPDATE %s_state SET %s WHERE tid=%%s AND pid=%%s" % (table, columns)
+                cur.execute(sql, tuple(values) + (self.get_transaction_id(), _id))
+
+            sql = "UPDATE %s SET tid=%d WHERE id = %d" % (table, self.get_transaction_id(), _id)
+
+            cur.execute(sql)
+        return _id
 
     def _get_doc(self, database, table, id):
-        tbl = sb.Table(table)
         with self.getCursor() as cur:
-            cur.execute(sb.Select(sb.Field(table, '*'), tbl.id == id))
+            sql = "SELECT m.*, s.data from %s m join %s_state s ON m.id = s.pid and m.tid = s.tid WHERE m.id=%d" % (table, table, id)
+            # cur.execute(sb.Select(sb.Field(table, '*'), tbl.id == id))
+            cur.execute(sql)
             res = cur.fetchone()
             return res['data'] if res is not None else None
 
@@ -500,7 +558,7 @@ class PJDataManager(object):
         return self._get_doc(dbref.database, dbref.table, dbref.id)
 
     def _get_doc_py_type(self, database, table, id):
-        tbl = sb.Table(table)
+        tbl = sb.Table("%s_state" % table)
         with self.getCursor() as cur:
             datafld = sb.Field(table, 'data')
             cur.execute(
@@ -510,6 +568,7 @@ class PJDataManager(object):
             return res[0] if res is not None else None
 
     def _get_table_from_object(self, obj):
+        self._join_txn()
         return self._writer.get_table_name(obj)
 
     def _flush_objects(self):
@@ -541,13 +600,10 @@ class PJDataManager(object):
         return obj
 
     def _join_txn(self):
-        if self._transaction_id is None:
+        if self._needs_to_join:
             self.transaction_manager.get().join(self)
+            self._needs_to_join = False
 
-            self._ensure_tid_sequence()
-            with self.getCursor(False) as cur:
-                cur.execute("SELECT NEXTVAL('transaction_id_seq')")
-                self._transaction_id = cur.fetchone()[0]
 
     def load(self, dbref, klass=None):
         dm = self
@@ -593,9 +649,13 @@ class PJDataManager(object):
         if obj._p_changed is None:
             self.setstate(obj)
         # Now we remove the object from PostGreSQL.
-        dbname, table = self._get_table_from_object(obj)
+        _, table = self._get_table_from_object(obj)
         with self.getCursor() as cur:
-            cur.execute('DELETE FROM %s WHERE id = %%s' % table, (obj._p_oid.id,))
+            try:
+                cur.execute('DELETE FROM %s_state WHERE pid = %%s' % table, (obj._p_oid.id, ))
+                cur.execute('DELETE FROM %s WHERE id=%%s' % table, (obj._p_oid.id,))
+            except:
+                pass
         if hash(obj._p_oid) in self._object_cache:
             del self._object_cache[hash(obj._p_oid)]
 
@@ -663,30 +723,27 @@ class PJDataManager(object):
         self.__init__(self._conn)
 
     def commit(self, transaction):
-        self.tpc_begin(transaction)
-        self.tpc_finish(transaction)
+        pass
 
     def tpc_begin(self, transaction):
         self._join_txn()
+        self._flush_objects()
 
     def tpc_vote(self, transaction):
         pass
 
     def tpc_finish(self, transaction):
-        self._flush_objects()
         self._report_stats()
         try:
             self._conn.commit()
         except psycopg2.Error, e:
             check_for_conflict(e, "DataManager.commit")
             raise
+        self.reset()
         self.__init__(self._conn)
-        self._prev_transaction_id = self._transaction_id
-        self._transaction_id = None
 
     def tpc_abort(self, transaction):
         self.abort(transaction)
-        self._transaction_id = None
 
     def sortKey(self):
         return ('PJDataManager', 0)

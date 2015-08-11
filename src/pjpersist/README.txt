@@ -66,12 +66,16 @@ By default, persistent objects are stored in a table having the escaped
 Python path of the class:
 
   >>> from pjpersist import serialize
-  >>> person_cn = serialize.get_dotted_name(Person, True)
+  >>> person_cn = serialize.get_dotted_name(Person, True, state=True)
   >>> person_cn
+  'u__main___dot_Person_state'
+
+  >>> person_cn_obj = serialize.get_dotted_name(Person, True)
+  >>> person_cn_obj
   'u__main___dot_Person'
 
   >>> transaction.commit()
-  >>> dumpTable(person_cn)  # doctest: +ELLIPSIS
+  >>> dumpTable(person_cn_obj)  # doctest: +ELLIPSIS
   [{'data': {u'_py_persistent_type': u'__main__.Person',
              u'address': None,
              u'birthday': None,
@@ -87,6 +91,9 @@ Python path of the class:
 As you can see, the stored document for the person looks very much like a
 natural JSON document. But oh no, I forgot to specify the full name for
 Stephan. Let's do that:
+
+  >>> dm.root['stephan']._p_changed
+  False
 
   >>> dm.root['stephan'].name = u'Stephan Richter'
   >>> dm.root['stephan']._p_changed

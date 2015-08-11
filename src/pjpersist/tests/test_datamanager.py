@@ -458,7 +458,10 @@ def doctest_PJDataManager_remove_flush_modify():
     restore the object.
 
       >>> dm._flush_objects()
-      >>> dumpTable(dm._get_table_from_object(foo)[1])
+
+      # >>> dm.commit(transaction.get())
+
+      >>> dumpTable(dm._get_table_from_object(foo)[1], isolate=True)
       []
 
     Within the same transaction we modify the object. But the object should
@@ -468,7 +471,7 @@ def doctest_PJDataManager_remove_flush_modify():
       >>> dm._registered_objects
       {}
 
-      >>> dumpTable(dm._get_table_from_object(foo)[1])
+      >>> dumpTable(dm._get_table_from_object(foo)[1], isolate=True)
       []
 
       >>> dm.reset()
@@ -569,9 +572,6 @@ def doctest_PJDataManager_register():
 
       >>> foo = Foo(u'foo')
       >>> dm.register(foo)
-
-      >>> dm._transaction_id is None
-      False
       >>> len(dm._registered_objects)
       1
 
@@ -607,7 +607,7 @@ def doctest_PJDataManager_abort():
       >>> dm.reset()
       >>> foo_ref = dm.insert(Foo('one'))
       >>> foo2_ref = dm.insert(Foo('two'))
-      >>> dm.commit(None)
+      >>> dm.tpc_finish(None)
 
       >>> dbanme, table = dm._get_table_from_object(Foo())
       >>> dumpTable(table)  # docstring: +ELLIPSIS
@@ -666,7 +666,7 @@ def doctest_PJDataManager_abort_subobjects():
 
       >>> dm.reset()
       >>> foo1_ref = dm.insert(ComplexFoo())
-      >>> dm.commit(None)
+      >>> dm.tpc_finish(None)
 
       >>> dbname, table = dm._get_table_from_object(ComplexFoo())
       >>> dumpTable(table)  # docstring: +ELLIPSIS
@@ -873,20 +873,22 @@ def doctest_PJDataManager_complex_sub_objects():
       >>> foo.sup = sup
 
       >>> dm.root['one'] = foo
-      >>> dm.tpc_finish(None)
+      >>> dm.flush()
 
       >>> cur = dm._conn.cursor()
       >>> cur.execute('SELECT tablename from pg_tables;')
       >>> sorted(e[0] for e in cur.fetchall()
       ...        if not e[0].startswith('pg_') and not e[0].startswith('sql_'))
       [u'persistence_root',
-       u'pjpersist_dot_tests_dot_test_datamanager_dot_foo']
+       u'pjpersist_dot_tests_dot_test_datamanager_dot_foo',
+       u'pjpersist_dot_tests_dot_test_datamanager_dot_foo_state']
 
     Now, save foo first, and then add subobjects
 
       >>> foo = Foo('two')
       >>> dm.root['two'] = foo
-      >>> dm.tpc_finish(None)
+
+      >>> dm.flush()
 
       >>> sup = Super('second super')
       >>> bar = Bar('second bar')
@@ -898,21 +900,24 @@ def doctest_PJDataManager_complex_sub_objects():
       >>> sup._p_pj_sub_object = True
       >>> sup._p_pj_doc_object = foo
       >>> foo.sup = sup
-      >>> dm.tpc_finish(None)
+      >>> dm.flush()
 
       >>> cur.execute('SELECT tablename from pg_tables;')
       >>> sorted(e[0] for e in cur.fetchall()
       ...        if not e[0].startswith('pg_') and not e[0].startswith('sql_'))
       [u'persistence_root',
-       u'pjpersist_dot_tests_dot_test_datamanager_dot_foo']
+       u'pjpersist_dot_tests_dot_test_datamanager_dot_foo',
+       u'pjpersist_dot_tests_dot_test_datamanager_dot_foo_state']
 
       >>> dm.root['two'].sup.bar
       <Bar second bar>
 
       >>> cur = dm.getCursor()
       >>> cur.execute(
-      ... '''SELECT * FROM pjpersist_dot_tests_dot_test_datamanager_dot_foo
-      ...    WHERE data @> '{"name": "one"}' ''')
+      ... '''SELECT m.*, s.data FROM pjpersist_dot_tests_dot_test_datamanager_dot_foo m
+      ...    JOIN pjpersist_dot_tests_dot_test_datamanager_dot_foo_state s
+      ...    ON m.id = s.pid and m.tid = s.tid
+      ...    WHERE s.data @> '{"name": "one"}' ''')
       >>> pprint([dict(e) for e in cur.fetchall()])  # doctest: +ELLIPSIS
       [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Foo',
                  u'name': u'one',
@@ -927,7 +932,7 @@ def doctest_PJDataManager_complex_sub_objects():
       >>> foo = dm.root['one']
       >>> foo.sup.name = 'new super'
       >>> foo.sup.bar.name = 'new bar'
-      >>> dm.tpc_finish(None)
+      >>> dm.flush()
 
       >>> foo = dm.root['one']
       >>> foo.sup
@@ -943,13 +948,14 @@ def doctest_PJDataManager_complex_sub_objects():
       >>> foo.sup.bar._p_pj_sub_object
       True
       >>> foo.sup.bar._p_pj_doc_object
-      <Foo one>
+      <Super new super>
 
       >>> cur.execute('SELECT tablename from pg_tables;')
       >>> sorted(e[0] for e in cur.fetchall()
       ...        if not e[0].startswith('pg_') and not e[0].startswith('sql_'))
       [u'persistence_root',
-       u'pjpersist_dot_tests_dot_test_datamanager_dot_foo']
+       u'pjpersist_dot_tests_dot_test_datamanager_dot_foo',
+       u'pjpersist_dot_tests_dot_test_datamanager_dot_foo_state']
 
     Even if _p_pj_doc_object is pointed to subobject, subobject does not get
     saved to its own table:
@@ -957,13 +963,14 @@ def doctest_PJDataManager_complex_sub_objects():
       >>> foo.sup.bar._p_pj_doc_object = foo.sup
       >>> foo.sup.bar.name = 'newer bar'
       >>> foo.sup.name = 'newer sup'
-      >>> dm.tpc_finish(None)
+      >>> dm.flush()
 
       >>> cur.execute('SELECT tablename from pg_tables;')
       >>> sorted(e[0] for e in cur.fetchall()
       ...        if not e[0].startswith('pg_') and not e[0].startswith('sql_'))
       [u'persistence_root',
-       u'pjpersist_dot_tests_dot_test_datamanager_dot_foo']
+       u'pjpersist_dot_tests_dot_test_datamanager_dot_foo',
+       u'pjpersist_dot_tests_dot_test_datamanager_dot_foo_state']
     """
 
 
@@ -1058,11 +1065,20 @@ def doctest_PJDataManager_no_compare():
     """
 
 
+class LFoo(persistent.Persistent):
+    def __init__(self):
+        self.x = 0
+
+
 def doctest_PJDataManager_long():
     r"""PJDataManager: Test behavior of long integers.
 
-      >>> dm.root['app'] = Root()
-      >>> dm.root['app'].x = 1L
+      >>> foo = LFoo()
+      >>> foo.x = 1L
+      >>> dm.root['app'] = foo
+      >>> dm.root['app'].x
+      1L
+      >>> dm.flush()
       >>> dm.tpc_finish(None)
 
     Let's see how it is deserialzied?
@@ -1073,7 +1089,9 @@ def doctest_PJDataManager_long():
     Let's now create a really long integer:
 
       >>> dm.root['app'].x = 2**62
-      >>> dm.tpc_finish(None)
+      >>> dm.root['app']._p_changed
+      True
+      >>> dm.flush()
 
       >>> dm.root['app'].x
       4611686018427387904
@@ -1081,11 +1099,16 @@ def doctest_PJDataManager_long():
     And now an overly long one.
 
       >>> dm.root['app'].x = 1234567890123456789012345678901234567890
+      >>> dm.flush()
       >>> dm.tpc_finish(None)
 
       >>> dm.root['app'].x
       1234567890123456789012345678901234567890L
     """
+
+
+class MFoo(Foo):
+    bar = None
 
 
 def doctest_PJDataManager_modify_sub_delete_doc():
@@ -1095,15 +1118,15 @@ def doctest_PJDataManager_modify_sub_delete_doc():
     sub-document object is modified (since it is registered with the data
     manager.
 
-      >>> foo = Foo('foo')
-      >>> dm.root['foo'] = foo
+      >>> foo = MFoo('foo')
       >>> foo.bar = Bar('bar')
+      >>> dm.root['foo'] = foo
 
-      >>> dm.tpc_finish(None)
+      >>> dm.commit(transaction.get())
       >>> cur = dm.getCursor()
       >>> cur.execute(
       ...     '''SELECT count(*)
-      ...        FROM pjpersist_dot_tests_dot_test_datamanager_dot_Foo''')
+      ...        FROM pjpersist_dot_tests_dot_test_datamanager_dot_MFoo''')
       >>> cur.fetchone()[0]
       1L
 
@@ -1113,10 +1136,10 @@ def doctest_PJDataManager_modify_sub_delete_doc():
       >>> foo.bar.name = 'bar-new'
       >>> dm.remove(foo)
 
-      >>> dm.tpc_finish(None)
+      >>> dm.commit(transaction.get())
       >>> cur.execute(
       ...     '''SELECT count(*)
-      ...        FROM pjpersist_dot_tests_dot_test_datamanager_dot_Foo''')
+      ...        FROM pjpersist_dot_tests_dot_test_datamanager_dot_MFoo''')
       >>> cur.fetchone()[0]
       0L
     """
