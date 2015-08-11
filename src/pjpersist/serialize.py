@@ -148,6 +148,8 @@ class DBRef(object):
         return self.hash
 
     def __eq__(self, other):
+        if other is None:
+            return False
         return self.hash == other.hash
 
     def __neq__(self, other):
