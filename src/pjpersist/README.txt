@@ -87,13 +87,9 @@ Python path of the class:
              u'visited': []},
     'id': ...L}]
 
-
 As you can see, the stored document for the person looks very much like a
 natural JSON document. But oh no, I forgot to specify the full name for
 Stephan. Let's do that:
-
-  >>> dm.root['stephan']._p_changed
-  False
 
   >>> dm.root['stephan'].name = u'Stephan Richter'
   >>> dm.root['stephan']._p_changed
@@ -151,7 +147,7 @@ But once we commit the transaction, everything is available:
              u'zip': u'01754'},
     'id': ...L}]
 
-  >>> dumpTable(person_cn)  # doctest: +ELLIPSIS
+  >>> dumpTable(person_cn_obj)  # doctest: +ELLIPSIS
   [{'data': {u'_py_persistent_type': u'__main__.Person',
              u'address': {u'_py_type': u'DBREF',
                           u'database': u'pjpersist_test',
@@ -200,7 +196,7 @@ Let's now commit the transaction and look at the JSONB document again:
   >>> dm.root['stephan'].phone
   <Phone +1-978-394-5124>
 
-  >>> dumpTable(person_cn)  # doctest: +ELLIPSIS
+  >>> dumpTable(person_cn_obj)  # doctest: +ELLIPSIS
   [{'data': {u'_py_persistent_type': u'__main__.Person',
              u'address': {u'_py_type': u'DBREF',
                           u'database': u'pjpersist_test',
@@ -529,6 +525,7 @@ extended to store the attribute and the person is added to the table:
              u'visited': []},
     'id': ...L,
     'name': u'Anton',
+    'pid': ...L,
     'tid': ...L}]
 
 
@@ -632,7 +629,7 @@ table:
 
   >>> from pjpersist import mapping
   >>> class People(mapping.PJTableMapping):
-  ...     __pj_table__ = person_cn
+  ...     __pj_table__ = person_cn_obj
   ...     __pj_mapping_key__ = 'short_name'
 
 The mapping takes the data manager as an argument. One can easily create a

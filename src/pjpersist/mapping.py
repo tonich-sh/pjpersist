@@ -35,7 +35,15 @@ class PJTableMapping(UserDict.DictMixin, object):
         filter += ''' AND data @> '%s' ''' % json.dumps({self.__pj_mapping_key__: key})
         with self._pj_jar.getCursor() as cur:
             cur.execute(
-                'SELECT id FROM ' + self.__pj_table__ + ' WHERE ' + filter)
+                '''
+SELECT
+    m.id
+FROM
+    %s m
+    JOIN %s_state s ON m.id = s.pid and m.tid = s.tid
+WHERE
+    %s''' % (self.__pj_table__, self.__pj_table__, filter)
+            )
             if not cur.rowcount:
                 raise KeyError(key)
             id = cur.fetchone()['id']
@@ -63,7 +71,15 @@ class PJTableMapping(UserDict.DictMixin, object):
         filter += "      NOT data ?& array['%s'] )" % self.__pj_mapping_key__
         with self._pj_jar.getCursor() as cur:
             cur.execute(
-                'SELECT * FROM ' + self.__pj_table__ + ' WHERE ' + filter)
+                '''
+SELECT
+    m.*, s.data
+FROM
+    %s m
+    JOIN %s_state s ON m.id = s.pid and m.tid = s.tid
+WHERE
+    %s''' % (self.__pj_table__, self.__pj_table__, filter)
+            )
             return [
                 res['data'][self.__pj_mapping_key__]
                 for res in cur.fetchall()]

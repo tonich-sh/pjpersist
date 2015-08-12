@@ -39,6 +39,7 @@ def setUp(test):
         qry = 'SELECT * FROM ' + table
         if clause:
             qry += ' WHERE ' + clause
+        qry += ' ORDER BY tid desc limit 1'
         with test.globs['dm'].getCursor(False) as cur:
             cur.execute(qry)
             return cur.fetchone()

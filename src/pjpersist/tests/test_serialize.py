@@ -542,7 +542,7 @@ def doctest_ObjectWriter_store():
       >>> top = Top()
       >>> dm.insert(top)  # doctest: +ELLIPSIS
       DBRef('Top', ...L, 'pjpersist_test')
-      >>> dm.commit(None)
+      >>> dm.flush()
       >>> dumpTable('Top')  # doctest: +ELLIPSIS
       [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_serialize.Top'},
         'id': ...L}]
@@ -551,7 +551,7 @@ def doctest_ObjectWriter_store():
     existing document:
 
       >>> top.name = 'top'
-      >>> dm.commit(None)
+      >>> dm.flush()
       >>> dumpTable('Top')  # doctest: +ELLIPSIS
       [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_serialize.Top',
                  u'name': u'top'},

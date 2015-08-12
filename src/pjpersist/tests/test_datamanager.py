@@ -309,7 +309,8 @@ def doctest_PJDataManager_remove():
       >>> foo = Foo('foo')
       >>> foo_ref = dm.insert(foo)
 
-      >>> dm.commit(None)
+      >>> dm.flush()
+      >>> dm.tpc_finish(None)
 
     Let's now load the object and remove it.
 
@@ -335,7 +336,8 @@ def doctest_PJDataManager_remove():
     There is an edge case, if the object is inserted and removed in the same
     transaction:
 
-      >>> dm.commit(None)
+      >>> dm.flush()
+      >>> dm.tpc_finish(None)
 
       >>> foo3 = Foo('Foo 3')
       >>> foo3_ref = dm.insert(foo3)
@@ -413,7 +415,6 @@ def doctest_PJDataManager_remove_modify_flush():
 
       >>> foo = Foo('foo')
       >>> foo_ref = dm.insert(foo)
-      >>> dm.reset()
 
     Let's now remove it:
 
@@ -431,7 +432,8 @@ def doctest_PJDataManager_remove_modify_flush():
     Now, because of other lookups, the changes are flushed, which should not
     restore the object.
 
-      >>> dm._flush_objects()
+      >>> dm.flush()
+      >>> dm.tpc_finish(None)
       >>> dumpTable(dm._get_table_from_object(foo)[1])
       []
       >>> dm.reset()
@@ -445,7 +447,6 @@ def doctest_PJDataManager_remove_flush_modify():
 
       >>> foo = Foo('foo')
       >>> foo_ref = dm.insert(foo)
-      >>> dm.reset()
 
     Let's now remove it:
 
@@ -457,11 +458,10 @@ def doctest_PJDataManager_remove_flush_modify():
     Now, because of other lookups, the changes are flushed, which should not
     restore the object.
 
-      >>> dm._flush_objects()
+      >>> dm.flush()
+      >>> dm.tpc_finish(None)
 
-      # >>> dm.commit(transaction.get())
-
-      >>> dumpTable(dm._get_table_from_object(foo)[1], isolate=True)
+      >>> dumpTable(dm._get_table_from_object(foo)[1])
       []
 
     Within the same transaction we modify the object. But the object should
@@ -471,7 +471,7 @@ def doctest_PJDataManager_remove_flush_modify():
       >>> dm._registered_objects
       {}
 
-      >>> dumpTable(dm._get_table_from_object(foo)[1], isolate=True)
+      >>> dumpTable(dm._get_table_from_object(foo)[1])
       []
 
       >>> dm.reset()
@@ -488,9 +488,7 @@ def doctest_PJDataManager_setstate():
       >>> foo = Foo(u'foo')
       >>> ref = dm.insert(foo)
 
-      >>> dm.commit(None)
-      >>> dm._transaction_id is None
-      True
+      >>> dm.flush()
 
       >>> foo2 = Foo()
       >>> foo2._p_oid = ref
@@ -498,8 +496,6 @@ def doctest_PJDataManager_setstate():
       >>> foo2.name
       u'foo'
 
-      >>> dm._transaction_id is None
-      False
     """
 
 
@@ -522,9 +518,7 @@ def doctest_PJDataManager_setstate_twice():
 
       >>> ref = dm.insert(foo)
 
-      >>> dm.commit(None)
-      >>> dm._transaction_id is None
-      True
+      >>> dm.flush()
 
       >>> foo2 = Foo()
       >>> foo2._p_oid = ref
@@ -803,6 +797,7 @@ def doctest_PJDataManager_sub_objects():
 
       >>> foo = Foo('one')
       >>> dm.root['one'] = foo
+      >>> dm.tpc_begin(None)
       >>> dm.tpc_finish(None)
 
       >>> foo = dm.root['one']
@@ -843,6 +838,7 @@ def doctest_PJDataManager_sub_objects():
       >>> foo.list.append(1)
       >>> foo.list._p_changed
       True
+      >>> dm.tpc_begin(None)
       >>> dm.tpc_finish(None)
 
       >>> foo = dm.root['one']
@@ -996,6 +992,7 @@ def doctest_PJDataManager_table_sharing():
       >>> dm.root['app'].three
       <Sub three>
 
+      >>> dm.tpc_begin(None)
       >>> dm.tpc_finish(None)
 
     Let's now load everything again:
@@ -1006,6 +1003,8 @@ def doctest_PJDataManager_table_sharing():
       <Sub two>
       >>> dm.root['app'].three
       <Sub three>
+
+      >>> dm.tpc_begin(None)
       >>> dm.tpc_finish(None)
 
     Make sure that after a restart, the objects can still be stored.
@@ -1016,6 +1015,8 @@ def doctest_PJDataManager_table_sharing():
       >>> dm2 = datamanager.PJDataManager(conn)
 
       >>> dm2.root['app'].four = Sub('four')
+
+      >>> dm2.tpc_begin(None)
       >>> dm2.tpc_finish(None)
 
       >>> serialize.AVAILABLE_NAME_MAPPINGS = set()
@@ -1155,6 +1156,7 @@ def doctest_PJDataManager_sub_doc_multi_flush():
       >>> dm.root['foo'] = foo
       >>> foo.bar = Bar('bar')
 
+      >>> dm.tpc_begin(None)
       >>> dm.tpc_finish(None)
 
     Let's now modify bar a few times with intermittend flushes.
@@ -1164,6 +1166,7 @@ def doctest_PJDataManager_sub_doc_multi_flush():
       >>> dm.flush()
       >>> foo.bar.name = 'bar-newer'
 
+      >>> dm.tpc_begin(None)
       >>> dm.tpc_finish(None)
       >>> dm.root['foo'].bar.name
       u'bar-newer'
@@ -1196,6 +1199,7 @@ def doctest_conflict_mod_1():
       >>> foo = Foo('foo-first')
       >>> dm.root['foo'] = foo
 
+      >>> dm.tpc_begin(None)
       >>> dm.tpc_finish(None)
 
       >>> conn1 = testing.getConnection(testing.DBNAME)
@@ -1213,12 +1217,12 @@ def doctest_conflict_mod_1():
       >>> dm2.root['foo'].name = 'foo-third'
 
     Finish in order 2 - 1
-
+      >>> dm2.tpc_begin(None)
       >>> dm2.tpc_finish(None)
-      >>> dm1.tpc_finish(None)
+      >>> dm1.tpc_begin(None)
       Traceback (most recent call last):
         ...
-      ConflictError: ('could not serialize access due to concurrent update\n', 'UPDATE pjpersist_dot_tests_dot_test_datamanager_dot_Foo SET data=%s WHERE id = %s')
+      ConflictError: ('could not serialize access due to read/write dependencies among transactions\nDETAIL:  Reason code: Canceled on identification as a pivot, during write.\nHINT:  The transaction might succeed if retried.\n', 'INSERT INTO pjpersist_dot_tests_dot_test_datamanager_dot_Foo_state (tid, pid, data) VALUES (31, 1, %s)')
 
       >>> transaction.abort()
 
@@ -1235,6 +1239,7 @@ def doctest_conflict_mod_2():
       >>> foo = Foo('foo-first')
       >>> dm.root['foo'] = foo
 
+      >>> dm.tpc_begin(None)
       >>> dm.tpc_finish(None)
 
       >>> conn1 = testing.getConnection(testing.DBNAME)
@@ -1252,12 +1257,12 @@ def doctest_conflict_mod_2():
       >>> dm2.root['foo'].name = 'foo-third'
 
     Finish in order 1 - 2
-
+      >>> dm1.tpc_begin(None)
       >>> dm1.tpc_finish(None)
-      >>> dm2.tpc_finish(None)
+      >>> dm2.tpc_begin(None)
       Traceback (most recent call last):
       ...
-      ConflictError: ('could not serialize access due to concurrent update\n', 'UPDATE pjpersist_dot_tests_dot_test_datamanager_dot_Foo SET data=%s WHERE id = %s')
+      ConflictError: ('could not serialize access due to read/write dependencies among transactions\nDETAIL:  Reason code: Canceled on identification as a pivot, during write.\nHINT:  The transaction might succeed if retried.\n', 'INSERT INTO pjpersist_dot_tests_dot_test_datamanager_dot_Foo_state (tid, pid, data) VALUES (34, 1, %s)')
 
       >>> transaction.abort()
 
@@ -1276,6 +1281,7 @@ class DatamanagerConflictTest(testing.PJTestCase):
         foo = Foo('foo-first')
         self.dm.root['foo'] = foo
 
+        self.dm.tpc_begin(None)
         self.dm.tpc_finish(None)
 
         conn1 = testing.getConnection(testing.DBNAME)
@@ -1292,10 +1298,10 @@ class DatamanagerConflictTest(testing.PJTestCase):
         del dm2.root['foo']
 
         #Finish in order 2 - 1
-
+        dm2.tpc_begin(None)
         dm2.tpc_finish(None)
         with self.assertRaises(interfaces.ConflictError):
-            dm1.tpc_finish(None)
+            dm1.tpc_begin(None)
 
         transaction.abort()
 
@@ -1309,6 +1315,7 @@ class DatamanagerConflictTest(testing.PJTestCase):
         foo = Foo('foo-first')
         self.dm.root['foo'] = foo
 
+        self.dm.tpc_begin(None)
         self.dm.tpc_finish(None)
 
         conn1 = testing.getConnection(testing.DBNAME)
@@ -1330,7 +1337,8 @@ class DatamanagerConflictTest(testing.PJTestCase):
         @testing.run_in_thread
         def background_commit():
             with self.assertRaises(interfaces.ConflictError):
-                dm1.tpc_finish(None)
+                dm1.tpc_begin(None)
+        dm2.tpc_begin(None)
         dm2.tpc_finish(None)
 
         transaction.abort()
@@ -1345,6 +1353,7 @@ class DatamanagerConflictTest(testing.PJTestCase):
         foo = Foo('foo-first')
         self.dm.root['foo'] = foo
 
+        self.dm.tpc_begin(None)
         self.dm.tpc_finish(None)
 
         conn1 = testing.getConnection(testing.DBNAME)
@@ -1360,9 +1369,10 @@ class DatamanagerConflictTest(testing.PJTestCase):
 
         #Finish in order 2 - 1
 
+        dm2.tpc_begin(None)
         dm2.tpc_finish(None)
         with self.assertRaises(interfaces.ConflictError):
-            dm1.tpc_finish(None)
+            dm1.tpc_begin(None)
 
         transaction.abort()
 
@@ -1376,6 +1386,7 @@ class DatamanagerConflictTest(testing.PJTestCase):
         foo = Foo('foo-first')
         self.dm.root['foo'] = foo
 
+        self.dm.tpc_begin(None)
         self.dm.tpc_finish(None)
 
         conn1 = testing.getConnection(testing.DBNAME)
@@ -1395,7 +1406,8 @@ class DatamanagerConflictTest(testing.PJTestCase):
         @testing.run_in_thread
         def background_commit():
             with self.assertRaises(interfaces.ConflictError):
-                dm1.tpc_finish(None)
+                dm1.tpc_begin(None)
+        dm2.tpc_begin(None)
         dm2.tpc_finish(None)
 
         transaction.abort()

@@ -449,7 +449,7 @@ class PJDataManager(object):
                         tid BIGINT NOT NULL,
                         %s
                         data JSONB,
-                        CONSTRAINT pid_tid_unique UNIQUE (pid, tid))''' % (table, extra_columns))
+                        CONSTRAINT %s_pid_tid_unique UNIQUE (pid, tid))''' % (table, extra_columns, table))
                 # this index helps a tiny bit with JSONB_CONTAINS queries
                 cur.execute('''
                     CREATE INDEX %s_data_gin ON %s_state USING GIN (data);
@@ -739,7 +739,6 @@ class PJDataManager(object):
         except psycopg2.Error, e:
             check_for_conflict(e, "DataManager.commit")
             raise
-        self.reset()
         self.__init__(self._conn)
 
     def tpc_abort(self, transaction):
