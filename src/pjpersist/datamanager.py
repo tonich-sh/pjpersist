@@ -101,9 +101,6 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
         if self.flush and sql.strip().split()[0].lower() == 'select':
             self.datamanager.flush()
 
-        # import sys
-        # sys.stderr.write("******* execute: %s\n" % sql)
-
         # XXX: Optimization opportunity to store returned JSONB docs in the
         # cache of the data manager. (SR)
 
@@ -315,7 +312,7 @@ class PJDataManager(object):
         # transaction related
         self._transaction_id = None
         self._prev_transaction_id = None
-        self.__txn_active = False
+        self._txn_active = False
         self.requestTransactionOptions()  # No special options
 
         self.transaction_manager = transaction.manager
@@ -327,18 +324,6 @@ class PJDataManager(object):
         # auto population flags
         self._id_sequence_exists = None
         self._tid_sequence_exists = None
-
-    @property
-    def _txn_active(self):
-        return self.__txn_active
-
-    @_txn_active.setter
-    def _txn_active(self, value):
-        # import sys
-        # import traceback
-        # sys.stderr.write('***** _txn_active is set to %s\n' % value.__str__())
-        # sys.stderr.write(''.join(traceback.format_stack()))
-        self.__txn_active = value
 
     def requestTransactionOptions(self, readonly=None, deferrable=None,
                                   isolation=None):
@@ -409,7 +394,6 @@ class PJDataManager(object):
         self._ensure_id_sequence()
         with self.getCursor(False) as cur:
             cur.execute("SELECT NEXTVAL('main_id_seq')")
-            # _id = str(cur.fetchone()[0]).rjust(24, '0')
             _id = cur.fetchone()[0]
         return _id
 
@@ -548,8 +532,7 @@ class PJDataManager(object):
 
     def _get_doc(self, database, table, id):
         with self.getCursor() as cur:
-            sql = "SELECT m.*, s.data from %s m join %s_state s ON m.id = s.pid and m.tid = s.tid WHERE m.id=%d" % (table, table, id)
-            # cur.execute(sb.Select(sb.Field(table, '*'), tbl.id == id))
+            sql = "SELECT m.*, s.data FROM %s m JOIN %s_state s ON m.id = s.pid AND m.tid = s.tid WHERE m.id=%d" % (table, table, id)
             cur.execute(sql)
             res = cur.fetchone()
             return res['data'] if res is not None else None
