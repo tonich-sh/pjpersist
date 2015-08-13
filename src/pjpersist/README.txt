@@ -478,6 +478,7 @@ When loading, the same happens:
 The store hook fires just once if the object is not new:
 
   >>> dm.root['stephan'].usernames.format = 'snailmail'
+  After Load Hook
   >>> transaction.commit()
   After Store Hook
 

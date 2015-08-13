@@ -217,6 +217,7 @@ class Root(UserDict.DictMixin):
             self.table = table
         if PJ_AUTO_CREATE_TABLES:
             self._init_table()
+        self._cache = dict()
 
     def _init_table(self):
         with self._jar.getCursor(False) as cur:
@@ -241,7 +242,7 @@ class Root(UserDict.DictMixin):
             return self.__getitem__(item)
 
     def __setattr__(self, key, value):
-        if key.startswith('__') or key in ('table', '_jar'):
+        if key.startswith('__') or key in ('table', '_jar', '_cache'):
             self.__dict__[key] = value
             return
         if key in self.__dict__:
@@ -249,6 +250,12 @@ class Root(UserDict.DictMixin):
         self.__setitem__(key, value)
 
     def __getitem__(self, key):
+        try:
+            v = self._cache[key]
+            return v
+        except KeyError:
+            pass
+
         with self._jar.getCursor(False) as cur:
             tbl = sb.Table(self.table)
             cur.execute(
@@ -257,7 +264,9 @@ class Root(UserDict.DictMixin):
                 raise KeyError(key)
             kw = cur.fetchone()['dbref']
             dbref = serialize.DBRef(kw['table'], kw['id'], kw['database'])
-            return self._jar.load(dbref)
+            v = self._jar.load(dbref)
+            self._cache[key] = v
+            return v
 
     def __setitem__(self, key, value):
         dbref = self._jar.insert(value)
@@ -268,6 +277,7 @@ class Root(UserDict.DictMixin):
                 'INSERT INTO %s (name, dbref) VALUES (%%s, %%s)' % self.table,
                 (key, Json(dbref.as_json()))
                 )
+        self._cache[key] = value
 
     def __delitem__(self, key):
         self._jar.remove(self[key])
@@ -279,6 +289,9 @@ class Root(UserDict.DictMixin):
         with self._jar.getCursor(False) as cur:
             cur.execute(sb.Select(sb.Field(self.table, 'name')))
             return [doc['name'] for doc in cur.fetchall()]
+
+    def on_flush(self):
+        self._cache = dict()
 
 
 class PJDataManager(object):
@@ -306,7 +319,6 @@ class PJDataManager(object):
         # The latest states written to the database.
         self._latest_states = {}
         self._needs_to_join = True
-        self._object_cache = {}
         self.annotations = {}
 
         # transaction related
@@ -555,6 +567,7 @@ class PJDataManager(object):
         return self._writer.get_table_name(obj)
 
     def _flush_objects(self):
+        self.root.on_flush()
         # Now write every registered object, but make sure we write each
         # object just once.
         written = set()
@@ -620,7 +633,6 @@ class PJDataManager(object):
             raise ValueError('Object._p_oid is already set.', obj)
         res = self._writer.store(obj, id=oid)
         obj._p_changed = False
-        self._object_cache[hash(obj._p_oid)] = obj
         self._inserted_objects[id(obj)] = obj
         return res
 
@@ -639,8 +651,6 @@ class PJDataManager(object):
                 cur.execute('DELETE FROM %s WHERE id=%%s' % table, (obj._p_oid.id,))
             except:
                 pass
-        if hash(obj._p_oid) in self._object_cache:
-            del self._object_cache[hash(obj._p_oid)]
 
         # Edge case: The object was just added in this transaction.
         if id(obj) in self._inserted_objects:

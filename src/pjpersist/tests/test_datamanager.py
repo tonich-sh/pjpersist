@@ -24,8 +24,10 @@ from zope.testing import module
 
 from pjpersist import interfaces, serialize, testing, datamanager
 
+
 class Root(persistent.Persistent):
     pass
+
 
 class Foo(persistent.Persistent):
     name = None
@@ -34,7 +36,8 @@ class Foo(persistent.Persistent):
         self.name = name
 
     def __repr__(self):
-        return '<%s %s>' %(self.__class__.__name__, self.name)
+        return '<%s %s>' % (self.__class__.__name__, self.name)
+
 
 class Super(persistent.Persistent):
     _p_pj_table = 'Super'
@@ -869,7 +872,8 @@ def doctest_PJDataManager_complex_sub_objects():
       >>> foo.sup = sup
 
       >>> dm.root['one'] = foo
-      >>> dm.flush()
+      >>> dm.tpc_begin(None)
+      >>> dm.tpc_finish(None)
 
       >>> cur = dm._conn.cursor()
       >>> cur.execute('SELECT tablename from pg_tables;')
@@ -881,22 +885,27 @@ def doctest_PJDataManager_complex_sub_objects():
 
     Now, save foo first, and then add subobjects
 
-      >>> foo = Foo('two')
-      >>> dm.root['two'] = foo
+      >>> foo2 = Foo('two')
+      >>> dm.root['two'] = foo2
 
-      >>> dm.flush()
+      >>> dm.tpc_begin(None)
+      >>> dm.tpc_finish(None)
 
-      >>> sup = Super('second super')
-      >>> bar = Bar('second bar')
+      >>> sup2 = Super('second super')
+      >>> bar2 = Bar('second bar')
 
-      >>> bar._p_pj_sub_object = True
-      >>> bar._p_pj_doc_object = sup
-      >>> sup.bar = bar
+      >>> bar2._p_pj_sub_object = True
+      >>> bar2._p_pj_doc_object = sup2
+      >>> sup2.bar = bar2
 
-      >>> sup._p_pj_sub_object = True
-      >>> sup._p_pj_doc_object = foo
-      >>> foo.sup = sup
-      >>> dm.flush()
+      >>> sup2._p_pj_sub_object = True
+      >>> sup2._p_pj_doc_object = foo2
+      >>> foo2.sup = sup2
+      >>> foo2.sup.bar._p_pj_doc_object
+      <Super second super>
+
+      >>> dm.tpc_begin(None)
+      >>> dm.tpc_finish(None)
 
       >>> cur.execute('SELECT tablename from pg_tables;')
       >>> sorted(e[0] for e in cur.fetchall()
@@ -928,9 +937,11 @@ def doctest_PJDataManager_complex_sub_objects():
       >>> foo = dm.root['one']
       >>> foo.sup.name = 'new super'
       >>> foo.sup.bar.name = 'new bar'
-      >>> dm.flush()
+      >>> dm.tpc_begin(None)
+      >>> dm.tpc_finish(None)
 
       >>> foo = dm.root['one']
+
       >>> foo.sup
       <Super new super>
       >>> foo.sup._p_pj_sub_object
@@ -959,7 +970,8 @@ def doctest_PJDataManager_complex_sub_objects():
       >>> foo.sup.bar._p_pj_doc_object = foo.sup
       >>> foo.sup.bar.name = 'newer bar'
       >>> foo.sup.name = 'newer sup'
-      >>> dm.flush()
+      >>> dm.tpc_begin(None)
+      >>> dm.tpc_finish(None)
 
       >>> cur.execute('SELECT tablename from pg_tables;')
       >>> sorted(e[0] for e in cur.fetchall()
@@ -979,7 +991,6 @@ def doctest_PJDataManager_table_sharing():
     is important that we select the correct class to use.
 
       >>> dm.root['app'] = Root()
-
       >>> dm.root['app'].one = Super('one')
       >>> dm.root['app'].one
       <Super one>
@@ -1079,7 +1090,7 @@ def doctest_PJDataManager_long():
       >>> dm.root['app'] = foo
       >>> dm.root['app'].x
       1L
-      >>> dm.flush()
+      >>> dm.tpc_begin(None)
       >>> dm.tpc_finish(None)
 
     Let's see how it is deserialzied?
@@ -1090,19 +1101,16 @@ def doctest_PJDataManager_long():
     Let's now create a really long integer:
 
       >>> dm.root['app'].x = 2**62
-      >>> dm.root['app']._p_changed
-      True
-      >>> dm.flush()
-
+      >>> dm.tpc_begin(None)
+      >>> dm.tpc_finish(None)
       >>> dm.root['app'].x
       4611686018427387904
 
     And now an overly long one.
 
       >>> dm.root['app'].x = 1234567890123456789012345678901234567890
-      >>> dm.flush()
+      >>> dm.tpc_begin(None)
       >>> dm.tpc_finish(None)
-
       >>> dm.root['app'].x
       1234567890123456789012345678901234567890L
     """
@@ -1222,7 +1230,7 @@ def doctest_conflict_mod_1():
       >>> dm1.tpc_begin(None)
       Traceback (most recent call last):
         ...
-      ConflictError: ('could not serialize access due to read/write dependencies among transactions\nDETAIL:  Reason code: Canceled on identification as a pivot, during write.\nHINT:  The transaction might succeed if retried.\n', 'INSERT INTO pjpersist_dot_tests_dot_test_datamanager_dot_Foo_state (tid, pid, data) VALUES (31, 1, %s)')
+      ConflictError: ('could not serialize access due to read/write dependencies among transactions\nDETAIL:  Reason code: Canceled on identification as a pivot, during write.\nHINT:  The transaction might succeed if retried.\n', 'INSERT INTO pjpersist_dot_tests_dot_test_datamanager_dot_Foo_state (tid, pid, data) VALUES (36, 1, %s)')
 
       >>> transaction.abort()
 
@@ -1262,7 +1270,7 @@ def doctest_conflict_mod_2():
       >>> dm2.tpc_begin(None)
       Traceback (most recent call last):
       ...
-      ConflictError: ('could not serialize access due to read/write dependencies among transactions\nDETAIL:  Reason code: Canceled on identification as a pivot, during write.\nHINT:  The transaction might succeed if retried.\n', 'INSERT INTO pjpersist_dot_tests_dot_test_datamanager_dot_Foo_state (tid, pid, data) VALUES (34, 1, %s)')
+      ConflictError: ('could not serialize access due to read/write dependencies among transactions\nDETAIL:  Reason code: Canceled on identification as a pivot, during write.\nHINT:  The transaction might succeed if retried.\n', 'INSERT INTO pjpersist_dot_tests_dot_test_datamanager_dot_Foo_state (tid, pid, data) VALUES (39, 1, %s)')
 
       >>> transaction.abort()
 

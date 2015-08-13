@@ -394,9 +394,6 @@ class ObjectWriter(object):
             stored = True
             obj._p_jar = self._jar
             obj._p_oid = DBRef(table_name, doc_id, db_name)
-            # Make sure that any other code accessing this object in this
-            # session, gets the same instance.
-            self._jar._object_cache[hash(obj._p_oid)] = obj
         else:
             self._jar._update_doc(
                 db_name, table_name, doc, obj._p_oid.id, column_data)
@@ -512,7 +509,7 @@ class ObjectReader(object):
             factory_args = self.get_object(state.pop('_py_factory_args'), obj)
             sub_obj = factory(*factory_args)
         if len(state):
-            sub_obj_state = self.get_object(state, obj)
+            sub_obj_state = self.get_object(state, sub_obj)
             if hasattr(sub_obj, '__setstate__'):
                 sub_obj.__setstate__(dict(sub_obj_state))
             else:
@@ -572,6 +569,12 @@ class ObjectReader(object):
                 items = state['dict_data']
             else:
                 items = state.items()
+            # sub_obj_list = list()
+            # for name, value in items:
+            #     obj_name = self.get_object(name, obj)
+            #     obj_value = self.get_object(value, obj)
+            #     sub_obj_list.append((obj_name, obj_value))
+            # sub_obj = dict(sub_obj_list)
             sub_obj = dict(
                 [(self.get_object(name, obj), self.get_object(value, obj))
                  for name, value in items])
@@ -609,11 +612,6 @@ class ObjectReader(object):
             obj._pj_after_load_hook(self._jar._conn)
 
     def get_ghost(self, dbref, klass=None):
-        # If we can, we return the object from cache.
-        try:
-            return self._jar._object_cache[hash(dbref)]
-        except KeyError:
-            pass
         if klass is None:
             klass = self.resolve(dbref)
         obj = klass.__new__(klass)
@@ -626,7 +624,6 @@ class ObjectReader(object):
         setattr(obj, interfaces.TABLE_ATTR_NAME, dbref.table)
         # Adding the object to the cache is very important, so that we get the
         # same object reference throughout the transaction.
-        self._jar._object_cache[hash(dbref)] = obj
         return obj
 
 
