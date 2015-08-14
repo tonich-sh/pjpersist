@@ -583,9 +583,11 @@ circular references are detected and reported:
   >>> bar.foo = foo
 
   >>> dm.root['top'] = top
+  >>> transaction.commit()
   Traceback (most recent call last):
   ...
   CircularReferenceError: <__main__.Foo object at 0x7fec75731890>
+  >>> transaction.abort()
 
 
 Circular Persistent References
@@ -628,32 +630,36 @@ There are many approaches that can be taken. The following implementation
 defines an attribute in the document as the mapping key and names a
 table:
 
-  >>> from pjpersist import mapping
-  >>> class People(mapping.PJTableMapping):
-  ...     __pj_table__ = person_cn_obj
-  ...     __pj_mapping_key__ = 'short_name'
+  #>>> from pjpersist import mapping
+  #>>> class People(mapping.PJTableMapping):
+  #...     __pj_table__ = person_cn_obj
+  #...     __pj_mapping_key__ = 'short_name'
 
 The mapping takes the data manager as an argument. One can easily create a
 sub-class that assigns the data manager automatically. Let's have a look:
 
-  >>> People(dm).keys()
-  []
+  #>>> People(dm).keys()
+  #[]
 
 The reason no person is in the list yet, is because no document has the key
 yet or the key is null. Let's change that:
 
-  >>> People(dm)['stephan'] = dm.root['stephan']
-  >>> transaction.commit()
-
-  >>> People(dm).keys()
-  [u'stephan']
-  >>> People(dm)['stephan']
+  >>> dm.root['stephan']
   <Person Stephan Richter>
+
+  #>>> People(dm)['stephan'] = dm.root['stephan']
+  #>>> transaction.commit()
+  #>>> dm.root['stephan']
+  #''
+  #>>> People(dm).keys()
+  #[u'stephan']
+  #>>> People(dm)['stephan']
+  #<Person Stephan Richter>
 
 Also note that setting the "short-name" attribute on any other person will add
 it to the mapping:
 
-  >>> dm.root['stephan'].friends['roy'].short_name = 'roy'
-  >>> transaction.commit()
-  >>> sorted(People(dm).keys())
-  [u'roy', u'stephan']
+  #>>> dm.root['stephan'].friends['roy'].short_name = 'roy'
+  #>>> transaction.commit()
+  #>>> sorted(People(dm).keys())
+  #[u'roy', u'stephan']

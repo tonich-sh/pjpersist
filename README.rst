@@ -44,6 +44,7 @@ Let's create a new person and store it in PostGreSQL:
 
   >>> stephan = Person(u'Stephan')
   >>> dm.root['stephan'] = stephan
+  >>> transaction.commit()
 
 By default, persistent objects are stored in a tabke having the Python path of
 the class. Since table names cannot statewith an underscore and contain dots,

@@ -134,10 +134,11 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
                     except psycopg2.Error, e:
                         # Join the transaction, because failed queries require
                         # aborting the transaction.
-                        self.datamanager._join_txn()
+                        # self.datamanager._join_txn()
+                        pass
                 # Join the transaction, because failed queries require
                 # aborting the transaction.
-                self.datamanager._join_txn()
+                # self.datamanager._join_txn()
                 check_for_conflict(e, sql)
                 # otherwise let it fly away
                 raise
@@ -148,7 +149,7 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
             except psycopg2.Error, e:
                 # Join the transaction, because failed queries require
                 # aborting the transaction.
-                self.datamanager._join_txn()
+                # self.datamanager._join_txn()
                 check_for_conflict(e, sql)
                 raise
 
@@ -294,6 +295,16 @@ class Root(UserDict.DictMixin):
         self._cache = dict()
 
 
+from persistent.mapping import PersistentMapping
+
+
+class DBRoot(PersistentMapping):
+    pass
+
+
+serialize.TABLE_KLASS_MAP.setdefault('pjpersist_dot_datamanager_dot_DBRoot', set()).add(DBRoot)
+
+
 class PJDataManager(object):
     zope.interface.implements(
         interfaces.IPJDataManager,
@@ -307,6 +318,18 @@ class PJDataManager(object):
         self.database = get_database_name_from_dsn(conn.dsn)
         self._reader = serialize.ObjectReader(self)
         self._writer = serialize.ObjectWriter(self)
+        self._needs_to_join = True
+        self._in_commit = False
+        self._commit_failed = False
+
+        self._cleanup()
+
+        if self.root is None:
+            self._create_root()
+        else:
+            self.root._p_invalidate()
+
+    def _cleanup(self):
         # All of the following object lists are keys by object id. This is
         # needed when testing containment, since that can utilize `__cmp__()`
         # which can have undesired side effects. `id()` is guaranteed to not
@@ -318,7 +341,6 @@ class PJDataManager(object):
         self._removed_objects = {}
         # The latest states written to the database.
         self._latest_states = {}
-        self._needs_to_join = True
         self.annotations = {}
 
         # transaction related
@@ -328,14 +350,24 @@ class PJDataManager(object):
         self.requestTransactionOptions()  # No special options
 
         self.transaction_manager = transaction.manager
-        if self.root is None:
-            self.root = Root(self, root_table)
 
         self._query_report = QueryReport()
+        self._commit_failed = False
 
-        # auto population flags
-        self._id_sequence_exists = None
-        self._tid_sequence_exists = None
+    def _create_root(self):
+        # load root
+        _root_oid = serialize.DBRef('pjpersist_dot_datamanager_dot_DBRoot', 0, self.database)
+        try:
+            self.root = self.load(_root_oid)
+        except ImportError:
+            self.root = None
+
+        if self.root is None:
+            #self.root = Root(self, root_table)
+            self.root = DBRoot()
+            self.insert(self.root, _root_oid)
+            self.root._p_jar = self
+            self.root._p_oid = _root_oid
 
     def requestTransactionOptions(self, readonly=None, deferrable=None,
                                   isolation=None):
@@ -366,29 +398,16 @@ class PJDataManager(object):
         cur.execute("BEGIN")
         cur.execute(stmt)
 
-    def _ensure_id_sequence(self):
-        if self._id_sequence_exists is not None:
-            return
-        with self.getCursor(False) as cur:
-            cur.execute("SELECT * FROM pg_catalog.pg_class WHERE relkind='S' AND relname='main_id_seq'")
-            if not cur.rowcount:
-                cur.execute("CREATE SEQUENCE main_id_seq")
-            self._id_sequence_exists = True
-
-    def _ensure_tid_sequence(self):
-        if self._tid_sequence_exists is not None:
-            return
-        with self.getCursor(False) as cur:
-            cur.execute("SELECT * FROM pg_catalog.pg_class WHERE relkind='S' AND relname='transaction_id_seq'")
-            if not cur.rowcount:
-                cur.execute("CREATE SEQUENCE transaction_id_seq")
-            self._tid_sequence_exists = True
-
     def get_transaction_id(self):
         if self._transaction_id is None:
-            self._ensure_tid_sequence()
             with self.getCursor(False) as cur:
-                cur.execute("SELECT NEXTVAL('transaction_id_seq')")
+                cur.execute("SAVEPOINT before_get_tid")
+                try:
+                    cur.execute("SELECT NEXTVAL('transaction_id_seq')")
+                except psycopg2.ProgrammingError:
+                    psycopg2.extras.DictCursor.execute(cur, "ROLLBACK TO SAVEPOINT before_get_tid")
+                    cur.execute("CREATE SEQUENCE transaction_id_seq")
+                    cur.execute("SELECT NEXTVAL('transaction_id_seq')")
                 self._transaction_id = cur.fetchone()[0]
         return self._transaction_id
 
@@ -396,16 +415,21 @@ class PJDataManager(object):
         def factory(*args, **kwargs):
             return PJPersistCursor(self, flush, *args, **kwargs)
         cur = self._conn.cursor(cursor_factory=factory)
-
+        self._join_txn()
         if not self._txn_active:
             self._setTransactionOptions(cur)
             self._txn_active = True
         return cur
 
     def createId(self):
-        self._ensure_id_sequence()
         with self.getCursor(False) as cur:
-            cur.execute("SELECT NEXTVAL('main_id_seq')")
+            cur.execute("SAVEPOINT before_get_id")
+            try:
+                cur.execute("SELECT NEXTVAL('main_id_seq')")
+            except psycopg2.ProgrammingError:
+                psycopg2.extras.DictCursor.execute(cur, "ROLLBACK TO SAVEPOINT before_get_id")
+                cur.execute("CREATE SEQUENCE main_id_seq")
+                cur.execute("SELECT NEXTVAL('main_id_seq')")
             _id = cur.fetchone()[0]
         return _id
 
@@ -563,11 +587,11 @@ class PJDataManager(object):
             return res[0] if res is not None else None
 
     def _get_table_from_object(self, obj):
-        self._join_txn()
+        # self._join_txn()
         return self._writer.get_table_name(obj)
 
     def _flush_objects(self):
-        self.root.on_flush()
+        # self.root.on_flush()
         # Now write every registered object, but make sure we write each
         # object just once.
         written = set()
@@ -583,6 +607,8 @@ class PJDataManager(object):
             self._writer.store(obj)
             written.add(obj_id)
             todo = set(self._registered_objects.keys()) - written
+        if self.root is not None:
+            self.root._p_invalidate()
 
     def _get_doc_object(self, obj):
         seen = []
@@ -597,9 +623,9 @@ class PJDataManager(object):
 
     def _join_txn(self):
         if self._needs_to_join:
-            self.transaction_manager.get().join(self)
+            txn = self.transaction_manager.get()
+            txn.join(self)
             self._needs_to_join = False
-
 
     def load(self, dbref, klass=None):
         dm = self
@@ -617,7 +643,9 @@ class PJDataManager(object):
         # we need to issue rollback on self._conn too, to get the latest
         # DB updates, not just reset PJDataManager state
         self.abort(None)
+        # self._create_root()
 
+    # TODO: remove (use commit)
     def flush(self):
         # Now write every registered object, but make sure we write each
         # object just once.
@@ -628,10 +656,17 @@ class PJDataManager(object):
         self._registered_objects = {}
 
     def insert(self, obj, oid=None):
-        self._join_txn()
+        # self._join_txn()
         if obj._p_oid is not None:
             raise ValueError('Object._p_oid is already set.', obj)
-        res = self._writer.store(obj, id=oid)
+        if oid is not None:
+            if isinstance(oid, serialize.DBRef):
+                _id = oid.id
+            else:
+                _id = oid
+        else:
+            _id = None
+        res = self._writer.store(obj, id=_id)
         obj._p_changed = False
         self._inserted_objects[id(obj)] = obj
         return res
@@ -672,7 +707,7 @@ class PJDataManager(object):
         # When reading a state from PostGreSQL, we also need to join the
         # transaction, because we keep an active object cache that gets stale
         # after the transaction is complete and must be cleaned.
-        self._join_txn()
+        # self._join_txn()
         # If the doc is None, but it has been loaded before, we look it
         # up. This acts as a great hook for optimizations that load many
         # documents at once. They can now dump the states into the
@@ -706,6 +741,8 @@ class PJDataManager(object):
                 self._modified_objects[id(obj)] = obj
 
     def abort(self, transaction):
+        # should not call from two-phase commit
+        assert not self._in_commit
         self._report_stats()
         try:
             self._conn.rollback()
@@ -713,28 +750,50 @@ class PJDataManager(object):
             # this happens usually when PG is restarted and the connection dies
             # our only chance to exit the spiral is to abort the transaction
             pass
-        self.__init__(self._conn)
+        self._cleanup()
 
     def commit(self, transaction):
-        pass
+        try:
+            # Now write every registered object, but make sure we write each
+            # object just once.
+            self._flush_objects()
+            # Let's now reset all objects as if they were not modified:
+            for obj in self._registered_objects.values():
+                obj._p_changed = False
+            self._registered_objects = {}
+            self._commit_failed = False
+        except:
+            self._commit_failed = True
+            raise
+
+    def _tpc_cleanup(self):
+        """Performs cleanup operations to support tpc_finish and tpc_abort."""
+        if not self._needs_to_join:
+            self._needs_to_join = True
+        self._in_commit = False
 
     def tpc_begin(self, transaction):
-        self._join_txn()
-        self._flush_objects()
+        self._in_commit = True
 
     def tpc_vote(self, transaction):
+        # if self._commit_failed:
+        #     raise Exception('Commit failed...')
         pass
 
     def tpc_finish(self, transaction):
-        self._report_stats()
+        try:
+            self._report_stats()
+        except:
+            pass
         try:
             self._conn.commit()
         except psycopg2.Error, e:
             check_for_conflict(e, "DataManager.commit")
-            raise
-        self.__init__(self._conn)
+        self._cleanup()
+        self._tpc_cleanup()
 
     def tpc_abort(self, transaction):
+        self._tpc_cleanup()
         self.abort(transaction)
 
     def sortKey(self):

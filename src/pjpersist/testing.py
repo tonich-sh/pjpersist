@@ -123,7 +123,7 @@ def tearDownSerializers(test):
 def setUp(test):
     module.setUp(test)
     setUpSerializers(test)
-    #createDB()
+    # createDB()
     g = test.globs
     g['conn'] = getConnection(DBNAME)
     g['conn_other'] = getConnection(DBNAME_OTHER)
@@ -161,7 +161,7 @@ def tearDown(test):
     cleanDB(test.globs['conn_other'])
     test.globs['conn'].close()
     test.globs['conn_other'].close()
-    #dropDB()
+    # dropDB()
     resetCaches()
 
 

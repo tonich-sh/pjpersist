@@ -95,8 +95,7 @@ def doctest_PJTableMapping_filter():
 
     And accessing the items works as expected:
 
-      >>> dm.tpc_begin(None)
-      >>> dm.tpc_finish(None)
+      >>> transaction.commit()
 
       >>> container1.keys()
       [u'1-1', u'1-2', u'1-3']
