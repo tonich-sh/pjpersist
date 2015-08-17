@@ -43,7 +43,7 @@ Let's now define a simple persistent object:
 Let's create a new person and store it in PostGreSQL:
 
   >>> stephan = Person(u'Stephan')
-  >>> dm.root['stephan'] = stephan
+  >>> dm.root.stephan = stephan
   >>> transaction.commit()
 
 By default, persistent objects are stored in a tabke having the Python path of
@@ -118,7 +118,7 @@ Well, let's create a phone number object for that:
   ...     def __str__(self):
   ...         return '%s-%s-%s' %(self.country, self.area, self.number)
 
-  >>> stephan = dm.root['stephan']
+  >>> stephan = dm.root.stephan
   >>> stephan.phone = Phone('+1', '978', '394-5124')
   >>> transaction.commit()
 
@@ -142,7 +142,7 @@ Well, let's create a phone number object for that:
 
 Let's now set various attributes:
 
-  >>> stephan = dm.root['stephan']
+  >>> stephan = dm.root.stephan
   >>> stephan.friends = {'roy': Person(u'Roy Mathew')}
   >>> stephan.visited = (u'Germany', u'USA')
   >>> stephan.birthday = datetime.date(1980, 1, 25)
@@ -184,7 +184,7 @@ Push the data to PostGreSQL, and dump the results:
 
 Of course all properties can be retrieved as python objects:
 
-  >>> stephan = dm.root['stephan']
+  >>> stephan = dm.root.stephan
   >>> stephan.address
   <Address Maynard (01754)>
 

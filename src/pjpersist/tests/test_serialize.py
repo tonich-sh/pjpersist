@@ -1054,7 +1054,7 @@ def doctest_deserialize_persistent_references():
       >>> top.foo = Foo()
       >>> top.foo.name = 'foo'
 
-      >>> dm.root['top'] = top
+      >>> dm.root.top = top
       >>> commit()
 
     Let's check that the objects were properly serialized.
@@ -1076,7 +1076,7 @@ def doctest_deserialize_persistent_references():
     Now we access the objects objects again to see whether they got properly
     deserialized.
 
-      >>> top2 = dm.root['top']
+      >>> top2 = dm.root.top
       >>> id(top2) == id(top)
       False
       >>> top2.name
@@ -1110,7 +1110,7 @@ def doctest_deserialize_persistent_foreign_references():
       >>> top = Top()
       >>> top.name = 'main'
       >>> top.other = top_other
-      >>> dm.root['top'] = top
+      >>> dm.root.top = top
       >>> commit()
 
       >>> dumpTable('Top')  # doctest: +ELLIPSIS
@@ -1122,7 +1122,7 @@ def doctest_deserialize_persistent_foreign_references():
                             u'table': u'Top'}},
         'id': ...L}]
 
-      >>> top = dm.root['top']
+      >>> top = dm.root.top
       >>> print top.name
       main
       >>> print top.other.name

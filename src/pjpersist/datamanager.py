@@ -214,7 +214,35 @@ class DBRoot(PersistentMapping):
     pass
 
 
-serialize.TABLE_KLASS_MAP.setdefault('pjpersist_dot_datamanager_dot_DBRoot', set()).add(DBRoot)
+class RootConvenience(object):
+
+    def __init__(self, root):
+        self.__dict__['_root'] = root
+
+    def __getattr__(self, name):
+        try:
+            return self._root[name]
+        except KeyError:
+            raise AttributeError(name)
+
+    def __setattr__(self, name, v):
+        self._root[name] = v
+
+    def __delattr__(self, name):
+        try:
+            del self._root[name]
+        except KeyError:
+            raise AttributeError(name)
+
+    def __call__(self):
+        return self._root
+
+    def __repr__(self):
+        names = " ".join(sorted(self._root))
+        if len(names) > 60:
+            names = names[:57].rsplit(' ', 1)[0] + ' ...'
+        return "<root: %s>" % names
+
 
 
 class PJDataManager(object):
@@ -223,7 +251,7 @@ class PJDataManager(object):
         transaction.interfaces.IDataManager
     )
 
-    root = None
+    _root = None
 
     def __init__(self, conn, root_table=None):
         self._conn = conn
@@ -235,11 +263,6 @@ class PJDataManager(object):
         self._commit_failed = False
 
         self._cleanup()
-
-        if self.root is None:
-            self._create_root()
-        else:
-            self.root._p_invalidate()
 
     def _cleanup(self):
         # All of the following object lists are keys by object id. This is
@@ -265,21 +288,31 @@ class PJDataManager(object):
 
         self._query_report = QueryReport()
         self._commit_failed = False
+        if self._root is not None:
+            self._root._p_invalidate()
+
+    @property
+    def root(self):
+        if self._root is None:
+            self._root = self._create_root()
+        return RootConvenience(self._root)
 
     def _create_root(self):
         # load root
         _root_oid = serialize.DBRef('pjpersist_dot_datamanager_dot_DBRoot', 0, self.database)
         try:
-            self.root = self.load(_root_oid)
+            root = self.load(_root_oid)
+            LOG.debug('DBRoot loaded successfully: %s' % dir(root).__str__())
         except ImportError:
-            self.root = None
+            root = None
 
-        if self.root is None:
-            #self.root = Root(self, root_table)
-            self.root = DBRoot()
-            self.insert(self.root, _root_oid)
-            self.root._p_jar = self
-            self.root._p_oid = _root_oid
+        if root is None:
+            # create root
+            root = DBRoot()
+            self.insert(root, _root_oid)
+            root._p_jar = self
+            root._p_oid = _root_oid
+        return root
 
     def requestTransactionOptions(self, readonly=None, deferrable=None,
                                   isolation=None):
@@ -519,8 +552,8 @@ class PJDataManager(object):
             self._writer.store(obj)
             written.add(obj_id)
             todo = set(self._registered_objects.keys()) - written
-        if self.root is not None:
-            self.root._p_invalidate()
+        if self._root is not None:
+            self._root._p_invalidate()
 
     def _get_doc_object(self, obj):
         seen = []
@@ -555,7 +588,6 @@ class PJDataManager(object):
         # we need to issue rollback on self._conn too, to get the latest
         # DB updates, not just reset PJDataManager state
         self.abort(None)
-        # self._create_root()
 
     # TODO: remove (use commit)
     def flush(self):

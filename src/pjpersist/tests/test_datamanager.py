@@ -221,7 +221,7 @@ def doctest_PJDataManager_insert():
     It is also added to the list of inserted objects:
 
       >>> dm._inserted_objects.values()
-      [{}, <Foo foo>]
+      [<Foo foo>]
 
     Let's make sure it is really in PostGreSQL:
 
@@ -331,7 +331,7 @@ def doctest_PJDataManager_insert_remove():
     Only root object inserted
 
       >>> dm._inserted_objects.values()
-      [{}]
+      []
       >>> dm._removed_objects.values()
       [<Foo foo>]
 
@@ -356,7 +356,7 @@ def doctest_PJDataManager_insert_remove_modify():
     Only root object inserted
 
       >>> dm._inserted_objects.values()
-      [{}]
+      []
       >>> dm._removed_objects.values()
       [<Foo foo>]
 
@@ -761,10 +761,10 @@ def doctest_PJDataManager_sub_objects():
     missing.
 
       >>> foo = Foo('one')
-      >>> dm.root['one'] = foo
+      >>> dm.root.one = foo
       >>> dm.commit(None)
 
-      >>> foo = dm.root['one']
+      >>> foo = dm.root.one
       >>> foo._p_changed
 
       >>> foo.list = serialize.PersistentList()
@@ -804,7 +804,7 @@ def doctest_PJDataManager_sub_objects():
       True
       >>> dm.commit(None)
 
-      >>> foo = dm.root['one']
+      >>> foo = dm.root.one
       >>> foo.list
       [1]
 
@@ -831,7 +831,7 @@ def doctest_PJDataManager_complex_sub_objects():
       >>> sup._p_pj_doc_object = foo
       >>> foo.sup = sup
 
-      >>> dm.root['one'] = foo
+      >>> dm.root()['one'] = foo
       >>> dm.commit(None)
 
 
@@ -847,7 +847,7 @@ def doctest_PJDataManager_complex_sub_objects():
     Now, save foo first, and then add subobjects
 
       >>> foo2 = Foo('two')
-      >>> dm.root['two'] = foo2
+      >>> dm.root.two = foo2
 
       >>> dm.commit(None)
 
@@ -874,7 +874,7 @@ def doctest_PJDataManager_complex_sub_objects():
        u'pjpersist_dot_tests_dot_test_datamanager_dot_foo',
        u'pjpersist_dot_tests_dot_test_datamanager_dot_foo_state']
 
-      >>> dm.root['two'].sup.bar
+      >>> dm.root()['two'].sup.bar
       <Bar second bar>
 
       >>> cur = dm.getCursor()
@@ -894,12 +894,12 @@ def doctest_PJDataManager_complex_sub_objects():
 
     Now, make changes to the subobjects and then commit
 
-      >>> foo = dm.root['one']
+      >>> foo = dm.root.one
       >>> foo.sup.name = 'new super'
       >>> foo.sup.bar.name = 'new bar'
       >>> dm.commit(None)
 
-      >>> foo = dm.root['one']
+      >>> foo = dm.root.one
 
       >>> foo.sup
       <Super new super>
@@ -950,28 +950,28 @@ def doctest_PJDataManager_table_sharing():
     the same table should be used. However, during de-serialization, it
     is important that we select the correct class to use.
 
-      >>> dm.root['app'] = Root()
-      >>> dm.root['app'].one = Super('one')
-      >>> dm.root['app'].one
+      >>> dm.root.app = Root()
+      >>> dm.root.app.one = Super('one')
+      >>> dm.root.app.one
       <Super one>
 
-      >>> dm.root['app'].two = Sub('two')
-      >>> dm.root['app'].two
+      >>> dm.root.app.two = Sub('two')
+      >>> dm.root.app.two
       <Sub two>
 
-      >>> dm.root['app'].three = Sub('three')
-      >>> dm.root['app'].three
+      >>> dm.root.app.three = Sub('three')
+      >>> dm.root.app.three
       <Sub three>
 
       >>> dm.commit(None)
 
     Let's now load everything again:
 
-      >>> dm.root['app'].one
+      >>> dm.root.app.one
       <Super one>
-      >>> dm.root['app'].two
+      >>> dm.root.app.two
       <Sub two>
-      >>> dm.root['app'].three
+      >>> dm.root.app.three
       <Sub three>
 
       >>> dm.commit(None)
@@ -983,14 +983,14 @@ def doctest_PJDataManager_table_sharing():
 
       >>> dm2 = datamanager.PJDataManager(conn)
 
-      >>> dm2.root['app'].four = Sub('four')
+      >>> dm2.root.app.four = Sub('four')
 
       >>> dm2.commit(None)
 
       >>> serialize.AVAILABLE_NAME_MAPPINGS = set()
       >>> serialize.PATH_RESOLVE_CACHE = {}
 
-      >>> dm2.root['app'].four
+      >>> dm2.root.app.four
       <Sub four>
     """
 
@@ -1003,7 +1003,6 @@ def doctest_PJDataManager_no_compare():
     that cause flushes and queries in the data manager. This can have very
     convoluted side effects, including loss of data.
 
-      >>> import UserDict
       >>> class BadObject(persistent.Persistent):
       ...     def __init__(self, name):
       ...         self.name = name
@@ -1012,17 +1011,16 @@ def doctest_PJDataManager_no_compare():
       ...     def __repr__(self):
       ...         return '<BadObject %s>' % self.name
 
-      >>> dm.root['bo1'] = BadObject('bo1')
-      >>> dm.root['bo2'] = BadObject('bo2')
-      >>> dm.tpc_begin(None)
-      >>> dm.tpc_finish(None)
+      >>> dm.root.bo1 = BadObject('bo1')
+      >>> dm.root.bo2 = BadObject('bo2')
+      >>> dm.commit(None)
 
     Since `__cmp__()` was not used, no exception was raised.
 
-      >>> bo1 = dm.root['bo1']
+      >>> bo1 = dm.root.bo1
       >>> bo1
       <BadObject bo1>
-      >>> bo2 = dm.root['bo2']
+      >>> bo2 = dm.root.bo2
       >>> bo2
       <BadObject bo2>
 
@@ -1044,28 +1042,28 @@ def doctest_PJDataManager_long():
 
       >>> foo = LFoo()
       >>> foo.x = 1L
-      >>> dm.root['app'] = foo
-      >>> dm.root['app'].x
+      >>> dm.root.app = foo
+      >>> dm.root.app.x
       1L
       >>> transaction.commit()
 
     Let's see how it is deserialzied?
 
-      >>> dm.root['app'].x
+      >>> dm.root.app.x
       1
 
     Let's now create a really long integer:
 
-      >>> dm.root['app'].x = 2**62
+      >>> dm.root.app.x = 2**62
       >>> dm.commit(None)
-      >>> dm.root['app'].x
+      >>> dm.root.app.x
       4611686018427387904
 
     And now an overly long one.
 
-      >>> dm.root['app'].x = 1234567890123456789012345678901234567890
+      >>> dm.root.app.x = 1234567890123456789012345678901234567890
       >>> dm.commit(None)
-      >>> dm.root['app'].x
+      >>> dm.root.app.x
       1234567890123456789012345678901234567890L
     """
 
@@ -1083,7 +1081,7 @@ def doctest_PJDataManager_modify_sub_delete_doc():
 
       >>> foo = MFoo('foo')
       >>> foo.bar = Bar('bar')
-      >>> dm.root['foo'] = foo
+      >>> dm.root.foo = foo
 
       >>> dm.commit(transaction.get())
       >>> cur = dm.getCursor()
@@ -1095,7 +1093,7 @@ def doctest_PJDataManager_modify_sub_delete_doc():
 
     Let's now modify bar and delete foo.
 
-      >>> foo = dm.root['foo']
+      >>> foo = dm.root.foo
       >>> foo.bar.name = 'bar-new'
       >>> dm.remove(foo)
 
@@ -1115,20 +1113,20 @@ def doctest_PJDataManager_sub_doc_multi_flush():
     querying.)
 
       >>> foo = Foo('foo')
-      >>> dm.root['foo'] = foo
+      >>> dm.root.foo = foo
       >>> foo.bar = Bar('bar')
 
       >>> dm.commit(None)
 
     Let's now modify bar a few times with intermittend flushes.
 
-      >>> foo = dm.root['foo']
+      >>> foo = dm.root.foo
       >>> foo.bar.name = 'bar-new'
       >>> dm.commit(None)
       >>> foo.bar.name = 'bar-newer'
 
       >>> transaction.commit()
-      >>> dm.root['foo'].bar.name
+      >>> dm.root.foo.bar.name
       u'bar-newer'
     """
 
@@ -1158,23 +1156,23 @@ def doctest_conflict_mod_1():
     transactions, simulating separate processes.
 
       >>> foo = Foo('foo-first')
-      >>> dm.root['foo'] = foo
+      >>> dm.root.foo = foo
 
       >>> transaction.commit()
 
       >>> conn1 = testing.getConnection(testing.DBNAME)
       >>> dm1 = datamanager.PJDataManager(conn1)
 
-      >>> dm1.root['foo']
+      >>> dm1.root.foo
       <Foo foo-first>
-      >>> dm1.root['foo'].name = 'foo-second'
+      >>> dm1.root.foo.name = 'foo-second'
 
       >>> conn2 = testing.getConnection(testing.DBNAME)
       >>> dm2 = datamanager.PJDataManager(conn2)
 
-      >>> dm2.root['foo']
+      >>> dm2.root.foo
       <Foo foo-first>
-      >>> dm2.root['foo'].name = 'foo-third'
+      >>> dm2.root.foo.name = 'foo-third'
 
       # >>> t1 = transaction.Transaction()
       # >>> t2 = transaction.Transaction()
@@ -1205,23 +1203,23 @@ def doctest_conflict_mod_2():
     transactions, simulating separate processes.
 
       >>> foo = Foo('foo-first')
-      >>> dm.root['foo'] = foo
+      >>> dm.root.foo = foo
 
       >>> transaction.commit()
 
       >>> conn1 = testing.getConnection(testing.DBNAME)
       >>> dm1 = datamanager.PJDataManager(conn1)
 
-      >>> dm1.root['foo']
+      >>> dm1.root.foo
       <Foo foo-first>
-      >>> dm1.root['foo'].name = 'foo-second'
+      >>> dm1.root.foo.name = 'foo-second'
 
       >>> conn2 = testing.getConnection(testing.DBNAME)
       >>> dm2 = datamanager.PJDataManager(conn2)
 
-      >>> dm2.root['foo']
+      >>> dm2.root.foo
       <Foo foo-first>
-      >>> dm2.root['foo'].name = 'foo-third'
+      >>> dm2.root.foo.name = 'foo-third'
 
     Finish in order 1 - 2
       >>> dm1.tpc_begin(None)

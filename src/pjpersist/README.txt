@@ -55,8 +55,8 @@ The datamanager provides a ``root`` attribute in which the object tree roots
 can be stored. It is special in the sense that it immediately writes the data
 to the DB:
 
-  >>> dm.root['stephan'] = stephan
-  >>> dm.root['stephan']
+  >>> dm.root.stephan = stephan
+  >>> dm.root()['stephan']
   <Person Stephan>
 
 Custom Persistence Tables
@@ -91,8 +91,8 @@ As you can see, the stored document for the person looks very much like a
 natural JSON document. But oh no, I forgot to specify the full name for
 Stephan. Let's do that:
 
-  >>> dm.root['stephan'].name = u'Stephan Richter'
-  >>> dm.root['stephan']._p_changed
+  >>> dm.root.stephan.name = u'Stephan Richter'
+  >>> dm.root()['stephan']._p_changed
   True
 
 This time, the data is not automatically saved:
@@ -102,10 +102,10 @@ This time, the data is not automatically saved:
 
 So we have to commit the transaction first:
 
-  >>> dm.root['stephan']._p_changed
+  >>> dm.root.stephan._p_changed
   True
   >>> transaction.commit()
-  >>> dm.root['stephan']._p_changed
+  >>> dm.root.stephan._p_changed
   >>> fetchone(person_cn)['data']['name']
   u'Stephan Richter'
 
@@ -127,7 +127,7 @@ Let's now add an address for Stephan. Addresses are also persistent objects:
 pjpersist supports a special attribute called ``_p_pj_table``,
 which allows you to specify a custom table to use.
 
-  >>> stephan = dm.root['stephan']
+  >>> stephan = dm.root.stephan
   >>> stephan.address = Address('Maynard', '01754')
   >>> stephan.address
   <Address Maynard (01754)>
@@ -162,7 +162,7 @@ But once we commit the transaction, everything is available:
              u'visited': []},
     'id': ...L}]
 
-  >>> dm.root['stephan'].address
+  >>> dm.root.stephan.address
   <Address Maynard (01754)>
 
 
@@ -186,14 +186,14 @@ objects? Well, let's create a phone number object for that:
   ...     def __repr__(self):
   ...         return '<%s %s>' %(self.__class__.__name__, self)
 
-  >>> dm.root['stephan'].phone = Phone('+1', '978', '394-5124')
-  >>> dm.root['stephan'].phone
+  >>> dm.root.stephan.phone = Phone('+1', '978', '394-5124')
+  >>> dm.root.stephan.phone
   <Phone +1-978-394-5124>
 
 Let's now commit the transaction and look at the JSONB document again:
 
   >>> transaction.commit()
-  >>> dm.root['stephan'].phone
+  >>> dm.root.stephan.phone
   <Phone +1-978-394-5124>
 
   >>> dumpTable(person_cn_obj)  # doctest: +ELLIPSIS
@@ -219,16 +219,16 @@ the sub-document, but it is very minimal. If the ``__reduce__`` method returns
 a more complex construct, more meta-data is written. We will see that next
 when storing a date and other arbitrary data:
 
-  >>> dm.root['stephan'].friends = {'roy': Person(u'Roy Mathew')}
-  >>> dm.root['stephan'].visited = (u'Germany', u'USA')
-  >>> dm.root['stephan'].birthday = datetime.date(1980, 1, 25)
+  >>> dm.root.stephan.friends = {'roy': Person(u'Roy Mathew')}
+  >>> dm.root.stephan.visited = (u'Germany', u'USA')
+  >>> dm.root.stephan.birthday = datetime.date(1980, 1, 25)
 
   >>> transaction.commit()
-  >>> dm.root['stephan'].friends
+  >>> dm.root.stephan.friends
   {u'roy': <Person Roy Mathew>}
-  >>> dm.root['stephan'].visited
+  >>> dm.root.stephan.visited
   [u'Germany', u'USA']
-  >>> dm.root['stephan'].birthday
+  >>> dm.root.stephan.birthday
   datetime.date(1980, 1, 25)
 
 As you can see, a dictionary key is always converted to unicode and tuples are
@@ -266,7 +266,7 @@ Custom Serializers
 
   >>> del serialize.SERIALIZERS[1]
 
-  >>> dm.root['stephan'].birthday = datetime.date(1981, 1, 25)
+  >>> dm.root.stephan.birthday = datetime.date(1981, 1, 25)
   >>> transaction.commit()
 
   >>> pprint.pprint(
@@ -295,12 +295,12 @@ however, provide a custom serializer that uses the ordinal to store the data.
   ...                 'ordinal': obj.toordinal()}
 
   >>> serialize.SERIALIZERS.append(DateSerializer())
-  >>> dm.root['stephan']._p_changed = True
+  >>> dm.root.stephan._p_changed = True
   >>> transaction.commit()
 
 Let's have a look again:
 
-  >>> dm.root['stephan'].birthday
+  >>> dm.root.stephan.birthday
   datetime.date(1981, 1, 25)
 
   >>> pprint.pprint(dict(
@@ -353,10 +353,10 @@ persistent class so that it becomes part of its parent object's document:
 The ``_p_pj_sub_object`` is used to mark a type of object to be just part
 of another document:
 
-  >>> dm.root['stephan'].car = car = Car('2005', 'Ford', 'Explorer')
+  >>> dm.root.stephan.car = car = Car('2005', 'Ford', 'Explorer')
   >>> transaction.commit()
 
-  >>> dm.root['stephan'].car
+  >>> dm.root()['stephan'].car
   <Car 2005 Ford Explorer>
 
   >>> pprint.pprint(dict(
@@ -389,9 +389,9 @@ of another document:
 The reason we want objects to be persistent is so that they pick up changes
 automatically:
 
-  >>> dm.root['stephan'].car.year = '2004'
+  >>> dm.root.stephan.car.year = '2004'
   >>> transaction.commit()
-  >>> dm.root['stephan'].car
+  >>> dm.root.stephan.car
   <Car 2004 Ford Explorer>
 
 
@@ -421,25 +421,25 @@ ensure that).
 
 So let's give Stephan two extended addresses now.
 
-  >>> dm.root['stephan'].address2 = ExtendedAddress(
+  >>> dm.root.stephan.address2 = ExtendedAddress(
   ...     'Tettau', '01945', 'Germany')
-  >>> dm.root['stephan'].address2
+  >>> dm.root.stephan.address2
   <ExtendedAddress Tettau (01945) in Germany>
 
-  >>> dm.root['stephan'].address3 = ExtendedAddress(
+  >>> dm.root.stephan.address3 = ExtendedAddress(
   ...     'Arnsdorf', '01945', 'Germany')
-  >>> dm.root['stephan'].address3
+  >>> dm.root.stephan.address3
   <ExtendedAddress Arnsdorf (01945) in Germany>
 
   >>> transaction.commit()
 
 When loading the addresses, they should be of the right type:
 
-  >>> dm.root['stephan'].address
+  >>> dm.root.stephan.address
   <Address Maynard (01754)>
-  >>> dm.root['stephan'].address2
+  >>> dm.root.stephan.address2
   <ExtendedAddress Tettau (01945) in Germany>
-  >>> dm.root['stephan'].address3
+  >>> dm.root.stephan.address3
   <ExtendedAddress Arnsdorf (01945) in Germany>
 
 
@@ -464,20 +464,20 @@ is possible for the object to conduct some custom storage function.
 When we store the object, the hook is called:
 (actually twice, because this is a new object)
 
-  >>> dm.root['stephan'].usernames = Usernames()
+  >>> dm.root.stephan.usernames = Usernames()
   >>> transaction.commit()
   After Store Hook
   After Store Hook
 
 When loading, the same happens:
 
-  >>> dm.root['stephan'].usernames.format
+  >>> dm.root.stephan.usernames.format
   After Load Hook
   'email'
 
 The store hook fires just once if the object is not new:
 
-  >>> dm.root['stephan'].usernames.format = 'snailmail'
+  >>> dm.root.stephan.usernames.format = 'snailmail'
   After Load Hook
   >>> transaction.commit()
   After Store Hook
@@ -511,7 +511,7 @@ Initially, we are storing only the name in a column:
 So once I create such a person and commit the transaction, the person table is
 extended to store the attribute and the person is added to the table:
 
-  >>> dm.root['anton'] = anton = ColumnPerson(u'Anton')
+  >>> dm.root.anton = anton = ColumnPerson(u'Anton')
   >>> transaction.commit()
 
   >>> dumpTable('cperson')  # doctest: +ELLIPSIS
@@ -540,22 +540,22 @@ Tricky, tricky. How do we make the framework detect changes in mutable
 objects, such as lists and dictionaries? Answer: We keep track of which
 persistent object they belong to and provide persistent implementations.
 
-  >>> type(dm.root['stephan'].friends)
+  >>> type(dm.root.stephan.friends)
    <class 'pjpersist.serialize.PersistentDict'>
 
-  >>> dm.root['stephan'].friends[u'roger'] = Person(u'Roger')
+  >>> dm.root.stephan.friends[u'roger'] = Person(u'Roger')
   >>> transaction.commit()
-  >>> sorted(dm.root['stephan'].friends.keys())
+  >>> sorted(dm.root.stephan.friends.keys())
   [u'roger', u'roy']
 
 The same is true for lists:
 
-  >>> type(dm.root['stephan'].visited)
+  >>> type(dm.root.stephan.visited)
    <class 'pjpersist.serialize.PersistentList'>
 
-  >>> dm.root['stephan'].visited.append('France')
+  >>> dm.root.stephan.visited.append('France')
   >>> transaction.commit()
-  >>> dm.root['stephan'].visited
+  >>> dm.root.stephan.visited
   [u'Germany', u'USA', u'France']
 
 
@@ -582,7 +582,7 @@ circular references are detected and reported:
   >>> foo.bar = bar
   >>> bar.foo = foo
 
-  >>> dm.root['top'] = top
+  >>> dm.root.top = top
   >>> transaction.commit()
   Traceback (most recent call last):
   ...
@@ -616,7 +616,7 @@ reduce the state.
   >>> foo.bar = bar
   >>> bar.foo = foo
 
-  >>> dm.root['ptop'] = top
+  >>> dm.root.ptop = top
 
 
 Containers and Tables
@@ -644,12 +644,12 @@ sub-class that assigns the data manager automatically. Let's have a look:
 The reason no person is in the list yet, is because no document has the key
 yet or the key is null. Let's change that:
 
-  >>> dm.root['stephan']
+  >>> dm.root.stephan
   <Person Stephan Richter>
 
-  #>>> People(dm)['stephan'] = dm.root['stephan']
+  #>>> People(dm)['stephan'] = dm.root.stephan
   #>>> transaction.commit()
-  #>>> dm.root['stephan']
+  #>>> dm.root.stephan
   #''
   #>>> People(dm).keys()
   #[u'stephan']
@@ -659,7 +659,7 @@ yet or the key is null. Let's change that:
 Also note that setting the "short-name" attribute on any other person will add
 it to the mapping:
 
-  #>>> dm.root['stephan'].friends['roy'].short_name = 'roy'
+  #>>> dm.root.stephan.friends['roy'].short_name = 'roy'
   #>>> transaction.commit()
   #>>> sorted(People(dm).keys())
   #[u'roy', u'stephan']
