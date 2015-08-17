@@ -27,6 +27,8 @@ import time
 import transaction
 import zope.interface
 
+from persistent.mapping import PersistentMapping
+
 from pjpersist import interfaces, serialize
 from pjpersist.querystats import QueryReport
 
@@ -206,96 +208,6 @@ def check_for_conflict(e, sql):
     if e.pgcode in serialization_errors:
         LOG.warning("Conflict detected with code %s sql: %s", e.pgcode, sql)
         raise interfaces.ConflictError(str(e), sql)
-
-
-class Root(UserDict.DictMixin):
-
-    table = 'persistence_root'
-
-    def __init__(self, jar, table=None):
-        self._jar = jar
-        if table is not None:
-            self.table = table
-        if PJ_AUTO_CREATE_TABLES:
-            self._init_table()
-        self._cache = dict()
-
-    def _init_table(self):
-        with self._jar.getCursor(False) as cur:
-            cur.execute(
-                "SELECT * FROM information_schema.tables where table_name=%s",
-                (self.table,))
-            if cur.rowcount:
-                return
-
-            LOG.info("Creating table %s" % self.table)
-            cur.execute('''
-                CREATE TABLE %s (
-                    id SERIAL PRIMARY KEY,
-                    name TEXT,
-                    dbref JSONB)
-                ''' % self.table)
-
-    def __getattr__(self, item):
-        try:
-            return self.__dict__[item]
-        except KeyError:
-            return self.__getitem__(item)
-
-    def __setattr__(self, key, value):
-        if key.startswith('__') or key in ('table', '_jar', '_cache'):
-            self.__dict__[key] = value
-            return
-        if key in self.__dict__:
-            raise AttributeError("Reserved attribute name %s" % key)
-        self.__setitem__(key, value)
-
-    def __getitem__(self, key):
-        try:
-            v = self._cache[key]
-            return v
-        except KeyError:
-            pass
-
-        with self._jar.getCursor(False) as cur:
-            tbl = sb.Table(self.table)
-            cur.execute(
-                sb.Select(sb.Field(self.table, 'dbref'), tbl.name == key))
-            if not cur.rowcount:
-                raise KeyError(key)
-            kw = cur.fetchone()['dbref']
-            dbref = serialize.DBRef(kw['table'], kw['id'], kw['database'])
-            v = self._jar.load(dbref)
-            self._cache[key] = v
-            return v
-
-    def __setitem__(self, key, value):
-        dbref = self._jar.insert(value)
-        if self.get(key) is not None:
-            del self[key]
-        with self._jar.getCursor(False) as cur:
-            cur.execute(
-                'INSERT INTO %s (name, dbref) VALUES (%%s, %%s)' % self.table,
-                (key, Json(dbref.as_json()))
-                )
-        self._cache[key] = value
-
-    def __delitem__(self, key):
-        self._jar.remove(self[key])
-        with self._jar.getCursor(False) as cur:
-            tbl = sb.Table(self.table)
-            cur.execute(sb.Delete(self.table, tbl.name == key))
-
-    def keys(self):
-        with self._jar.getCursor(False) as cur:
-            cur.execute(sb.Select(sb.Field(self.table, 'name')))
-            return [doc['name'] for doc in cur.fetchall()]
-
-    def on_flush(self):
-        self._cache = dict()
-
-
-from persistent.mapping import PersistentMapping
 
 
 class DBRoot(PersistentMapping):

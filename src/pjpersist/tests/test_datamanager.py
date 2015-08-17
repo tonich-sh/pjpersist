@@ -75,48 +75,6 @@ class ComplexFoo(persistent.Persistent):
         self.name = 'complex'
 
 
-def doctest_Root():
-    r"""Root: General Test
-
-    This class represents the root(s) of the object tree. All roots are stored
-    in a specified table. Since the rooted object needs to immediately
-    provide a data manager (jar), the operations on the DB root are not art of
-    the transaction mechanism.
-
-      >>> root = datamanager.Root(dm, 'proot')
-
-    Initially the root is empty:
-
-      >>> root.keys()
-      []
-
-    Let's now add an item:
-
-      >>> foo = Foo()
-      >>> root['foo'] = foo
-      >>> root.keys()
-      [u'foo']
-      >>> root['foo'] == foo
-      True
-      >>> root.foo == foo
-      True
-
-    Root objects can be overridden:
-
-      >>> foo2 = Foo()
-      >>> root['foo'] = foo2
-      >>> root.keys()
-      [u'foo']
-      >>> root['foo'] == foo
-      False
-
-    And of course we can delete an item:
-
-      >>> del root['foo']
-      >>> root.keys()
-      []
-    """
-
 def doctest_PJDataManager_get_table_from_object():
     r"""PJDataManager: _get_table_from_object(obj)
 
