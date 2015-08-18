@@ -766,6 +766,7 @@ def doctest_PJDataManager_sub_objects():
 
       >>> foo = dm.root.one
       >>> foo._p_changed
+      False
 
       >>> foo.list = serialize.PersistentList()
       >>> foo.list._p_jar

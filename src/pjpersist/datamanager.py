@@ -270,7 +270,6 @@ class PJDataManager(object):
         # which can have undesired side effects. `id()` is guaranteed to not
         # use any method or state of the object itself.
         self._registered_objects = {}
-        self._loaded_objects = {}
         self._inserted_objects = {}
         self._modified_objects = {}
         self._removed_objects = {}
@@ -552,8 +551,6 @@ class PJDataManager(object):
             self._writer.store(obj)
             written.add(obj_id)
             todo = set(self._registered_objects.keys()) - written
-        if self._root is not None:
-            self._root._p_invalidate()
 
     def _get_doc_object(self, obj):
         seen = []
@@ -648,10 +645,6 @@ class PJDataManager(object):
         # added again with some different state.
 
     def setstate(self, obj, doc=None):
-        # When reading a state from PostGreSQL, we also need to join the
-        # transaction, because we keep an active object cache that gets stale
-        # after the transaction is complete and must be cleaned.
-        # self._join_txn()
         # If the doc is None, but it has been loaded before, we look it
         # up. This acts as a great hook for optimizations that load many
         # documents at once. They can now dump the states into the
@@ -659,7 +652,6 @@ class PJDataManager(object):
         if doc is None:
             doc = self._latest_states.get(obj._p_oid, None)
         self._reader.set_ghost_state(obj, doc)
-        self._loaded_objects[id(obj)] = obj
 
     def oldstate(self, obj, tid):
         # I cannot find any code using this method. Also, since we do not keep
