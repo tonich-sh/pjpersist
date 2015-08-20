@@ -570,7 +570,6 @@ class PJDataManager(object):
             self._needs_to_join = False
 
     def load(self, dbref, klass=None):
-        dm = self
         if dbref.database != self.database:
             # This is a reference of object from different database! We need to
             # locate the suitable data manager for this.
@@ -579,7 +578,9 @@ class PJDataManager(object):
             assert dm.database == dbref.database, (dm.database, dbref.database)
             return dm.load(dbref, klass)
 
-        return self._reader.get_ghost(dbref, klass)
+        g = self._reader.get_ghost(dbref, klass)
+        setattr(g, interfaces.TABLE_ATTR_NAME, dbref._table)
+        return g
 
     def reset(self):
         # we need to issue rollback on self._conn too, to get the latest
