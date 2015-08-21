@@ -44,6 +44,7 @@ PYTHON_TO_PG_TYPES = {
     float: "double",
     int: "integer",
     long: "bigint",
+    (int, long): "bigint",
     Decimal: "numeric",
     datetime.date: "date",
     datetime.time: "time",
