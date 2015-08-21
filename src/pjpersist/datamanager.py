@@ -244,7 +244,6 @@ class RootConvenience(object):
         return "<root: %s>" % names
 
 
-
 class PJDataManager(object):
     zope.interface.implements(
         interfaces.IPJDataManager,
@@ -365,7 +364,7 @@ class PJDataManager(object):
             self._txn_active = True
         return cur
 
-    def createId(self):
+    def create_id(self):
         with self.getCursor(False) as cur:
             cur.execute("SAVEPOINT before_get_id")
             try:
@@ -510,9 +509,9 @@ class PJDataManager(object):
             cur.execute(sql)
         return _id
 
-    def _get_doc(self, database, table, id):
+    def _get_doc(self, database, table, _id):
         with self.getCursor() as cur:
-            sql = "SELECT m.*, s.data FROM %s m JOIN %s_state s ON m.id = s.pid AND m.tid = s.tid WHERE m.id=%d" % (table, table, id)
+            sql = "SELECT s.data FROM %s m JOIN %s_state s ON m.id = s.pid AND m.tid = s.tid WHERE m.id=%d" % (table, table, _id)
             cur.execute(sql)
             res = cur.fetchone()
             return res['data'] if res is not None else None
