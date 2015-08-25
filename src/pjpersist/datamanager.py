@@ -712,19 +712,16 @@ class PJDataManager(object):
         self._in_commit = True
 
     def tpc_vote(self, transaction):
-        # if self._commit_failed:
-        #     raise Exception('Commit failed...')
-        pass
+        try:
+            self._conn.commit()
+        except psycopg2.Error, e:
+            check_for_conflict(e, "DataManager.commit")
 
     def tpc_finish(self, transaction):
         try:
             self._report_stats()
         except:
             pass
-        try:
-            self._conn.commit()
-        except psycopg2.Error, e:
-            check_for_conflict(e, "DataManager.commit")
         self._cleanup()
         self._tpc_cleanup()
 

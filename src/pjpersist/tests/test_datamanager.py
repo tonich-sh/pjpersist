@@ -152,7 +152,7 @@ def doctest_PJDataManager_insertWithExplicitId():
 
       >>> foo = Foo('foo')
       >>> foo_ref = dm.insert(foo, 10000)
-      >>> dm.tpc_finish(None)
+      >>> transaction.commit()
 
     Now, Foo object should be have the provided id
 
@@ -270,8 +270,7 @@ def doctest_PJDataManager_remove():
       >>> foo = Foo('foo')
       >>> foo_ref = dm.insert(foo)
 
-      >>> dm.flush()
-      >>> dm.tpc_finish(None)
+      >>> transaction.commit()
 
     Let's now load the object and remove it.
 
@@ -297,8 +296,7 @@ def doctest_PJDataManager_remove():
     There is an edge case, if the object is inserted and removed in the same
     transaction:
 
-      >>> dm.flush()
-      >>> dm.tpc_finish(None)
+      >>> transaction.commit()
 
       >>> foo3 = Foo('Foo 3')
       >>> foo3_ref = dm.insert(foo3)
@@ -397,8 +395,7 @@ def doctest_PJDataManager_remove_modify_flush():
     Now, because of other lookups, the changes are flushed, which should not
     restore the object.
 
-      >>> dm.flush()
-      >>> dm.tpc_finish(None)
+      >>> transaction.commit()
       >>> dumpTable(dm._get_table_from_object(foo)[1])
       []
       >>> dm.reset()
@@ -423,8 +420,7 @@ def doctest_PJDataManager_remove_flush_modify():
     Now, because of other lookups, the changes are flushed, which should not
     restore the object.
 
-      >>> dm.flush()
-      >>> dm.tpc_finish(None)
+      >>> transaction.commit()
 
       >>> dumpTable(dm._get_table_from_object(foo)[1])
       []
@@ -550,7 +546,7 @@ def doctest_PJDataManager_abort():
       >>> dm._registered_objects = {id(foo): foo}
       >>> dm._transaction_id = 1
 
-      >>> dm.abort(transaction.get())
+      >>> dm.abort(None)
 
       >>> dm._transaction_id is None
       True
@@ -566,8 +562,7 @@ def doctest_PJDataManager_abort():
       >>> dm.reset()
       >>> foo_ref = dm.insert(Foo('one'))
       >>> foo2_ref = dm.insert(Foo('two'))
-      >>> dm.tpc_finish(None)
-
+      >>> transaction.commit()
       >>> dbanme, table = dm._get_table_from_object(Foo())
       >>> dumpTable(table)  # docstring: +ELLIPSIS
       [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Foo',
@@ -604,7 +599,7 @@ def doctest_PJDataManager_abort():
     Let's now abort the transaction and everything should be back to what it
     was before:
 
-      >>> dm.abort(transaction.get())
+      >>> dm.abort(None)
       >>> dumpTable(table)  # docstring: +ELLIPSIS
       [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Foo',
                  u'name': u'one'},
@@ -625,7 +620,7 @@ def doctest_PJDataManager_abort_subobjects():
 
       >>> dm.reset()
       >>> foo1_ref = dm.insert(ComplexFoo())
-      >>> dm.tpc_finish(None)
+      >>> transaction.commit()
 
       >>> dbname, table = dm._get_table_from_object(ComplexFoo())
       >>> dumpTable(table)  # docstring: +ELLIPSIS
@@ -659,22 +654,22 @@ def doctest_PJDataManager_abort_subobjects():
         'id': ...L}]
     """
 
-def doctest_PJDataManager_tpc_begin():
-    r"""PJDataManager: tpc_begin()
+# def doctest_PJDataManager_tpc_begin():
+#     r"""PJDataManager: tpc_begin()
+#
+#     This is a non-op for the PJ data manager.
+#
+#       >>> dm.tpc_begin(transaction.get())
+#       >>> dm.tpc_finish(transaction.get())
+#     """
 
-    This is a non-op for the PJ data manager.
-
-      >>> dm.tpc_begin(transaction.get())
-      >>> dm.tpc_finish(transaction.get())
-    """
-
-def doctest_PJDataManager_tpc_vote():
-    r"""PJDataManager: tpc_vote()
-
-    This is a non-op for the PJ data manager.
-
-      >>> dm.tpc_vote(transaction.get())
-    """
+# def doctest_PJDataManager_tpc_vote():
+#     r"""PJDataManager: tpc_vote()
+#
+#     This is a non-op for the PJ data manager.
+#
+#       >>> dm.tpc_vote(transaction.get())
+#     """
 
 def doctest_PJDataManager_tpc_finish():
     r"""PJDataManager: tpc_finish()
@@ -684,8 +679,10 @@ def doctest_PJDataManager_tpc_finish():
       >>> foo = Foo()
       >>> dm.insert(foo, id(foo))  # doctest: +ELLIPSIS
       DBRef('pjpersist_dot_tests_dot_test_datamanager_dot_Foo', ...L, 'pjpersist_test')
-      >>> dm.tpc_begin(transaction.get())
-      >>> dm.tpc_finish(transaction.get())
+      >>> dm.tpc_begin(None)
+      >>> dm.commit(None)
+      >>> dm.tpc_vote(None)
+      >>> dm.tpc_finish(None)
 
     Also, when a persistent sub-object is stored that does not want its own
     document, then its parent is stored instead, still avoiding dual storage.
@@ -1225,6 +1222,7 @@ def doctest_conflict_mod_2():
     Finish in order 1 - 2
       >>> dm1.tpc_begin(None)
       >>> dm1.commit(None)
+      >>> dm1.tpc_vote(None)
       >>> dm1.tpc_finish(None)
       >>> dm2.tpc_begin(None)
       >>> dm2.commit(None)  # doctest: +ELLIPSIS
@@ -1249,8 +1247,7 @@ class DatamanagerConflictTest(testing.PJTestCase):
         foo = Foo('foo-first')
         self.dm.root['foo'] = foo
 
-        self.dm.tpc_begin(None)
-        self.dm.tpc_finish(None)
+        transaction.commit()
 
         conn1 = testing.getConnection(testing.DBNAME)
         dm1 = datamanager.PJDataManager(conn1)
@@ -1267,9 +1264,12 @@ class DatamanagerConflictTest(testing.PJTestCase):
 
         #Finish in order 2 - 1
         dm2.tpc_begin(None)
+        dm2.commit(None)
+        dm2.tpc_vote(None)
         dm2.tpc_finish(None)
+        dm1.tpc_begin(None)
         with self.assertRaises(interfaces.ConflictError):
-            dm1.tpc_begin(None)
+            dm1.commit()
 
         transaction.abort()
 
@@ -1283,8 +1283,7 @@ class DatamanagerConflictTest(testing.PJTestCase):
         foo = Foo('foo-first')
         self.dm.root['foo'] = foo
 
-        self.dm.tpc_begin(None)
-        self.dm.tpc_finish(None)
+        transaction.commit()
 
         conn1 = testing.getConnection(testing.DBNAME)
         dm1 = datamanager.PJDataManager(conn1)
@@ -1323,8 +1322,7 @@ class DatamanagerConflictTest(testing.PJTestCase):
         foo = Foo('foo-first')
         self.dm.root['foo'] = foo
 
-        self.dm.tpc_begin(None)
-        self.dm.tpc_finish(None)
+        transaction.commit()
 
         conn1 = testing.getConnection(testing.DBNAME)
         dm1 = datamanager.PJDataManager(conn1)
@@ -1355,8 +1353,7 @@ class DatamanagerConflictTest(testing.PJTestCase):
         foo = Foo('foo-first')
         self.dm.root['foo'] = foo
 
-        self.dm.tpc_begin(None)
-        self.dm.tpc_finish(None)
+        transaction.commit()
 
         conn1 = testing.getConnection(testing.DBNAME)
         dm1 = datamanager.PJDataManager(conn1)
