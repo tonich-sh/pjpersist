@@ -712,6 +712,29 @@ class PJDataManager(object):
         self._in_commit = True
 
     def tpc_vote(self, transaction):
+        """
+        Stores transaction id and commit datetime then performs commit
+        """
+        with self.getCursor(False) as cur:
+            cur.execute("SAVEPOINT before_insert_transaction")
+            isql = "INSERT INTO transactions(tid) VALUES(%s)"
+            try:
+                psycopg2.extras.DictCursor.execute(cur, isql, (self.get_transaction_id(), ))
+            except psycopg2.Error, e:
+                msg = e.message
+
+                # if the exception message matches
+                m = re.search('relation "(.*?)" does not exist', msg)
+                if m:
+                    psycopg2.extras.DictCursor.execute(cur, "ROLLBACK TO SAVEPOINT before_insert_transaction")
+                    sql = """
+CREATE TABLE transactions (
+    tid bigint PRIMARY KEY,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT current_timestamp
+)
+"""
+                    psycopg2.extras.DictCursor.execute(cur, sql)
+                    psycopg2.extras.DictCursor.execute(cur, isql, (self.get_transaction_id(), ))
         try:
             self._conn.commit()
         except psycopg2.Error, e:
