@@ -442,13 +442,12 @@ class PJDataManager(object):
         # Insert the document into the table.
         with self.getCursor() as cur:
             if _id is None:
-                sql = "INSERT INTO %s (tid) VALUES (%d) RETURNING id" % (
-                    table, self.get_transaction_id())
+                sql = "INSERT INTO %(table)s (tid) VALUES (%%(tid)s) RETURNING id" % {'table': table}
             else:
-                sql = "INSERT INTO %s (id, tid) VALUES (%d, %d) RETURNING id" % (
-                    table, _id, self.get_transaction_id())
+                sql = "INSERT INTO %(table)s (id, tid) VALUES (%%(id)s, %%(tid)s) RETURNING id" % {'table': table}
 
-            cur.execute(sql)
+            data = {'id': _id, 'tid': self.get_transaction_id()}
+            cur.execute(sql, data)
             _id = cur.fetchone()[0]
 
             builtins = dict(data=Json(doc))
@@ -511,8 +510,8 @@ class PJDataManager(object):
 
     def _get_doc(self, database, table, _id):
         with self.getCursor() as cur:
-            sql = "SELECT s.data FROM %s m JOIN %s_state s ON m.id = s.pid AND m.tid = s.tid WHERE m.id=%d" % (table, table, _id)
-            cur.execute(sql)
+            sql = "SELECT s.data FROM %s m JOIN %s_state s ON m.id = s.pid AND m.tid = s.tid WHERE m.id=%%s" % (table, table)
+            cur.execute(sql, (_id, ))
             res = cur.fetchone()
             return res['data'] if res is not None else None
 
