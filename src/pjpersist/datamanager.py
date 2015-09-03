@@ -443,9 +443,12 @@ class PJDataManager(object):
 
         # Insert the document into the table.
         with self.getCursor() as cur:
-            persistent_type = doc[interfaces.PY_TYPE_ATTR_NAME].split('.')
-            package = persistent_type[0:-1]
-            class_name = persistent_type[-1]
+            persistent_type = doc[interfaces.PY_TYPE_ATTR_NAME]
+            # package = '.'.join(persistent_type[0:-1])
+            # class_name = persistent_type[-1]
+            i = persistent_type.rfind('.')
+            package = persistent_type[0:i]
+            class_name = persistent_type[i+1:]
             if _id is None:
                 sql = "INSERT INTO %(table)s (tid, package, class_name) VALUES (%%(tid)s, %%(package)s, %%(class_name)s) RETURNING id" % {'table': table}
             else:
@@ -455,6 +458,7 @@ class PJDataManager(object):
             cur.execute(sql, data)
             _id = cur.fetchone()[0]
 
+            del doc[interfaces.PY_TYPE_ATTR_NAME]
             builtins = dict(data=Json(doc))
 
             if column_data is None:
@@ -478,6 +482,7 @@ class PJDataManager(object):
     def _update_doc(self, database, table, doc, _id, column_data=None):
         # Insert the document into the table.
         with self.getCursor() as cur:
+            del doc[interfaces.PY_TYPE_ATTR_NAME]
             builtins = dict(data=Json(doc))
             if column_data is None:
                 column_data = builtins
@@ -529,18 +534,23 @@ WHERE
             res = cur.fetchone()
             if res:
                 res['data'][interfaces.PY_TYPE_ATTR_NAME] = '%(package)s.%(class_name)s' % res
-            return res['data'] if res is not None else None
+                return res['data']
+            return None
 
     def _get_doc_by_dbref(self, dbref):
         return self._get_doc(dbref.database, dbref.table, dbref.id)
 
-    def _get_doc_py_type(self, database, table, id):
-        tbl = sb.Table("%s_state" % table)
+    def _get_doc_py_type(self, database, table, _id):
         with self.getCursor() as cur:
-            datafld = sb.Field(table, 'data')
-            cur.execute(
-                sb.Select(sb.JGET(datafld, interfaces.PY_TYPE_ATTR_NAME),
-                          tbl.id == id))
+            sql = """
+SELECT
+    package || '.' || class_name
+FROM
+    %s
+WHERE
+    id=%%s
+""" % table
+            cur.execute(sql, (_id,))
             res = cur.fetchone()
             return res[0] if res is not None else None
 

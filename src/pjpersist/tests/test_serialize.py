@@ -343,34 +343,42 @@ def doctest_ObjectWriter_get_persistent_state():
     This method produces a proper reduced state for a persistent object, which
     is basically a DBRef.
 
-      >>> writer = serialize.ObjectWriter(dm)
+        >>> writer = serialize.ObjectWriter(dm)
 
-      >>> foo = Foo()
-      >>> foo._p_oid
+        >>> foo = Foo()
+        >>> foo._p_oid
 
-      >>> pprint.pprint(writer.get_persistent_state(foo, []))  # doctest: +ELLIPSIS
-      {'_py_type': 'DBREF',
-       'database': 'pjpersist_test',
-       'id': ...L,
-       'table': 'Foo'}
+        >>> pprint.pprint(writer.get_persistent_state(foo, []))  # doctest: +ELLIPSIS
+        {'_py_type': 'DBREF',
+        'database': 'pjpersist_test',
+        'id': ...L,
+        'table': 'Foo'}
 
-      >>> dm.commit(None)
-      >>> foo._p_oid  # doctest: +ELLIPSIS
-      DBRef('Foo', ...L, 'pjpersist_test')
-      >>> dumpTable('Foo')  # doctest: +ELLIPSIS
-      [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_serialize.Foo'},
-        'id': ...L}]
+        >>> dm.commit(None)
+        >>> foo._p_oid  # doctest: +ELLIPSIS
+        DBRef('Foo', ...L, 'pjpersist_test')
+        >>> dumpTable('Foo')  # doctest: +ELLIPSIS
+        [{'class_name': u'Foo',
+          'data': {},
+          'id': ...L,
+          'package': u'pjpersist.tests.test_serialize',
+          'pid': ...L,
+          'tid': ...L}]
 
     The next time the object simply returns its reference:
 
-      >>> pprint.pprint(writer.get_persistent_state(foo, []))  # doctest: +ELLIPSIS
-      {'_py_type': 'DBREF',
-       'database': 'pjpersist_test',
-       'id': ...L,
-       'table': 'Foo'}
-      >>> dumpTable('Foo')  # doctest: +ELLIPSIS
-      [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_serialize.Foo'},
-        'id': ...L}]
+        >>> pprint.pprint(writer.get_persistent_state(foo, []))  # doctest: +ELLIPSIS
+        {'_py_type': 'DBREF',
+        'database': 'pjpersist_test',
+        'id': ...L,
+        'table': 'Foo'}
+        >>> dumpTable('Foo')  # doctest: +ELLIPSIS
+        [{'class_name': u'Foo',
+          'data': {},
+          'id': ...L,
+          'package': u'pjpersist.tests.test_serialize',
+          'pid': ...L,
+          'tid': ...L}]
     """
 
 
@@ -539,23 +547,30 @@ def doctest_ObjectWriter_store():
 
     Simply store an object:
 
-      >>> top = Top()
-      >>> dm.insert(top)  # doctest: +ELLIPSIS
-      DBRef('Top', ...L, 'pjpersist_test')
-      >>> dm.flush()
-      >>> dumpTable('Top')  # doctest: +ELLIPSIS
-      [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_serialize.Top'},
-        'id': ...L}]
+        >>> top = Top()
+        >>> dm.insert(top)  # doctest: +ELLIPSIS
+        DBRef('Top', ...L, 'pjpersist_test')
+        >>> dm.flush()
+        >>> dumpTable('Top')  # doctest: +ELLIPSIS
+        [{'class_name': u'Top',
+          'data': {},
+          'id': ...L,
+          'package': u'pjpersist.tests.test_serialize',
+          'pid': ...L,
+          'tid': ...L}]
 
     Now that we have an object, storing an object simply means updating the
     existing document:
 
-      >>> top.name = 'top'
-      >>> dm.flush()
-      >>> dumpTable('Top')  # doctest: +ELLIPSIS
-      [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_serialize.Top',
-                 u'name': u'top'},
-        'id': ...L}]
+        >>> top.name = 'top'
+        >>> dm.flush()
+        >>> dumpTable('Top')  # doctest: +ELLIPSIS
+        [{'class_name': u'Top',
+          'data': {u'name': u'top'},
+          'id': ...L,
+          'package': u'pjpersist.tests.test_serialize',
+          'pid': ...L,
+          'tid': ...L}]
     """
 
 def doctest_ObjectWriter_store_with_new_object_references():
@@ -565,21 +580,24 @@ def doctest_ObjectWriter_store_with_new_object_references():
     cause infinite recursion errors. The code protects against that by
     optionally only creating an initial empty reference document.
 
-      >>> writer = serialize.ObjectWriter(dm)
+        >>> writer = serialize.ObjectWriter(dm)
 
-      >>> top = Top()
-      >>> top.foo = Foo()
-      >>> top.foo.top = top
-      >>> writer.store(top)  # doctest: +ELLIPSIS
-      DBRef('Top', ...L, 'pjpersist_test')
-      >>> dm.commit(None)
-      >>> dumpTable('Top')  # doctest: +ELLIPSIS
-      [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_serialize.Top',
-                 u'foo': {u'_py_type': u'DBREF',
-                          u'database': u'pjpersist_test',
-                          u'id': ...,
-                          u'table': u'Foo'}},
-        'id': ...L}]
+        >>> top = Top()
+        >>> top.foo = Foo()
+        >>> top.foo.top = top
+        >>> writer.store(top)  # doctest: +ELLIPSIS
+        DBRef('Top', ...L, 'pjpersist_test')
+        >>> dm.commit(None)
+        >>> dumpTable('Top')  # doctest: +ELLIPSIS
+        [{'class_name': u'Top',
+          'data': {u'foo': {u'_py_type': u'DBREF',
+                            u'database': u'pjpersist_test',
+                            u'id': ...,
+                            u'table': u'Foo'}},
+          'id': ...L,
+          'package': u'pjpersist.tests.test_serialize',
+          'pid': ...L,
+          'tid': ...L}]
     """
 
 def doctest_ObjectReader_simple_resolve():
@@ -734,32 +752,40 @@ def doctest_ObjectReader_resolve_lookup_with_multiple_maps():
     are more interesting. In this case, we need to lookup the object, if it
     stores its persistent type otherwise we use the first map entry.
 
-      >>> top = Top()
-      >>> dm.insert(top)  # doctest: +ELLIPSIS
-      DBRef('Top', ...L, 'pjpersist_test')
-      >>> top2 = Top2()
-      >>> dm.insert(top2)  # doctest: +ELLIPSIS
-      DBRef('Top', ...L, 'pjpersist_test')
-      >>> dm.commit(None)
+        >>> top = Top()
+        >>> dm.insert(top)  # doctest: +ELLIPSIS
+        DBRef('Top', ...L, 'pjpersist_test')
+        >>> top2 = Top2()
+        >>> dm.insert(top2)  # doctest: +ELLIPSIS
+        DBRef('Top', ...L, 'pjpersist_test')
+        >>> dm.commit(None)
 
-      >>> reader = serialize.ObjectReader(dm)
-      >>> reader.resolve(top._p_oid)
-      <class 'pjpersist.tests.test_serialize.Top'>
-      >>> reader.resolve(top2._p_oid)
-      <class 'pjpersist.tests.test_serialize.Top2'>
+        >>> reader = serialize.ObjectReader(dm)
+        >>> reader.resolve(top._p_oid)
+        <class 'pjpersist.tests.test_serialize.Top'>
+        >>> reader.resolve(top2._p_oid)
+        <class 'pjpersist.tests.test_serialize.Top2'>
 
-      >>> dumpTable('Top')  # doctest: +ELLIPSIS
-      [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_serialize.Top'},
-        'id': ...L},
-       {'data': {u'_py_persistent_type': u'pjpersist.tests.test_serialize.Top2'},
-        'id': ...L}]
+        >>> dumpTable('Top')  # doctest: +ELLIPSIS
+        [{'class_name': u'Top',
+          'data': {},
+          'id': ...L,
+          'package': u'pjpersist.tests.test_serialize',
+          'pid': ...L,
+          'tid': ...L},
+         {'class_name': u'Top2',
+          'data': {},
+          'id': ...L,
+          'package': u'pjpersist.tests.test_serialize',
+          'pid': ...L,
+          'tid': ...L}]
 
     If the DBRef does not have an object id, then an import error is raised:
 
-      >>> reader.resolve(serialize.DBRef('Top', None, 'pjpersist_test'))
-      Traceback (most recent call last):
-      ...
-      ImportError: DBRef('Top', None, 'pjpersist_test')
+        >>> reader.resolve(serialize.DBRef('Top', None, 'pjpersist_test'))
+        Traceback (most recent call last):
+        ...
+        ImportError: DBRef('Top', None, 'pjpersist_test')
     """
 
 def doctest_ObjectReader_resolve_lookup_with_multiple_maps_dont_read_full():
@@ -1049,45 +1075,51 @@ def doctest_deserialize_persistent_references():
 
     Let's create a simple object hierarchy:
 
-      >>> top = Top()
-      >>> top.name = 'top'
-      >>> top.foo = Foo()
-      >>> top.foo.name = 'foo'
+        >>> top = Top()
+        >>> top.name = 'top'
+        >>> top.foo = Foo()
+        >>> top.foo.name = 'foo'
 
-      >>> dm.root.top = top
-      >>> commit()
+        >>> dm.root.top = top
+        >>> commit()
 
     Let's check that the objects were properly serialized.
 
-      >>> dumpTable('Top')  # doctest: +ELLIPSIS
-      [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_serialize.Top',
-                 u'foo': {u'_py_type': u'DBREF',
-                          u'database': u'pjpersist_test',
-                          u'id': ...,
-                          u'table': u'Foo'},
-                 u'name': u'top'},
-        'id': ...L}]
+        >>> dumpTable('Top')  # doctest: +ELLIPSIS
+        [{'class_name': u'Top',
+          'data': {u'foo': {u'_py_type': u'DBREF',
+                            u'database': u'pjpersist_test',
+                            u'id': ...,
+                            u'table': u'Foo'},
+                   u'name': u'top'},
+          'id': ...L,
+          'package': u'pjpersist.tests.test_serialize',
+          'pid': ...L,
+          'tid': ...L}]
 
-      >>> dumpTable('Foo')  # doctest: +ELLIPSIS
-      [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_serialize.Foo',
-                 u'name': u'foo'},
-        'id': ...L}]
+        >>> dumpTable('Foo')  # doctest: +ELLIPSIS
+        [{'class_name': u'Foo',
+          'data': {u'name': u'foo'},
+          'id': ...L,
+          'package': u'pjpersist.tests.test_serialize',
+          'pid': ...L,
+          'tid': ...L}]
 
     Now we access the objects objects again to see whether they got properly
     deserialized.
 
-      >>> top2 = dm.root.top
-      >>> id(top2) == id(top)
-      False
-      >>> top2.name
-      u'top'
+        >>> top2 = dm.root.top
+        >>> id(top2) == id(top)
+        False
+        >>> top2.name
+        u'top'
 
-      >>> id(top2.foo) == id(top.foo)
-      False
-      >>> top2.foo
-      <pjpersist.tests.test_serialize.Foo object at 0x7fb1a0c0b668>
-      >>> top2.foo.name
-      u'foo'
+        >>> id(top2.foo) == id(top.foo)
+        False
+        >>> top2.foo
+        <pjpersist.tests.test_serialize.Foo object at 0x7fb1a0c0b668>
+        >>> top2.foo.name
+        u'foo'
     """
 
 
@@ -1098,37 +1130,41 @@ def doctest_deserialize_persistent_foreign_references():
     For this, we have to provide IPJDataManagerProvider
 
     First, store some object in one database
-      >>> top_other = Top()
-      >>> top_other.name = 'top_other'
-      >>> top_other.state = {'complex_data': 'value'}
-      >>> dm_other.insert(top_other)  # doctest: +ELLIPSIS
-      DBRef('Top', ...L, 'pjpersist_test_other')
+
+        >>> top_other = Top()
+        >>> top_other.name = 'top_other'
+        >>> top_other.state = {'complex_data': 'value'}
+        >>> dm_other.insert(top_other)  # doctest: +ELLIPSIS
+        DBRef('Top', ...L, 'pjpersist_test_other')
 
     Store other object in datbase and refrence first one
     #  >>> writer_other = serialize.ObjectWriter(dm)
 
-      >>> top = Top()
-      >>> top.name = 'main'
-      >>> top.other = top_other
-      >>> dm.root.top = top
-      >>> commit()
+        >>> top = Top()
+        >>> top.name = 'main'
+        >>> top.other = top_other
+        >>> dm.root.top = top
+        >>> commit()
 
-      >>> dumpTable('Top')  # doctest: +ELLIPSIS
-      [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_serialize.Top',
-                 u'name': u'main',
-                 u'other': {u'_py_type': u'DBREF',
-                            u'database': u'pjpersist_test_other',
-                            u'id': ...,
-                            u'table': u'Top'}},
-        'id': ...L}]
+        >>> dumpTable('Top')  # doctest: +ELLIPSIS
+        [{'class_name': u'Top',
+          'data': {u'name': u'main',
+                   u'other': {u'_py_type': u'DBREF',
+                              u'database': u'pjpersist_test_other',
+                              u'id': ...,
+                              u'table': u'Top'}},
+          'id': ...L,
+          'package': u'pjpersist.tests.test_serialize',
+          'pid': ...L,
+          'tid': ...L}]
 
-      >>> top = dm.root.top
-      >>> print top.name
-      main
-      >>> print top.other.name
-      top_other
-      >>> top.other.state
-      {u'complex_data': u'value'}
+        >>> top = dm.root.top
+        >>> top.name
+        u'main'
+        >>> top.other.name
+        u'top_other'
+        >>> top.other.state
+        {u'complex_data': u'value'}
     """
 
 

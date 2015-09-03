@@ -210,55 +210,61 @@ def doctest_PJDataManager_insert():
 
     This method inserts an object into the database.
 
-      >>> foo = Foo('foo')
-      >>> foo_ref = dm.insert(foo)
+        >>> foo = Foo('foo')
+        >>> foo_ref = dm.insert(foo)
 
     After insertion, the original is not changed:
 
-      >>> foo._p_changed
-      False
+        >>> foo._p_changed
+        False
 
     It is also added to the list of inserted objects:
 
-      >>> dm._inserted_objects.values()
-      [<Foo foo>]
+        >>> dm._inserted_objects.values()
+        [<Foo foo>]
 
     Let's make sure it is really in PostGreSQL:
 
-      >>> dm.commit(None)
+        >>> dm.commit(None)
 
-      >>> foo_new = dm.load(foo_ref)
-      >>> foo_new
-      <Foo foo>
+        >>> foo_new = dm.load(foo_ref)
+        >>> foo_new
+        <Foo foo>
 
     Notice, that we cannot insert the object again:
 
-      >>> dm.insert(foo_new)
-      Traceback (most recent call last):
-      ...
-      ValueError: ('Object._p_oid is already set.', <Foo foo>)
+        >>> dm.insert(foo_new)
+        Traceback (most recent call last):
+        ...
+        ValueError: ('Object._p_oid is already set.', <Foo foo>)
 
     Finally, registering a new object will not trigger an insert, but only
     schedule the object for writing. This is done, since sometimes objects are
     registered when we only want to store a stub since we otherwise end up in
     endless recursion loops.
 
-      >>> foo2 = Foo('Foo 2')
-      >>> dm.register(foo2)
+        >>> foo2 = Foo('Foo 2')
+        >>> dm.register(foo2)
 
-      >>> dm._registered_objects.values()
-      [<Foo Foo 2>]
+        >>> dm._registered_objects.values()
+        [<Foo Foo 2>]
 
     But storing works as expected (flush is implicit before find):
 
-      >>> dm.flush()
-      >>> dumpTable(dm._get_table_from_object(foo2)[1])  # doctest: +ELLIPSIS
-      [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Foo',
-                 u'name': u'foo'},
-        'id': ...L},
-       {'data': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Foo',
-                 u'name': u'Foo 2'},
-        'id': ...L}]
+        >>> dm.flush()
+        >>> dumpTable(dm._get_table_from_object(foo2)[1])  # doctest: +ELLIPSIS
+        [{'class_name': u'Foo',
+          'data': {u'name': u'foo'},
+          'id': ...L,
+          'package': u'pjpersist.tests.test_datamanager',
+          'pid': ...L,
+          'tid': ...L},
+         {'class_name': u'Foo',
+          'data': {u'name': u'Foo 2'},
+          'id': ...L,
+          'package': u'pjpersist.tests.test_datamanager',
+          'pid': ...L,
+          'tid': ...L}]
     """
 
 
@@ -542,71 +548,91 @@ def doctest_PJDataManager_abort():
 
     Aborts a transaction, which clears all object and transaction registrations:
 
-      >>> foo = Foo()
-      >>> dm._registered_objects = {id(foo): foo}
-      >>> dm._transaction_id = 1
+        >>> foo = Foo()
+        >>> dm._registered_objects = {id(foo): foo}
+        >>> dm._transaction_id = 1
 
-      >>> dm.abort(None)
+        >>> dm.abort(None)
 
-      >>> dm._transaction_id is None
-      True
+        >>> dm._transaction_id is None
+        True
 
-      >>> len(dm._registered_objects)
-      0
+        >>> len(dm._registered_objects)
+        0
 
     Let's now create a more interesting case with a transaction that inserted,
     removed and changed objects.
 
     First let's create an initial state:
 
-      >>> dm.reset()
-      >>> foo_ref = dm.insert(Foo('one'))
-      >>> foo2_ref = dm.insert(Foo('two'))
-      >>> transaction.commit()
-      >>> dbanme, table = dm._get_table_from_object(Foo())
-      >>> dumpTable(table)  # docstring: +ELLIPSIS
-      [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Foo',
-                 u'name': u'one'},
-        'id': ...L},
-       {'data': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Foo',
-                 u'name': u'two'},
-        'id': ...L}]
+        >>> dm.reset()
+        >>> foo_ref = dm.insert(Foo('one'))
+        >>> foo2_ref = dm.insert(Foo('two'))
+        >>> transaction.commit()
+        >>> dbname, table = dm._get_table_from_object(Foo())
+        >>> table
+        'pjpersist_dot_tests_dot_test_datamanager_dot_Foo'
+        >>> dumpTable(table)  # docstring: +ELLIPSIS
+        [{'class_name': u'Foo',
+        'data': {u'name': u'one'},
+        'id': ...L,
+        'package': u'pjpersist.tests.test_datamanager',
+        'pid': ...L,
+        'tid': ...L},
+        {'class_name': u'Foo',
+        'data': {u'name': u'two'},
+        'id': ...L,
+        'package': u'pjpersist.tests.test_datamanager',
+        'pid': ...L,
+        'tid': ...L}]
 
     Now, in a second transaction we modify the state of objects in all three
     ways:
 
-      >>> foo = dm.load(foo_ref)
-      >>> foo.name = '1'
-      >>> dm._registered_objects.values()
-      [<Foo 1>]
+        >>> foo = dm.load(foo_ref)
+        >>> foo.name = '1'
+        >>> dm._registered_objects.values()
+        [<Foo 1>]
 
-      >>> foo2 = dm.load(foo2_ref)
-      >>> dm.remove(foo2)
-      >>> dm._removed_objects.values()
-      [<Foo two>]
+        >>> foo2 = dm.load(foo2_ref)
+        >>> dm.remove(foo2)
+        >>> dm._removed_objects.values()
+        [<Foo two>]
 
-      >>> foo3_ref = dm.insert(Foo('three'))
+        >>> foo3_ref = dm.insert(Foo('three'))
 
-      >>> dm.flush()
-      >>> dumpTable(table)  # docstring: +ELLIPSIS
-      [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Foo',
-                 u'name': u'1'},
-        'id': ...L},
-       {'data': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Foo',
-                 u'name': u'three'},
-        'id': ...L}]
+        >>> dm.flush()
+        >>> dumpTable(table)  # docstring: +ELLIPSIS
+        [{'class_name': u'Foo',
+          'data': {u'name': u'1'},
+          'id': ...L,
+          'package': u'pjpersist.tests.test_datamanager',
+          'pid': ...L,
+          'tid': ...L},
+         {'class_name': u'Foo',
+          'data': {u'name': u'three'},
+          'id': ...L,
+          'package': u'pjpersist.tests.test_datamanager',
+          'pid': ...L,
+          'tid': ...L}]
 
     Let's now abort the transaction and everything should be back to what it
     was before:
 
-      >>> dm.abort(None)
-      >>> dumpTable(table)  # docstring: +ELLIPSIS
-      [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Foo',
-                 u'name': u'one'},
-        'id': ...L},
-       {'data': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Foo',
-                 u'name': u'two'},
-        'id': ...L}]
+        >>> dm.abort(None)
+        >>> dumpTable(table)  # docstring: +ELLIPSIS
+        [{'class_name': u'Foo',
+          'data': {u'name': u'one'},
+          'id': ...L,
+          'package': u'pjpersist.tests.test_datamanager',
+          'pid': ...L,
+          'tid': ...L},
+         {'class_name': u'Foo',
+          'data': {u'name': u'two'},
+          'id': ...L,
+          'package': u'pjpersist.tests.test_datamanager',
+          'pid': ...L,
+          'tid': ...L}]
     """
 
 
@@ -618,40 +644,49 @@ def doctest_PJDataManager_abort_subobjects():
 
     1. Create a single record and make sure it is stored in db
 
-      >>> dm.reset()
-      >>> foo1_ref = dm.insert(ComplexFoo())
-      >>> transaction.commit()
+        >>> dm.reset()
+        >>> foo1_ref = dm.insert(ComplexFoo())
+        >>> transaction.commit()
 
-      >>> dbname, table = dm._get_table_from_object(ComplexFoo())
-      >>> dumpTable(table)  # docstring: +ELLIPSIS
-      [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.ComplexFoo',
-                 u'item': {u'_py_type': u'pjpersist.tests.test_datamanager.FooItem',
-                           u'bar': 6},
-                 u'name': u'complex'},
-        'id': ...L}]
+        >>> dbname, table = dm._get_table_from_object(ComplexFoo())
+        >>> dumpTable(table)  # docstring: +ELLIPSIS
+        [{'class_name': u'ComplexFoo',
+          'data': {u'item': {u'_py_type': u'pjpersist.tests.test_datamanager.FooItem',
+                             u'bar': 6},
+                   u'name': u'complex'},
+          'id': ...L,
+          'package': u'pjpersist.tests.test_datamanager',
+          'pid': ...L,
+          'tid': ...L}]
 
     2. Modify the item and flush it to database
 
-      >>> foo1 = dm.load(foo1_ref)
-      >>> foo1.name = 'modified'
-      >>> dm.flush()
+        >>> foo1 = dm.load(foo1_ref)
+        >>> foo1.name = 'modified'
+        >>> dm.flush()
 
-      >>> dumpTable(table)  # docstring: +ELLIPSIS
-      [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.ComplexFoo',
-                 u'item': {u'_py_type': u'pjpersist.tests.test_datamanager.FooItem',
-                           u'bar': 6},
-                 u'name': u'modified'},
-        'id': ...L}]
+        >>> dumpTable(table)  # docstring: +ELLIPSIS
+        [{'class_name': u'ComplexFoo',
+          'data': {u'item': {u'_py_type': u'pjpersist.tests.test_datamanager.FooItem',
+                             u'bar': 6},
+                   u'name': u'modified'},
+          'id': ...L,
+          'package': u'pjpersist.tests.test_datamanager',
+          'pid': ...L,
+          'tid': ...L}]
 
     3. Abort the current transaction and expect original state is restored
 
-      >>> dm.abort(transaction.get())
-      >>> dumpTable(table)  # docstring: +ELLIPSIS
-      [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.ComplexFoo',
-                 u'item': {u'_py_type': u'pjpersist.tests.test_datamanager.FooItem',
-                           u'bar': 6},
-                 u'name': u'complex'},
-        'id': ...L}]
+        >>> dm.abort(transaction.get())
+        >>> dumpTable(table)  # docstring: +ELLIPSIS
+        [{'class_name': u'ComplexFoo',
+          'data': {u'item': {u'_py_type': u'pjpersist.tests.test_datamanager.FooItem',
+                             u'bar': 6},
+                   u'name': u'complex'},
+          'id': ...L,
+          'package': u'pjpersist.tests.test_datamanager',
+          'pid': ...L,
+          'tid': ...L}]
     """
 
 # def doctest_PJDataManager_tpc_begin():
@@ -817,126 +852,128 @@ def doctest_PJDataManager_complex_sub_objects():
     Let's construct comlpex object with several levels of containment.
     _p_pj_doc_object will point to an object, that is subobject itself.
 
-      >>> foo = Foo('one')
-      >>> sup = Super('super')
-      >>> bar = Bar('bar')
+        >>> foo = Foo('one')
+        >>> sup = Super('super')
+        >>> bar = Bar('bar')
 
-      >>> bar._p_pj_sub_object = True
-      >>> bar._p_pj_doc_object = sup
-      >>> sup.bar = bar
+        >>> bar._p_pj_sub_object = True
+        >>> bar._p_pj_doc_object = sup
+        >>> sup.bar = bar
 
-      >>> sup._p_pj_sub_object = True
-      >>> sup._p_pj_doc_object = foo
-      >>> foo.sup = sup
+        >>> sup._p_pj_sub_object = True
+        >>> sup._p_pj_doc_object = foo
+        >>> foo.sup = sup
 
-      >>> dm.root()['one'] = foo
-      >>> dm.commit(None)
+        >>> dm.root()['one'] = foo
+        >>> dm.commit(None)
 
 
-      >>> cur = dm._conn.cursor()
-      >>> cur.execute('SELECT tablename from pg_tables;')
-      >>> sorted(e[0] for e in cur.fetchall()
-      ...        if not e[0].startswith('pg_') and not e[0].startswith('sql_'))
-      [u'pjpersist_dot_datamanager_dot_dbroot',
-       u'pjpersist_dot_datamanager_dot_dbroot_state',
-       u'pjpersist_dot_tests_dot_test_datamanager_dot_foo',
-       u'pjpersist_dot_tests_dot_test_datamanager_dot_foo_state']
+        >>> cur = dm._conn.cursor()
+        >>> cur.execute('SELECT tablename from pg_tables;')
+        >>> sorted(e[0] for e in cur.fetchall()
+        ...        if not e[0].startswith('pg_') and not e[0].startswith('sql_'))
+        [u'pjpersist_dot_datamanager_dot_dbroot',
+        u'pjpersist_dot_datamanager_dot_dbroot_state',
+        u'pjpersist_dot_tests_dot_test_datamanager_dot_foo',
+        u'pjpersist_dot_tests_dot_test_datamanager_dot_foo_state']
 
     Now, save foo first, and then add subobjects
 
-      >>> foo2 = Foo('two')
-      >>> dm.root.two = foo2
+        >>> foo2 = Foo('two')
+        >>> dm.root.two = foo2
 
-      >>> dm.commit(None)
+        >>> dm.commit(None)
 
-      >>> sup2 = Super('second super')
-      >>> bar2 = Bar('second bar')
+        >>> sup2 = Super('second super')
+        >>> bar2 = Bar('second bar')
 
-      >>> bar2._p_pj_sub_object = True
-      >>> bar2._p_pj_doc_object = sup2
-      >>> sup2.bar = bar2
+        >>> bar2._p_pj_sub_object = True
+        >>> bar2._p_pj_doc_object = sup2
+        >>> sup2.bar = bar2
 
-      >>> sup2._p_pj_sub_object = True
-      >>> sup2._p_pj_doc_object = foo2
-      >>> foo2.sup = sup2
-      >>> foo2.sup.bar._p_pj_doc_object
-      <Super second super>
+        >>> sup2._p_pj_sub_object = True
+        >>> sup2._p_pj_doc_object = foo2
+        >>> foo2.sup = sup2
+        >>> foo2.sup.bar._p_pj_doc_object
+        <Super second super>
 
-      >>> dm.commit(None)
+        >>> dm.commit(None)
 
-      >>> cur.execute('SELECT tablename from pg_tables;')
-      >>> sorted(e[0] for e in cur.fetchall()
-      ...        if not e[0].startswith('pg_') and not e[0].startswith('sql_'))
-      [u'pjpersist_dot_datamanager_dot_dbroot',
-       u'pjpersist_dot_datamanager_dot_dbroot_state',
-       u'pjpersist_dot_tests_dot_test_datamanager_dot_foo',
-       u'pjpersist_dot_tests_dot_test_datamanager_dot_foo_state']
+        >>> cur.execute('SELECT tablename from pg_tables;')
+        >>> sorted(e[0] for e in cur.fetchall()
+        ...        if not e[0].startswith('pg_') and not e[0].startswith('sql_'))
+        [u'pjpersist_dot_datamanager_dot_dbroot',
+        u'pjpersist_dot_datamanager_dot_dbroot_state',
+        u'pjpersist_dot_tests_dot_test_datamanager_dot_foo',
+        u'pjpersist_dot_tests_dot_test_datamanager_dot_foo_state']
 
-      >>> dm.root()['two'].sup.bar
-      <Bar second bar>
+        >>> dm.root()['two'].sup.bar
+        <Bar second bar>
 
-      >>> cur = dm.getCursor()
-      >>> cur.execute(
-      ... '''SELECT m.*, s.data FROM pjpersist_dot_tests_dot_test_datamanager_dot_foo m
-      ...    JOIN pjpersist_dot_tests_dot_test_datamanager_dot_foo_state s
-      ...    ON m.id = s.pid and m.tid = s.tid
-      ...    WHERE s.data @> '{"name": "one"}' ''')
-      >>> pprint([dict(e) for e in cur.fetchall()])  # doctest: +ELLIPSIS
-      [{'data': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Foo',
-                 u'name': u'one',
-                 u'sup': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Super',
-                          u'bar': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Bar',
-                                   u'name': u'bar'},
-                          u'name': u'super'}},
-        'id': ...L}]
+        >>> cur = dm.getCursor()
+        >>> cur.execute(
+        ... '''SELECT m.*, s.data FROM pjpersist_dot_tests_dot_test_datamanager_dot_foo m
+        ...    JOIN pjpersist_dot_tests_dot_test_datamanager_dot_foo_state s
+        ...    ON m.id = s.pid and m.tid = s.tid
+        ...    WHERE s.data @> '{"name": "one"}' ''')
+        >>> pprint([dict(e) for e in cur.fetchall()])  # doctest: +ELLIPSIS
+        [{'class_name': u'Foo',
+          'data': {u'name': u'one',
+                   u'sup': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Super',
+                            u'bar': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Bar',
+                                     u'name': u'bar'},
+                            u'name': u'super'}},
+          'id': 1L,
+          'package': u'pjpersist.tests.test_datamanager',
+          'tid': 5L}]
 
     Now, make changes to the subobjects and then commit
 
-      >>> foo = dm.root.one
-      >>> foo.sup.name = 'new super'
-      >>> foo.sup.bar.name = 'new bar'
-      >>> dm.commit(None)
+        >>> foo = dm.root.one
+        >>> foo.sup.name = 'new super'
+        >>> foo.sup.bar.name = 'new bar'
+        >>> dm.commit(None)
 
-      >>> foo = dm.root.one
+        >>> foo = dm.root.one
 
-      >>> foo.sup
-      <Super new super>
-      >>> foo.sup._p_pj_sub_object
-      True
-      >>> foo.sup._p_pj_doc_object
-      <Foo one>
+        >>> foo.sup
+        <Super new super>
+        >>> foo.sup._p_pj_sub_object
+        True
+        >>> foo.sup._p_pj_doc_object
+        <Foo one>
 
-      >>> foo.sup.bar
-      <Bar new bar>
+        >>> foo.sup.bar
+        <Bar new bar>
 
-      >>> foo.sup.bar._p_pj_sub_object
-      True
-      >>> foo.sup.bar._p_pj_doc_object
-      <Super new super>
+        >>> foo.sup.bar._p_pj_sub_object
+        True
+        >>> foo.sup.bar._p_pj_doc_object
+        <Super new super>
 
-      >>> cur.execute('SELECT tablename from pg_tables;')
-      >>> sorted(e[0] for e in cur.fetchall()
-      ...        if not e[0].startswith('pg_') and not e[0].startswith('sql_'))
-      [u'pjpersist_dot_datamanager_dot_dbroot',
-       u'pjpersist_dot_datamanager_dot_dbroot_state',
-       u'pjpersist_dot_tests_dot_test_datamanager_dot_foo',
-       u'pjpersist_dot_tests_dot_test_datamanager_dot_foo_state']
+        >>> cur.execute('SELECT tablename from pg_tables;')
+        >>> sorted(e[0] for e in cur.fetchall()
+        ...        if not e[0].startswith('pg_') and not e[0].startswith('sql_'))
+        [u'pjpersist_dot_datamanager_dot_dbroot',
+        u'pjpersist_dot_datamanager_dot_dbroot_state',
+        u'pjpersist_dot_tests_dot_test_datamanager_dot_foo',
+        u'pjpersist_dot_tests_dot_test_datamanager_dot_foo_state']
 
     Even if _p_pj_doc_object is pointed to subobject, subobject does not get
     saved to its own table:
 
-      >>> foo.sup.bar._p_pj_doc_object = foo.sup
-      >>> foo.sup.bar.name = 'newer bar'
-      >>> foo.sup.name = 'newer sup'
-      >>> dm.commit(None)
+        >>> foo.sup.bar._p_pj_doc_object = foo.sup
+        >>> foo.sup.bar.name = 'newer bar'
+        >>> foo.sup.name = 'newer sup'
+        >>> dm.commit(None)
 
-      >>> cur.execute('SELECT tablename from pg_tables;')
-      >>> sorted(e[0] for e in cur.fetchall()
-      ...        if not e[0].startswith('pg_') and not e[0].startswith('sql_'))
-      [u'pjpersist_dot_datamanager_dot_dbroot',
-       u'pjpersist_dot_datamanager_dot_dbroot_state',
-       u'pjpersist_dot_tests_dot_test_datamanager_dot_foo',
-       u'pjpersist_dot_tests_dot_test_datamanager_dot_foo_state']
+        >>> cur.execute('SELECT tablename from pg_tables;')
+        >>> sorted(e[0] for e in cur.fetchall()
+        ...        if not e[0].startswith('pg_') and not e[0].startswith('sql_'))
+        [u'pjpersist_dot_datamanager_dot_dbroot',
+        u'pjpersist_dot_datamanager_dot_dbroot_state',
+        u'pjpersist_dot_tests_dot_test_datamanager_dot_foo',
+        u'pjpersist_dot_tests_dot_test_datamanager_dot_foo_state']
     """
 
 

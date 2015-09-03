@@ -380,7 +380,8 @@ class ObjectWriter(object):
             doc = self.get_state(obj.__getstate__(), obj)
 
         # Always add a persistent type info
-        doc[interfaces.PY_TYPE_ATTR_NAME] = get_dotted_name(obj.__class__)
+        py_type_attr_name = get_dotted_name(obj.__class__)
+        doc[interfaces.PY_TYPE_ATTR_NAME] = py_type_attr_name
 
         stored = False
         if interfaces.IColumnSerialization.providedBy(obj):
@@ -404,6 +405,7 @@ class ObjectWriter(object):
 
         if stored:
             # Make sure that the doc is added to the latest states.
+            doc[interfaces.PY_TYPE_ATTR_NAME] = py_type_attr_name
             self._jar._latest_states[obj._p_oid] = doc
 
         return obj._p_oid
