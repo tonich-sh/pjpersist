@@ -403,7 +403,9 @@ class PJDataManager(object):
                 cur.execute('''
                     CREATE TABLE %s (
                         id BIGSERIAL PRIMARY KEY,
-                        tid BIGINT NOT NULL
+                        tid BIGINT NOT NULL,
+                        package TEXT NOT NULL,
+                        class_name TEXT NOT NULL
                     )''' % (table, ))
                 cur.execute('''
                     CREATE TABLE %s_state (
@@ -441,12 +443,15 @@ class PJDataManager(object):
 
         # Insert the document into the table.
         with self.getCursor() as cur:
+            persistent_type = doc[interfaces.PY_TYPE_ATTR_NAME].split('.')
+            package = persistent_type[0:-1]
+            class_name = persistent_type[-1]
             if _id is None:
-                sql = "INSERT INTO %(table)s (tid) VALUES (%%(tid)s) RETURNING id" % {'table': table}
+                sql = "INSERT INTO %(table)s (tid, package, class_name) VALUES (%%(tid)s, %%(package)s, %%(class_name)s) RETURNING id" % {'table': table}
             else:
-                sql = "INSERT INTO %(table)s (id, tid) VALUES (%%(id)s, %%(tid)s) RETURNING id" % {'table': table}
+                sql = "INSERT INTO %(table)s (id, tid, package, class_name) VALUES (%%(id)s, %%(tid)s, %%(package)s, %%(class_name)s) RETURNING id" % {'table': table}
 
-            data = {'id': _id, 'tid': self.get_transaction_id()}
+            data = {'id': _id, 'tid': self.get_transaction_id(), 'package': package, 'class_name': class_name}
             cur.execute(sql, data)
             _id = cur.fetchone()[0]
 
@@ -510,9 +515,20 @@ class PJDataManager(object):
 
     def _get_doc(self, database, table, _id):
         with self.getCursor() as cur:
-            sql = "SELECT s.data FROM %s m JOIN %s_state s ON m.id = s.pid AND m.tid = s.tid WHERE m.id=%%s" % (table, table)
+            sql = """
+SELECT
+    m.package,
+    m.class_name,
+    s.data
+FROM
+    %s m
+    JOIN %s_state s ON m.id = s.pid AND m.tid = s.tid
+WHERE
+    m.id=%%s""" % (table, table)
             cur.execute(sql, (_id, ))
             res = cur.fetchone()
+            if res:
+                res['data'][interfaces.PY_TYPE_ATTR_NAME] = '%(package)s.%(class_name)s' % res
             return res['data'] if res is not None else None
 
     def _get_doc_by_dbref(self, dbref):
