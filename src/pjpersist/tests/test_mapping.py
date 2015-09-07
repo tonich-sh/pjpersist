@@ -31,40 +31,40 @@ def doctest_PJTableMapping_simple():
     The PJ Table Mapping provides a Python dict interface for a PostGreSQL
     table. Here is a simple example for our Item class/table:
 
-      >>> class SimpleContainer(mapping.PJTableMapping):
-      ...     __pj_table__ = 'pjpersist_dot_tests_dot_test_mapping_dot_Item'
-      ...     __pj_mapping_key__ = 'name'
+        >>> class SimpleContainer(mapping.PJTableMapping):
+        ...     __pj_table__ = 'pjpersist_dot_tests_dot_test_mapping_dot_Item'
+        ...     __pj_mapping_key__ = 'name'
 
     To initialize the mapping, we need a data manager:
 
-      >>> container = SimpleContainer(dm)
+        >>> container = SimpleContainer(dm)
 
     Let's do some obvious initial manipulations:
 
-      >>> container['one'] = one = Item()
-      >>> one.name
-      'one'
-      >>> transaction.commit()
+        >>> container['one'] = one = Item()
+        >>> one.name
+        'one'
+        >>> transaction.commit()
 
     After the transaction is committed, we can access the item:
 
-      >>> container.keys()
-      [u'one']
-      >>> container['one'].name
-      u'one'
+        >>> container.keys()
+        [u'one']
+        >>> one = container['one']
+        >>> one.name
+        u'one'
 
-      >>> container['two']
-      Traceback (most recent call last):
-      ...
-      KeyError: 'two'
+        >>> container['two']
+        Traceback (most recent call last):
+        ...
+        KeyError: 'two'
 
     Of course we can delete an item, but note that it only removes the name,
     but does not delete the document by default:
-
-      >>> del container['one']
-      >>> transaction.commit()
-      >>> container.keys()
-      []
+        >>> del container['one']
+        >>> transaction.commit()
+        >>> container.keys()
+        []
     """
 
 def doctest_PJTableMapping_filter():

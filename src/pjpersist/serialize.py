@@ -21,7 +21,7 @@ import datetime
 import persistent.interfaces
 import persistent.dict
 import persistent.list
-import repoze.lru
+import copy
 import types
 import zope.interface
 from zope.dottedname.resolve import resolve
@@ -32,7 +32,6 @@ from pjpersist import interfaces
 ALWAYS_READ_FULL_DOC = True
 
 SERIALIZERS = []
-OID_CLASS_LRU = repoze.lru.LRUCache(20000)
 AVAILABLE_NAME_MAPPINGS = set()
 PATH_RESOLVE_CACHE = {}
 TABLE_KLASS_MAP = {}
@@ -408,7 +407,7 @@ class ObjectWriter(object):
         if stored:
             # Make sure that the doc is added to the latest states.
             doc[interfaces.PY_TYPE_ATTR_NAME] = py_type_attr_name
-            self._jar._latest_states[obj._p_oid] = doc
+            self._jar._latest_states[obj._p_oid] = doc.copy()
 
         return obj._p_oid
 
@@ -442,24 +441,18 @@ class ObjectReader(object):
 
     def resolve(self, dbref):
         __traceback_info__ = dbref
-        # 1. Check the global oid-based lookup cache. Use the hash of the id,
-        #    since otherwise the comparison is way too expensive.
-        klass = OID_CLASS_LRU.get(hash(dbref))
-        if klass is not None:
-            return klass
-        # 2. Try to optimize on whether there's just one class stored in one
+        # 1. Try to optimize on whether there's just one class stored in one
         #    table, that can save us one DB query
         if dbref.table in TABLE_KLASS_MAP:
             results = TABLE_KLASS_MAP[dbref.table]
             if len(results) == 1:
                 # there must be just ONE, otherwise we need to check the JSONB
                 klass = list(results)[0]
-                OID_CLASS_LRU.put(hash(dbref), klass)
                 return klass
         # from this point on we need the dbref.id
         if dbref.id is None:
             raise ImportError(dbref)
-        # 3. Get the class from the object state
+        # 2. Get the class from the object state
         #    Multiple object types are stored in the table. We have to
         #    look at the object (JSONB) to find out the type.
         if dbref in self._jar._latest_states:
@@ -476,7 +469,7 @@ class ObjectReader(object):
             # Do not pollute the latest states because the ref could not be
             # found.
             if obj_doc is not None:
-                self._jar._latest_states[dbref] = obj_doc
+                self._jar._latest_states[dbref] = obj_doc.copy()
         else:
             # Just read the type from the database, still requires one query
             pytype = self._jar._get_doc_py_type(
@@ -490,7 +483,6 @@ class ObjectReader(object):
             klass = self.simple_resolve(obj_doc[interfaces.PY_TYPE_ATTR_NAME])
         else:
             raise ImportError(dbref)
-        OID_CLASS_LRU.put(hash(dbref), klass)
         return klass
 
     def get_non_persistent_object(self, state, obj):
@@ -601,14 +593,16 @@ class ObjectReader(object):
         if doc is None:
             raise ImportError(obj._p_oid)
         # Remove unwanted attributes.
-        doc.pop(interfaces.PY_TYPE_ATTR_NAME, None)
+        pytype = doc.pop(interfaces.PY_TYPE_ATTR_NAME)
+
         # Now convert the document to a proper Python state dict.
         state = dict(self.get_object(doc, obj))
-        if obj._p_oid not in self._jar._latest_states:
-            # Sometimes this method is called to update the object state
-            # before storage. Only update the latest states when the object is
-            # originally loaded.
-            self._jar._latest_states[obj._p_oid] = doc
+        # if obj._p_oid not in self._jar._latest_states:
+        # Sometimes this method is called to update the object state
+        # before storage. Only update the latest states when the object is
+        # originally loaded.
+        doc[interfaces.PY_TYPE_ATTR_NAME] = pytype
+        self._jar._latest_states[obj._p_oid] = doc
         # Set the state.
         obj.__setstate__(state)
         # Run the custom load functions.

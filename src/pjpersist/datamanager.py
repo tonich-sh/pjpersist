@@ -459,8 +459,9 @@ class PJDataManager(object):
             cur.execute(sql, data)
             _id = cur.fetchone()[0]
 
-            del doc[interfaces.PY_TYPE_ATTR_NAME]
-            builtins = dict(data=Json(doc))
+            cdoc = doc.copy()
+            del cdoc[interfaces.PY_TYPE_ATTR_NAME]
+            builtins = dict(data=Json(cdoc))
 
             if column_data is None:
                 column_data = builtins
@@ -483,8 +484,10 @@ class PJDataManager(object):
     def _update_doc(self, database, table, doc, _id, column_data=None):
         # Insert the document into the table.
         with self.getCursor() as cur:
-            del doc[interfaces.PY_TYPE_ATTR_NAME]
-            builtins = dict(data=Json(doc))
+            cdoc = doc.copy()
+            del cdoc[interfaces.PY_TYPE_ATTR_NAME]
+            builtins = dict(data=Json(cdoc))
+
             if column_data is None:
                 column_data = builtins
             else:
@@ -602,7 +605,6 @@ WHERE
             dm = dmp.get(dbref.database)
             assert dm.database == dbref.database, (dm.database, dbref.database)
             return dm.load(dbref, klass)
-
         g = self._reader.get_ghost(dbref, klass)
         setattr(g, interfaces.TABLE_ATTR_NAME, dbref._table)
         return g
