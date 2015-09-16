@@ -745,9 +745,12 @@ WHERE
             isql = "INSERT INTO transactions(tid) VALUES(%s)"
             try:
                 psycopg2.extras.DictCursor.execute(cur, isql, (self.get_transaction_id(), ))
+            except psycopg2.IntegrityError:
+                psycopg2.extras.DictCursor.execute(cur, "ROLLBACK TO SAVEPOINT before_insert_transaction")
+                usql = "UPDATE transactions SET created_at = NOW() WHERE tid=%s"
+                psycopg2.extras.DictCursor.execute(cur, usql, (self.get_transaction_id(), ))
             except psycopg2.Error, e:
                 msg = e.message
-
                 # if the exception message matches
                 m = re.search('relation "(.*?)" does not exist', msg)
                 if m:
