@@ -65,6 +65,7 @@ LOG = logging.getLogger(__name__)
 
 psycopg2.extensions.register_type(psycopg2.extensions.UNICODE)
 psycopg2.extensions.register_type(psycopg2.extensions.UNICODEARRAY)
+psycopg2.extras.register_uuid()
 
 
 class Json(psycopg2.extras.Json):

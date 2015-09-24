@@ -121,7 +121,11 @@ class PJMapping(PersistentMapping):
     def __getitem__(self, key):
         if key not in self.data:
             _filter = self.__pj_filter__()
-            _filter += ''' AND data @> '%s' ''' % json.dumps({self.mapping_key: key})
+            if not isinstance(key, basestring):
+                key_string = key.__str__()
+            else:
+                key_string = key
+            _filter += ''' AND data @> '%s' ''' % json.dumps({self.mapping_key: key_string})
             if self._p_jar is None:
                 raise KeyError(key)
             obj = None
@@ -186,7 +190,11 @@ WHERE
         if k:
             return k
         _filter = self.__pj_filter__()
-        _filter += ''' AND data @> '%s' ''' % json.dumps({self.mapping_key: item})
+        if not isinstance(item, basestring):
+            key_string = item.__str__()
+        else:
+            key_string = item
+        _filter += ''' AND data @> '%s' ''' % json.dumps({self.mapping_key: key_string})
         with self._p_jar.getCursor() as cur:
             cur.execute(
                 '''

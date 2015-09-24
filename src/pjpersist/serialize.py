@@ -14,6 +14,7 @@
 ##############################################################################
 """Object Serialization for PostGreSQL's JSONB"""
 from __future__ import absolute_import
+import uuid
 import copy_reg
 import datetime
 
@@ -51,6 +52,7 @@ PYTHON_TO_PG_TYPES = {
     datetime.datetime: "timestamptz",
     datetime.timedelta: "interval",
     list: "array",
+    uuid.UUID: "UUID",
 }
 
 
