@@ -128,7 +128,6 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
 
                     # we extract the tableName from the exception message
                     tableName = m.group(1)
-
                     self.datamanager._create_doc_table(
                         self.datamanager.database, tableName)
 
@@ -345,13 +344,13 @@ class PJDataManager(object):
     def get_transaction_id(self):
         if self._transaction_id is None:
             with self.getCursor(False) as cur:
-                cur.execute("SAVEPOINT before_get_tid")
+                psycopg2.extras.DictCursor.execute(cur, "SAVEPOINT before_get_tid")
                 try:
-                    cur.execute("SELECT NEXTVAL('transaction_id_seq')")
+                    psycopg2.extras.DictCursor.execute(cur, "SELECT NEXTVAL('transaction_id_seq')")
                 except psycopg2.ProgrammingError:
                     psycopg2.extras.DictCursor.execute(cur, "ROLLBACK TO SAVEPOINT before_get_tid")
-                    cur.execute("CREATE SEQUENCE transaction_id_seq")
-                    cur.execute("SELECT NEXTVAL('transaction_id_seq')")
+                    psycopg2.extras.DictCursor.execute(cur, "CREATE SEQUENCE transaction_id_seq")
+                    psycopg2.extras.DictCursor.execute(cur, "SELECT NEXTVAL('transaction_id_seq')")
                 self._transaction_id = cur.fetchone()[0]
         return self._transaction_id
 

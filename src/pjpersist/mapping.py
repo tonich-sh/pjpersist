@@ -18,9 +18,54 @@ import json
 
 from UserDict import DictMixin, IterableUserDict
 
+from sqlbuilder.smartsql import Q, T, compile, Expr, NamedCondition, PLACEHOLDER, Name
+
 from persistent.mapping import PersistentMapping
 
-from pjpersist import serialize, interfaces
+from pjpersist import serialize, interfaces, datamanager
+
+
+class JsonbSuperset(NamedCondition):
+    _sql = '@>'
+
+
+class JsonbContainsAll(NamedCondition):
+    _sql = '?&'
+
+
+def jsonb_superset(inst, other):
+    return JsonbSuperset(inst, other)
+
+
+def jsonb_contains_all(inst, other):
+    return JsonbContainsAll(inst, other)
+
+setattr(Expr, 'jsonb_superset', jsonb_superset)
+setattr(Expr, 'jsonb_contains_all', jsonb_contains_all)
+
+
+class JsonArray(object):
+
+    __slots__ = ('_value', )
+
+    def __init__(self, value):
+        self._value = value
+
+
+@compile.when(JsonArray)
+def compile_json_array(compile, expr, state):
+    state.sql.append("array[")
+    for item in expr._value:
+        state.sql.append(PLACEHOLDER)
+        state.params.append(item)
+    state.sql.append("]")
+
+
+@compile.when(Name)
+def compile_name(compile, expr, state):
+    # state.sql.append('"')
+    state.sql.append(expr._name)
+    # state.sql.append('"')
 
 
 class PJTableMapping(DictMixin, object):
@@ -31,26 +76,37 @@ class PJTableMapping(DictMixin, object):
         self._pj_jar = jar
 
     def __pj_filter__(self):
-        return 'true'
+        return Expr('true')
+
+    def get_tables_objects(self):
+        if not hasattr(self, '_p_meta'):
+            setattr(self, '_p_meta', {})
+        if 'mt' not in self._p_meta or 'st' not in self._p_meta:
+            self._p_meta['mt'] = getattr(T, self.__pj_table__)
+            self._p_meta['st'] = getattr(T, '%s_state' % self.__pj_table__)
+        return self._p_meta['mt'], self._p_meta['st']
+
+    def query(self):
+        if not hasattr(self, '_p_meta'):
+            setattr(self, '_p_meta', {})
+        mt, st = self.get_tables_objects()
+        if 'q' not in self._p_meta:
+            self._p_meta['q'] = Q().tables(mt & st).on((mt.id == st.pid)).where(mt.tid == st.tid)
+        return self._p_meta['q'].clone()
 
     def __getitem__(self, key):
-        filter = self.__pj_filter__()
-        filter += ''' AND data @> '%s' ''' % json.dumps({self.__pj_mapping_key__: key})
+        q = self.query()
+        q = q.where(self.__pj_filter__())
+        mt, st = self.get_tables_objects()
+        q = q.where(st.data.jsonb_superset(datamanager.Json({self.__pj_mapping_key__: key}))).fields(mt.id)
         with self._pj_jar.getCursor() as cur:
             cur.execute(
-                '''
-SELECT
-    m.id
-FROM
-    %s m
-    JOIN %s_state s ON m.id = s.pid and m.tid = s.tid
-WHERE
-    %s''' % (self.__pj_table__, self.__pj_table__, filter)
+                *compile(q)
             )
             if not cur.rowcount:
                 raise KeyError(key)
-            id = cur.fetchone()['id']
-            dbref = serialize.DBRef(self.__pj_table__, id, self._pj_jar.database)
+            _id = cur.fetchone()['id']
+            dbref = serialize.DBRef(self.__pj_table__, _id, self._pj_jar.database)
         return self._pj_jar.load(dbref)
 
     def __setitem__(self, key, value):
@@ -68,20 +124,14 @@ WHERE
         setattr(value, self.__pj_mapping_key__, None)
 
     def keys(self):
-        filter = self.__pj_filter__()
-        filter += """ AND NOT (data @> '{"%s": null}' OR""" % \
-            self.__pj_mapping_key__
-        filter += "      NOT data ?& array['%s'] )" % self.__pj_mapping_key__
+        q = self.query()
+        q = q.where(self.__pj_filter__())
+        _, st = self.get_tables_objects()
+        q = q.where(~(st.data.jsonb_superset(datamanager.Json({self.__pj_mapping_key__: None})) | ~st.data.jsonb_contains_all(JsonArray([self.__pj_mapping_key__]))))
+        q = q.fields(st.data)
         with self._pj_jar.getCursor() as cur:
             cur.execute(
-                '''
-SELECT
-    m.*, s.data
-FROM
-    %s m
-    JOIN %s_state s ON m.id = s.pid and m.tid = s.tid
-WHERE
-    %s''' % (self.__pj_table__, self.__pj_table__, filter)
+                *compile(q)
             )
             return [
                 res['data'][self.__pj_mapping_key__]
@@ -118,6 +168,12 @@ class PJMapping(PersistentMapping):
     def __pj_filter__(self):
         return 'true'
 
+    def by_raw_id(self, _id):
+        return self._p_jar.load(serialize.DBRef(self.table, _id, self._p_jar.database))
+
+    def query(self):
+        return None
+
     def __getitem__(self, key):
         if key not in self.data:
             _filter = self.__pj_filter__()
@@ -125,7 +181,7 @@ class PJMapping(PersistentMapping):
                 key_string = key.__str__()
             else:
                 key_string = key
-            _filter += ''' AND data @> '%s' ''' % json.dumps({self.mapping_key: key_string})
+            _filter += ''' AND s.data @> '%s' ''' % json.dumps({self.mapping_key: key_string})
             if self._p_jar is None:
                 raise KeyError(key)
             obj = None

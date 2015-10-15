@@ -35,7 +35,7 @@ setup(
         'Operating System :: OS Independent'],
     packages=find_packages('src'),
     package_dir={'': 'src'},
-    extras_require = dict(
+    extras_require=dict(
         test=(
             'zope.app.testing',
             'zope.testing',
@@ -55,6 +55,7 @@ setup(
         'simplejson',
         'setuptools',
         'sqlobject',
+        'sqlbuilder',
         'zope.dottedname',
         'zope.interface',
         'zope.schema',
