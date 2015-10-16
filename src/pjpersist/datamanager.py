@@ -14,13 +14,12 @@
 ##############################################################################
 """PostGreSQL/JSONB Persistent Data Manager"""
 from __future__ import absolute_import
-import UserDict
+
 import logging
 import psycopg2
 import psycopg2.extensions
 import psycopg2.extras
 import psycopg2.errorcodes
-import pjpersist.sqlbuilder as sb
 import re
 import threading
 import time

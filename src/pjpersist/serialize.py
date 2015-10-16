@@ -61,7 +61,6 @@ def get_dotted_name(obj, escape=False, state=False):
         return name
     # Make the name safe.
     name = name.replace('.', '_dot_')
-    # XXX: Circumventing a bug in sqlobject.sqlbuilder that prohibits names to
     # start with _.
     name = 'u'+name if name.startswith('_') else name
     if state:
