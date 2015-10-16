@@ -793,10 +793,15 @@ CREATE TABLE transactions (
 
 
 def get_database_name_from_dsn(dsn):
-    import re
     m = re.match(r'.*dbname *= *(.+?)( |$)', dsn)
-    if not m:
-        LOG.warning("Cannot determine database name from DSN '%s'" % dsn)
-        return None
+    if m:
+        return m.groups()[0]
 
-    return m.groups()[0]
+    # process connection string like postgresql://[user[:password]@][netloc][:port][/dbname][?param1=value1&...]
+    import urlparse
+    u = urlparse.urlparse(dsn)
+    if u.path:
+        return u.path.strip('/')
+
+    LOG.warning("Cannot determine database name from DSN '%s'" % dsn)
+    return None
