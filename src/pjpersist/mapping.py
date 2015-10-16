@@ -85,6 +85,8 @@ class PJResult(Result):
         self._cur = cur
         return self._cur
 
+    select = count = insert = update = delete = execute
+
     def __iter__(self):
         yield self._cur.fetchone()
 
