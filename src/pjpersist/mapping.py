@@ -18,11 +18,13 @@ import json
 
 from UserDict import DictMixin, IterableUserDict
 
-from sqlbuilder.smartsql import Q, T, compile, Expr, NamedCondition, PLACEHOLDER, Name
+from sqlbuilder.smartsql import Q, T, compile as parent_comile, Expr, NamedCondition, PLACEHOLDER, Name, Result
 
 from persistent.mapping import PersistentMapping
 
 from pjpersist import serialize, interfaces, datamanager
+
+compile = parent_comile.create_child()
 
 
 class JsonbSuperset(NamedCondition):
@@ -63,82 +65,127 @@ def compile_json_array(compile, expr, state):
 
 @compile.when(Name)
 def compile_name(compile, expr, state):
-    # state.sql.append('"')
     state.sql.append(expr._name)
-    # state.sql.append('"')
+
+
+class PJResult(Result):
+    compile = compile
+
+    def __init__(self, jar, compile=None):
+        super(PJResult, self).__init__(compile=compile)
+        self._jar = jar
+        self._cur = None
+        self._query = None
+
+    def execute(self):
+        cur = self._jar.getCursor()
+        cur.execute(
+            *compile(self._query)
+        )
+        self._cur = cur
+        return self._cur
+
+    def __iter__(self):
+        yield self._cur.fetchone()
+
+    def __len__(self):
+        if self._cur is None:
+            return 0
+        else:
+            return self._cur.rowcount
+
+
+class PMetaData(object):
+    __slots__ = ('_mapping', '_mt', '_st', '_q')
+
+    def __init__(self, mapping):
+        self._mapping = mapping
+        self._mt = None
+        self._st = None
+        self._q = None
+
+    @property
+    def mt(self):
+        if self._mt is None:
+            self._mt = getattr(T, self._mapping.table)
+        return self._mt
+
+    @property
+    def st(self):
+        if self._st is None:
+            self._st = getattr(T, '%s_state' % self._mapping.table)
+        return self._st
+
+    @property
+    def q(self):
+        mt = self.mt
+        st = self.st
+        if self._q is None:
+            self._q = Q(result=PJResult(self._mapping._p_jar, compile=compile)).tables(mt & st).on((mt.id == st.pid)).where(mt.tid == st.tid)
+        return self._q
 
 
 class PJTableMapping(DictMixin, object):
-    __pj_table__ = None
-    __pj_mapping_key__ = 'key'
+    table = None
+    mapping_key = 'key'
 
     def __init__(self, jar):
-        self._pj_jar = jar
+        self._p_jar = jar
+        self._p_meta = PMetaData(self)
 
     def __pj_filter__(self):
         return Expr('true')
 
     def get_tables_objects(self):
-        if not hasattr(self, '_p_meta'):
-            setattr(self, '_p_meta', {})
-        if 'mt' not in self._p_meta or 'st' not in self._p_meta:
-            self._p_meta['mt'] = getattr(T, self.__pj_table__)
-            self._p_meta['st'] = getattr(T, '%s_state' % self.__pj_table__)
-        return self._p_meta['mt'], self._p_meta['st']
+        return self._p_meta.mt, self._p_meta.st
 
     def query(self):
-        if not hasattr(self, '_p_meta'):
-            setattr(self, '_p_meta', {})
-        mt, st = self.get_tables_objects()
-        if 'q' not in self._p_meta:
-            self._p_meta['q'] = Q().tables(mt & st).on((mt.id == st.pid)).where(mt.tid == st.tid)
-        return self._p_meta['q'].clone()
+        return self._p_meta.q.clone()
 
     def __getitem__(self, key):
         q = self.query()
         q = q.where(self.__pj_filter__())
         mt, st = self.get_tables_objects()
-        q = q.where(st.data.jsonb_superset(datamanager.Json({self.__pj_mapping_key__: key}))).fields(mt.id)
-        with self._pj_jar.getCursor() as cur:
+        q = q.where(st.data.jsonb_superset(datamanager.Json({self.mapping_key: key}))).fields(mt.id)
+        with self._p_jar.getCursor() as cur:
             cur.execute(
                 *compile(q)
             )
             if not cur.rowcount:
                 raise KeyError(key)
             _id = cur.fetchone()['id']
-            dbref = serialize.DBRef(self.__pj_table__, _id, self._pj_jar.database)
-        return self._pj_jar.load(dbref)
+            dbref = serialize.DBRef(self.table, _id, self._p_jar.database)
+        return self._p_jar.load(dbref)
 
     def __setitem__(self, key, value):
         # Even though setting the attribute should register the object with
         # the data manager, the value might not be in the DB at all at this
         # point, so registering it manually ensures that new objects get added.
-        self._pj_jar.register(value)
-        setattr(value, interfaces.TABLE_ATTR_NAME, self.__pj_table__)
-        setattr(value, self.__pj_mapping_key__, key)
+        self._p_jar.register(value)
+        setattr(value, interfaces.TABLE_ATTR_NAME, self.table)
+        setattr(value, self.mapping_key, key)
 
     def __delitem__(self, key):
         # Deleting the object from the database is not our job. We simply
         # remove it from the dictionary.
         value = self[key]
-        setattr(value, self.__pj_mapping_key__, None)
+        setattr(value, self.mapping_key, None)
 
     def keys(self):
         q = self.query()
         q = q.where(self.__pj_filter__())
         _, st = self.get_tables_objects()
-        q = q.where(~(st.data.jsonb_superset(datamanager.Json({self.__pj_mapping_key__: None})) | ~st.data.jsonb_contains_all(JsonArray([self.__pj_mapping_key__]))))
+        q = q.where(~(st.data.jsonb_superset(datamanager.Json({self.mapping_key: None})) | ~st.data.jsonb_contains_all(JsonArray([self.mapping_key]))))
         q = q.fields(st.data)
-        with self._pj_jar.getCursor() as cur:
+        with self._p_jar.getCursor() as cur:
             cur.execute(
                 *compile(q)
             )
             return [
-                res['data'][self.__pj_mapping_key__]
+                res['data'][self.mapping_key]
                 for res in cur.fetchall()]
 
 
-# TODO: tests for PJMapping
 # TODO: deleting of items from PJMapping
 class PJMapping(PersistentMapping):
     """A persistent wrapper for mapping objects.
@@ -166,45 +213,44 @@ class PJMapping(PersistentMapping):
         raise NotImplementedError
 
     def __pj_filter__(self):
-        return 'true'
+        return Expr('true')
 
     def by_raw_id(self, _id):
         return self._p_jar.load(serialize.DBRef(self.table, _id, self._p_jar.database))
 
+    def get_tables_objects(self):
+        # ? or implement __init__ instead ?
+        if not hasattr(self, '_p_meta'):
+            setattr(self, '_p_meta', PMetaData(self))
+        return self._p_meta.mt, self._p_meta.st
+
     def query(self):
-        return None
+        if not hasattr(self, '_p_meta'):
+            setattr(self, '_p_meta', PMetaData(self))
+        return self._p_meta.q.clone()
+
+    def keys(self):
+        raise NotImplementedError
 
     def __getitem__(self, key):
         if key not in self.data:
-            _filter = self.__pj_filter__()
-            if not isinstance(key, basestring):
-                key_string = key.__str__()
-            else:
-                key_string = key
-            _filter += ''' AND s.data @> '%s' ''' % json.dumps({self.mapping_key: key_string})
-            if self._p_jar is None:
-                raise KeyError(key)
+            q = self.query()
+            q = q.where(self.__pj_filter__())
+            mt, st = self.get_tables_objects()
+            q = q.where(st.data.jsonb_superset(datamanager.Json({self.mapping_key: key}))).fields(mt.id)
             obj = None
             with self._p_jar.getCursor() as cur:
                 cur.execute(
-                    '''
-SELECT
-    m.id
-FROM
-    %s m
-    JOIN %s_state s ON m.id = s.pid and m.tid = s.tid
-WHERE
-    %s''' % (self.table, self.table, _filter)
+                    *compile(q)
                 )
                 if not cur.rowcount:
                     raise KeyError(key)
-                id = cur.fetchone()['id']
-                dbref = serialize.DBRef(self.table, id, self._p_jar.database)
+                _id = cur.fetchone()['id']
+                dbref = serialize.DBRef(self.table, _id, self._p_jar.database)
                 obj = self._p_jar.load(dbref)
-            assert obj is not None
+                assert obj is not None
         else:
             obj = self.data[key]
-        setattr(obj, interfaces.TABLE_ATTR_NAME, self.table)
         return obj
 
     def __setitem__(self, key, value):
@@ -245,25 +291,19 @@ WHERE
         k = self.__super_has_key(item)
         if k:
             return k
-        _filter = self.__pj_filter__()
-        if not isinstance(item, basestring):
-            key_string = item.__str__()
-        else:
-            key_string = item
-        _filter += ''' AND data @> '%s' ''' % json.dumps({self.mapping_key: key_string})
+
+        q = self.query()
+        q = q.where(self.__pj_filter__())
+        mt, st = self.get_tables_objects()
+        q = q.where(st.data.jsonb_superset(datamanager.Json({self.mapping_key: item}))).fields(mt.id)
+
         with self._p_jar.getCursor() as cur:
             cur.execute(
-                '''
-SELECT
-    m.id
-FROM
-    %s m
-    JOIN %s_state s ON m.id = s.pid and m.tid = s.tid
-WHERE
-    %s''' % (self.table, self.table, _filter)
+                *compile(q)
             )
             if cur.rowcount:
                 return True
+
         return False
 
     def has_key(self, key):

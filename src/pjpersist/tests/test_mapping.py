@@ -15,15 +15,16 @@
 """PostGreSQL/JSONB Mapping Tests"""
 import doctest
 import persistent
-import pprint
 import transaction
 
 from pjpersist import testing, mapping
+
 
 class Item(persistent.Persistent):
     def __init__(self, name=None, site=None):
         self.name = name
         self.site = site
+
 
 def doctest_PJTableMapping_simple():
     r"""PJTableMapping: simple
@@ -32,8 +33,8 @@ def doctest_PJTableMapping_simple():
     table. Here is a simple example for our Item class/table:
 
         >>> class SimpleContainer(mapping.PJTableMapping):
-        ...     __pj_table__ = 'pjpersist_dot_tests_dot_test_mapping_dot_Item'
-        ...     __pj_mapping_key__ = 'name'
+        ...     table = 'pjpersist_dot_tests_dot_test_mapping_dot_Item'
+        ...     mapping_key = 'name'
 
     To initialize the mapping, we need a data manager:
 
@@ -67,6 +68,7 @@ def doctest_PJTableMapping_simple():
         []
     """
 
+
 def doctest_PJTableMapping_filter():
     r"""PJTableMapping: filter
 
@@ -75,8 +77,8 @@ def doctest_PJTableMapping_filter():
     for all its functions.
 
         >>> class SiteContainer(mapping.PJTableMapping):
-        ...     __pj_table__ = 'pjpersist_dot_tests_dot_test_mapping_dot_Item'
-        ...     __pj_mapping_key__ = 'name'
+        ...     table = 'pjpersist_dot_tests_dot_test_mapping_dot_Item'
+        ...     mapping_key = 'name'
         ...     def __init__(self, jar, site):
         ...         super(SiteContainer, self).__init__(jar)
         ...         self.site = site
@@ -113,6 +115,65 @@ def doctest_PJTableMapping_filter():
     take the filter into account by default. They need to be extended to
     properly setup and tear down the filter criteria.
     """
+
+
+def doctest_PJMapping_simple():
+    r"""PJMapping: simple
+
+    The PJ Mapping extends a PersistentMapping to provide a Python dict interface
+    for a PostGreSQL table and preserve ZODB compatible.
+    Here is a simple example for our Item class/table:
+
+        >>> class SimpleContainer(mapping.PJMapping):
+        ...     table = 'pjpersist_item'
+        ...     mapping_key = 'name'
+
+    Initialize the mapping: just add it to the data manager's root:
+
+        >>> dm.root.container = container = SimpleContainer()
+
+    Let's do some obvious initial manipulations:
+
+        >>> container['one'] = one = Item()
+        >>> one.name
+        'one'
+        >>> 'one' in container
+        True
+        >>> transaction.commit()
+
+    After the transaction is committed, we can access the item:
+
+        >>> container = dm.root.container
+        >>> container.keys()
+        Traceback (most recent call last):
+        ...
+        NotImplementedError
+
+        >>> 'one' in container
+        True
+
+        >>> one = container['one']
+        >>> one.name
+        u'one'
+
+        >>> container['two']
+        Traceback (most recent call last):
+        ...
+        KeyError: 'two'
+
+    Of course we can delete an item, but note that it only removes the name,
+    but does not delete the document by default:
+        >>> del container['one']
+        Traceback (most recent call last):
+        ...
+        NotImplementedError
+        >>> transaction.commit()
+        >>> container.keys()
+        Traceback (most recent call last):
+        ...
+        NotImplementedError
+    """
+
 
 def test_suite():
     suite = doctest.DocTestSuite(
