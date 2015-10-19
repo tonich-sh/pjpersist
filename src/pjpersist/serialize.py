@@ -21,7 +21,6 @@ import datetime
 import persistent.interfaces
 import persistent.dict
 import persistent.list
-import copy
 import types
 import zope.interface
 from zope.dottedname.resolve import resolve
@@ -406,7 +405,7 @@ class ObjectWriter(object):
         if stored:
             # Make sure that the doc is added to the latest states.
             doc[interfaces.PY_TYPE_ATTR_NAME] = py_type_attr_name
-            self._jar._latest_states[obj._p_oid] = doc.copy()
+            self._jar._latest_states[obj._p_oid] = doc
 
         return obj._p_oid
 
@@ -468,7 +467,7 @@ class ObjectReader(object):
             # Do not pollute the latest states because the ref could not be
             # found.
             if obj_doc is not None:
-                self._jar._latest_states[dbref] = obj_doc.copy()
+                self._jar._latest_states[dbref] = obj_doc
         else:
             # Just read the type from the database, still requires one query
             pytype = self._jar._get_doc_py_type(
