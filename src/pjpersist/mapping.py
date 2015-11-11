@@ -14,7 +14,6 @@
 ##############################################################################
 """PostGreSQL/JSONB Mapping Implementations"""
 from __future__ import absolute_import
-import json
 
 from UserDict import DictMixin, IterableUserDict
 
@@ -35,6 +34,18 @@ class JsonbContainsAll(NamedCondition):
     _sql = '?&'
 
 
+class JsonOperator(Expr):
+    __slots__ = ('_left', '_right')
+
+    def __init__(self, left, right):
+        self._left = left
+        self._right = right
+
+
+class JsonItemText(JsonOperator):
+    _sql = '->>'
+
+
 def jsonb_superset(inst, other):
     return JsonbSuperset(inst, other)
 
@@ -42,8 +53,14 @@ def jsonb_superset(inst, other):
 def jsonb_contains_all(inst, other):
     return JsonbContainsAll(inst, other)
 
+
+def jsonb_item_text(inst, other):
+    return JsonItemText(inst, other)
+
+
 setattr(Expr, 'jsonb_superset', jsonb_superset)
 setattr(Expr, 'jsonb_contains_all', jsonb_contains_all)
+setattr(Expr, 'jsonb_item_text', jsonb_item_text)
 
 
 class JsonArray(object):
@@ -52,6 +69,17 @@ class JsonArray(object):
 
     def __init__(self, value):
         self._value = value
+
+
+@compile.when(JsonOperator)
+def compile_json_array(compile, expr, state):
+    compile(expr._left, state)
+    state.sql.append(expr._sql)
+    if isinstance(expr._right, basestring):
+        state.sql.append("'")
+    state.sql.append(expr._right)
+    if isinstance(expr._right, basestring):
+        state.sql.append("'")
 
 
 @compile.when(JsonArray)
