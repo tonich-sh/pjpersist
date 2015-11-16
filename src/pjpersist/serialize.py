@@ -23,6 +23,8 @@ import persistent.dict
 import persistent.list
 import types
 import zope.interface
+from repoze.lru import LRUCache
+
 from zope.dottedname.resolve import resolve
 from decimal import Decimal
 
@@ -34,6 +36,7 @@ SERIALIZERS = []
 AVAILABLE_NAME_MAPPINGS = set()
 PATH_RESOLVE_CACHE = {}
 TABLE_KLASS_MAP = {}
+DBREF_RESOLVE_CACHE = LRUCache(500)
 
 # actually we should extract this somehow from psycopg2
 PYTHON_TO_PG_TYPES = {
@@ -65,6 +68,7 @@ def get_dotted_name(obj, escape=False, state=False):
     if state:
         name += '_state'
     return name
+
 
 class PersistentDict(persistent.dict.PersistentDict):
     _p_pj_sub_object = True
@@ -157,7 +161,10 @@ class DBRef(object):
         return self.hash != other.hash
 
     def __repr__(self):
-        return 'DBRef(%r, %r, %r)' %(self.table, self.id, self.database)
+        return 'DBRef(%r, %r, %r)' % (self.table, self.id, self.database)
+
+    def as_key(self):
+        return '%r::%r::%r' % (self.database, self.table, self.id)
 
     def as_tuple(self):
         return self.database, self.table, self.id
@@ -171,6 +178,7 @@ class DBRef(object):
 
 class Binary(str):
     pass
+
 
 class ObjectSerializer(object):
     zope.interface.implements(interfaces.IObjectSerializer)
@@ -195,7 +203,6 @@ class ObjectWriter(object):
         self._jar = jar
 
     def get_table_name(self, obj):
-        __traceback_info__ = obj
         db_name = getattr(
             obj, interfaces.DATABASE_ATTR_NAME,
             self._jar.database if self._jar else None)
@@ -206,7 +213,6 @@ class ObjectWriter(object):
         return db_name, table_name
 
     def get_non_persistent_state(self, obj, seen):
-        __traceback_info__ = obj, type(obj)
         # XXX: Look at the pickle library how to properly handle all types and
         # old-style classes with all of the possible pickle extensions.
 
@@ -257,7 +263,6 @@ class ObjectWriter(object):
         return state
 
     def get_persistent_state(self, obj, seen):
-        __traceback_info__ = obj
         # Persistent sub-objects are stored by reference, the key being
         # (table name, oid).
         # Getting the table name is easy, but if we have an unsaved
@@ -354,8 +359,6 @@ class ObjectWriter(object):
         return doc
 
     def store(self, obj, ref_only=False, id=None):
-        __traceback_info__ = (obj, ref_only)
-
         # If it is the first time that this type of object is stored, getting
         # the table name has the side affect of telling the class whether it
         # has to store its Python type as well. So, do not remove, even if the
@@ -403,10 +406,8 @@ class ObjectWriter(object):
             obj._pj_after_store_hook(self._jar._conn)
 
         if stored:
-            # Make sure that the doc is added to the latest states.
             doc[interfaces.PY_TYPE_ATTR_NAME] = py_type_attr_name
-            self._jar._latest_states[obj._p_oid] = doc
-
+        DBREF_RESOLVE_CACHE.put(obj._p_oid.as_key(), obj.__class__)
         return obj._p_oid
 
 
@@ -437,8 +438,14 @@ class ObjectReader(object):
             raise ImportError(path)
         return klass
 
-    def resolve(self, dbref):
-        __traceback_info__ = dbref
+    def resolve(self, dbref, no_cache=False):
+
+        # 0. Use DBREF_RESOLVE_CACHE
+        if not no_cache:
+            klass = DBREF_RESOLVE_CACHE.get(dbref.as_key())
+            if klass is not None:
+                return klass
+
         # 1. Try to optimize on whether there's just one class stored in one
         #    table, that can save us one DB query
         if dbref.table in TABLE_KLASS_MAP:
@@ -446,28 +453,20 @@ class ObjectReader(object):
             if len(results) == 1:
                 # there must be just ONE, otherwise we need to check the JSONB
                 klass = list(results)[0]
+                DBREF_RESOLVE_CACHE.put(dbref.as_key(), klass)
                 return klass
+
         # from this point on we need the dbref.id
         if dbref.id is None:
             raise ImportError(dbref)
         # 2. Get the class from the object state
         #    Multiple object types are stored in the table. We have to
         #    look at the object (JSONB) to find out the type.
-        if dbref in self._jar._latest_states:
-            # Optimization: If we have the latest state, then we just get
-            # this object document. This is used for fast loading or when
-            # resolving the same object path a second time. (The latter
-            # should never happen due to the object cache.)
-            obj_doc = self._jar._latest_states[dbref]
-        elif ALWAYS_READ_FULL_DOC:
+        if ALWAYS_READ_FULL_DOC:
             # Optimization: Read the entire doc and stick it in the right
             # place so that unghostifying the object later will not cause
             # another database access.
             obj_doc = self._jar._get_doc_by_dbref(dbref)
-            # Do not pollute the latest states because the ref could not be
-            # found.
-            if obj_doc is not None:
-                self._jar._latest_states[dbref] = obj_doc
         else:
             # Just read the type from the database, still requires one query
             pytype = self._jar._get_doc_py_type(
@@ -481,6 +480,7 @@ class ObjectReader(object):
             klass = self.simple_resolve(obj_doc[interfaces.PY_TYPE_ATTR_NAME])
         else:
             raise ImportError(dbref)
+        DBREF_RESOLVE_CACHE.put(dbref.as_key(), klass)
         return klass
 
     def get_non_persistent_object(self, state, obj):
@@ -580,7 +580,6 @@ class ObjectReader(object):
         return state
 
     def set_ghost_state(self, obj, doc=None):
-        __traceback_info__ = (obj, doc)
         # Check whether the object state was stored on the object itself.
         if doc is None:
             doc = getattr(obj, interfaces.STATE_ATTR_NAME, None)
@@ -595,12 +594,11 @@ class ObjectReader(object):
 
         # Now convert the document to a proper Python state dict.
         state = dict(self.get_object(doc, obj))
-        # if obj._p_oid not in self._jar._latest_states:
+
         # Sometimes this method is called to update the object state
-        # before storage. Only update the latest states when the object is
-        # originally loaded.
+        # before storage.
         doc[interfaces.PY_TYPE_ATTR_NAME] = pytype
-        self._jar._latest_states[obj._p_oid] = doc
+
         # Set the state.
         obj.__setstate__(state)
         # Run the custom load functions.
@@ -618,8 +616,6 @@ class ObjectReader(object):
         # is otherwise deleted.
         setattr(obj, interfaces.DATABASE_ATTR_NAME, dbref.database)
         setattr(obj, interfaces.TABLE_ATTR_NAME, dbref.table)
-        # Adding the object to the cache is very important, so that we get the
-        # same object reference throughout the transaction.
         return obj
 
 

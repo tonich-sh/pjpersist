@@ -923,9 +923,9 @@ def doctest_PJDataManager_complex_sub_objects():
                             u'bar': {u'_py_persistent_type': u'pjpersist.tests.test_datamanager.Bar',
                                      u'name': u'bar'},
                             u'name': u'super'}},
-          'id': 1L,
+          'id': ...L,
           'package': u'pjpersist.tests.test_datamanager',
-          'tid': 5L}]
+          'tid': ...L}]
 
     Now, make changes to the subobjects and then commit
 

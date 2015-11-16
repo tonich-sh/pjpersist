@@ -163,7 +163,7 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
 
     def _execute_and_log(self, sql, args):
         # Very useful logging of every SQL command with traceback to code.
-        __traceback_info__ = (self.datamanager.database, sql, args)
+        # __traceback_info__ = (self.datamanager.database, sql, args)
         t0 = time.time()
         try:
             res = super(PJPersistCursor, self).execute(sql, args)
@@ -263,6 +263,7 @@ class PJDataManager(object):
         self._cleanup()
 
     def _cleanup(self):
+        LOG.debug('cleanup!!!')
         # All of the following object lists are keys by object id. This is
         # needed when testing containment, since that can utilize `__cmp__()`
         # which can have undesired side effects. `id()` is guaranteed to not
@@ -271,8 +272,6 @@ class PJDataManager(object):
         self._inserted_objects = {}
         self._modified_objects = {}
         self._removed_objects = {}
-        # The latest states written to the database.
-        self._latest_states = {}
         self.annotations = {}
 
         # transaction related
@@ -286,6 +285,7 @@ class PJDataManager(object):
         self._query_report = QueryReport()
         self._commit_failed = False
         if self._root is not None:
+            LOG.debug('invalidate root')
             self._root._p_invalidate()
 
     @property
@@ -297,9 +297,10 @@ class PJDataManager(object):
     def _create_root(self):
         # load root
         _root_oid = serialize.DBRef('pjpersist_dot_datamanager_dot_DBRoot', 0, self.database)
+
         try:
-            root = self.load(_root_oid)
-            LOG.debug('DBRoot loaded successfully: %s' % dir(root).__str__())
+            root = self.load(_root_oid, self._reader.resolve(_root_oid, no_cache=True))
+            LOG.debug('DBRoot loaded successfully!')
         except ImportError:
             root = None
 
@@ -570,7 +571,7 @@ WHERE
         while todo:
             obj_id = todo.pop()
             obj = self._registered_objects[obj_id]
-            __traceback_info__ = obj
+            # __traceback_info__ = obj
             obj = self._get_doc_object(obj)
             self._writer.store(obj)
             written.add(obj_id)
@@ -602,7 +603,6 @@ WHERE
             assert dm.database == dbref.database, (dm.database, dbref.database)
             return dm.load(dbref, klass)
         g = self._reader.get_ghost(dbref, klass)
-        setattr(g, interfaces.TABLE_ATTR_NAME, dbref._table)
         return g
 
     def reset(self):
@@ -668,18 +668,13 @@ WHERE
         # We are not doing anything fancy here, since the object might be
         # added again with some different state.
 
-    def setstate(self, obj, doc=None):
-        # If the doc is None, but it has been loaded before, we look it
-        # up. This acts as a great hook for optimizations that load many
-        # documents at once. They can now dump the states into the
-        # _latest_states dictionary.
-        if doc is None:
-            doc = self._latest_states.get(obj._p_oid, None)
+    def setstate(self, obj):
+        dbref = obj._p_oid
+        doc = self._get_doc_by_dbref(dbref)
         self._reader.set_ghost_state(obj, doc)
 
+    # TODO: implement oldstate() method
     def oldstate(self, obj, tid):
-        # I cannot find any code using this method. Also, since we do not keep
-        # version history, we always raise an error.
         raise KeyError(tid)
 
     def register(self, obj):
@@ -701,6 +696,7 @@ WHERE
                 self._modified_objects[id(obj)] = obj
 
     def abort(self, transaction):
+        LOG.debug('Abort transaction!!!')
         # should not call from two-phase commit
         assert not self._in_commit
         self._report_stats()
@@ -768,6 +764,7 @@ CREATE TABLE transactions (
             check_for_conflict(e, "DataManager.commit")
 
     def tpc_finish(self, transaction):
+        LOG.debug('tpc finish!!!')
         try:
             self._report_stats()
         except:
