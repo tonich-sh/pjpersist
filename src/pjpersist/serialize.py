@@ -618,6 +618,26 @@ class ObjectReader(object):
         setattr(obj, interfaces.TABLE_ATTR_NAME, dbref.table)
         return obj
 
+    def load(self, data, table, _id, database=None):
+        pytype = data['data'].get(interfaces.PY_TYPE_ATTR_NAME, None)
+        if pytype is None:
+            pytype = data['package'] + '.' + data['class_name']
+            data['data'][interfaces.PY_TYPE_ATTR_NAME] = pytype
+        klass = self.simple_resolve(pytype)
+        obj = klass.__new__(klass)
+        obj._p_jar = self._jar
+        if database is None:
+            database = self._jar.database
+        dbref = DBRef(table, _id, database)
+        obj._p_oid = dbref
+        del obj._p_changed
+        # Assign the table after deleting _p_changed, since the attribute
+        # is otherwise deleted.
+        setattr(obj, interfaces.DATABASE_ATTR_NAME, dbref.database)
+        setattr(obj, interfaces.TABLE_ATTR_NAME, dbref.table)
+        self.set_ghost_state(obj, data['data'])
+        return obj
+
 
 class table:
     """Declare the table used by the class.
