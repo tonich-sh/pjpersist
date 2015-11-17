@@ -76,6 +76,7 @@ def doctest_PJTableMapping_filter():
     object and thus same table. The PJ mapping thus supports filtering
     for all its functions.
 
+        >>> from pjpersist import smartsql
         >>> class SiteContainer(mapping.PJTableMapping):
         ...     table = 'pjpersist_dot_tests_dot_test_mapping_dot_Item'
         ...     mapping_key = 'name'
@@ -84,7 +85,7 @@ def doctest_PJTableMapping_filter():
         ...         self.site = site
         ...     def __pj_filter__(self):
         ...         mt, st = self.get_tables_objects()
-        ...         return mapping.JsonbSuperset(st.data, '{"site": "%s"}' % self.site)
+        ...         return smartsql.JsonbSuperset(st.data, '{"site": "%s"}' % self.site)
 
         >>> container1 = SiteContainer(dm, 'site1')
         >>> container2 = SiteContainer(dm, 'site2')
