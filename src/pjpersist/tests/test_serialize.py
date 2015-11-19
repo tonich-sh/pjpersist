@@ -1001,25 +1001,25 @@ def doctest_ObjectReader_get_ghost():
 def doctest_ObjectReader_set_ghost_state():
     r"""ObjectReader: set_ghost_state()
 
-      >>> top = Top()
-      >>> top.name = 'top'
-      >>> dm.insert(top)  # doctest: +ELLIPSIS
-      DBRef('Top', ...L, 'pjpersist_test')
+        >>> top = Top()
+        >>> top.name = 'top'
+        >>> dm.insert(top)  # doctest: +ELLIPSIS
+        DBRef('Top', ...L, 'pjpersist_test')
 
     The ghost object is a shell without any loaded object state:
 
-      >>> reader = serialize.ObjectReader(dm)
-      >>> gobj = reader.get_ghost(top._p_oid)
-      >>> gobj._p_jar
-      <pjpersist.datamanager.PJDataManager object at 0x2720e50>
-      >>> gobj._p_state
-      -1
+        >>> reader = serialize.ObjectReader(dm)
+        >>> gobj = reader.get_ghost(top._p_oid)
+        >>> gobj._p_jar
+        <pjpersist.datamanager.PJDataManager object at 0x2720e50>
+        >>> gobj._p_state
+        -1
 
     Now load the state:
 
-      >>> reader.set_ghost_state(gobj)
-      >>> gobj.name
-      u'top'
+        >>> reader.set_ghost_state(gobj)
+        >>> gobj.name
+        u'top'
 
     """
 

@@ -1114,30 +1114,31 @@ def doctest_PJDataManager_modify_sub_delete_doc():
     sub-document object is modified (since it is registered with the data
     manager.
 
-      >>> foo = MFoo('foo')
-      >>> foo.bar = Bar('bar')
-      >>> dm.root.foo = foo
+        >>> foo = MFoo('foo')
+        >>> foo.bar = Bar('bar')
+        >>> dm.root.foo = foo
 
-      >>> dm.commit(transaction.get())
-      >>> cur = dm.getCursor()
-      >>> cur.execute(
-      ...     '''SELECT count(*)
-      ...        FROM pjpersist_dot_tests_dot_test_datamanager_dot_MFoo''')
-      >>> cur.fetchone()[0]
-      1L
+        >>> dm.commit(transaction.get())
+        >>> cur = dm.getCursor()
+
+        >>> cur.execute(
+        ...     '''SELECT count(*)
+        ...        FROM pjpersist_dot_tests_dot_test_datamanager_dot_MFoo''')
+        >>> cur.fetchone()[0]
+        1L
 
     Let's now modify bar and delete foo.
 
-      >>> foo = dm.root.foo
-      >>> foo.bar.name = 'bar-new'
-      >>> dm.remove(foo)
+        >>> foo = dm.root.foo
+        >>> foo.bar.name = 'bar-new'
+        >>> dm.remove(foo)
 
-      >>> dm.commit(transaction.get())
-      >>> cur.execute(
-      ...     '''SELECT count(*)
-      ...        FROM pjpersist_dot_tests_dot_test_datamanager_dot_MFoo''')
-      >>> cur.fetchone()[0]
-      0L
+        >>> dm.commit(transaction.get())
+        >>> cur.execute(
+        ...     '''SELECT count(*)
+        ...        FROM pjpersist_dot_tests_dot_test_datamanager_dot_MFoo''')
+        >>> cur.fetchone()[0]
+        0L
     """
 
 def doctest_PJDataManager_sub_doc_multi_flush():

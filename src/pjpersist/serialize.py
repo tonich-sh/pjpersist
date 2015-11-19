@@ -205,11 +205,18 @@ class ObjectWriter(object):
     def get_table_name(self, obj):
         db_name = getattr(
             obj, interfaces.DATABASE_ATTR_NAME,
-            self._jar.database if self._jar else None)
+            None)
+
+        if db_name is None:
+            db_name = self._jar.database if self._jar else None
         try:
             table_name = getattr(obj, interfaces.TABLE_ATTR_NAME)
         except AttributeError:
-            return db_name, get_dotted_name(obj.__class__, True)
+            table_name = None
+
+        if table_name is None:
+            table_name = get_dotted_name(obj.__class__, True)
+
         return db_name, table_name
 
     def get_non_persistent_state(self, obj, seen):
@@ -438,13 +445,35 @@ class ObjectReader(object):
             raise ImportError(path)
         return klass
 
+    def _prepare_class(self, klass):
+        # add attributes to the class
+        # setattr(klass, interfaces.DATABASE_ATTR_NAME, None)
+
+        class TableNameDescriptor(object):
+            def __init__(self):
+                self.name = {}
+
+            def __get__(self, instance, owner):
+                path = get_dotted_name(instance.__class__)
+                if path not in self.name:
+                    return None
+                return self.name[path]
+
+            def __set__(self, instance, value):
+                path = get_dotted_name(instance.__class__)
+                self.name[path] = str(value)
+
+        if not hasattr(klass, interfaces.TABLE_ATTR_NAME):
+            setattr(klass, interfaces.TABLE_ATTR_NAME, TableNameDescriptor())
+        return klass
+
     def resolve(self, dbref, no_cache=False):
 
         # 0. Use DBREF_RESOLVE_CACHE
         if not no_cache:
             klass = DBREF_RESOLVE_CACHE.get(dbref.as_key())
             if klass is not None:
-                return klass
+                return self._prepare_class(klass)
 
         # 1. Try to optimize on whether there's just one class stored in one
         #    table, that can save us one DB query
@@ -454,7 +483,7 @@ class ObjectReader(object):
                 # there must be just ONE, otherwise we need to check the JSONB
                 klass = list(results)[0]
                 DBREF_RESOLVE_CACHE.put(dbref.as_key(), klass)
-                return klass
+                return self._prepare_class(klass)
 
         # from this point on we need the dbref.id
         if dbref.id is None:
@@ -481,7 +510,7 @@ class ObjectReader(object):
         else:
             raise ImportError(dbref)
         DBREF_RESOLVE_CACHE.put(dbref.as_key(), klass)
-        return klass
+        return self._prepare_class(klass)
 
     def get_non_persistent_object(self, state, obj):
         if '_py_constant' in state:
