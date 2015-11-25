@@ -652,7 +652,7 @@ class ObjectReader(object):
         if pytype is None:
             pytype = data['package'] + '.' + data['class_name']
             data['data'][interfaces.PY_TYPE_ATTR_NAME] = pytype
-        klass = self.simple_resolve(pytype)
+        klass = self._prepare_class(self.simple_resolve(pytype))
         obj = klass.__new__(klass)
         obj._p_jar = self._jar
         if database is None:

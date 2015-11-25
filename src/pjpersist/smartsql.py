@@ -110,9 +110,10 @@ class PJResult(Result):
     select = count = insert = update = delete = execute
 
     def unserialize(self, data):
-        if data and 'id' in data and 'data' in data and \
+        if data and (('pid' in data) or ('id' in data)) and 'data' in data and \
            'package' in data and 'class_name' in data:
-            return self._mapping._p_jar._reader.load(data, self._mapping.table, data['id'])
+            id = data.get('pid', data.get('id'))
+            return self._mapping._p_jar._reader.load(data, self._mapping.table, id)
         return data
 
     def __iter__(self):

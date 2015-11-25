@@ -78,7 +78,7 @@ def doctest_PJTableMapping_filter():
 
         >>> from pjpersist import smartsql
         >>> class SiteContainer(mapping.PJTableMapping):
-        ...     table = 'pjpersist_dot_tests_dot_test_mapping_dot_Item'
+        ...     table = 'pjpersist_item'
         ...     mapping_key = 'name'
         ...     def __init__(self, jar, site):
         ...         super(SiteContainer, self).__init__(jar)

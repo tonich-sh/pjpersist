@@ -266,8 +266,8 @@ always maintained as lists, since JSON does not have two sequence types.
               u'today': {u'_py_type': u'datetime.datetime',
                          u'value': u'2014-05-14T12:30:00'},
               u'visited': [u'Germany', u'USA']},
-     'id': ...L,
      'pid': ...L,
+     'sid': ...L,
      'tid': ...L}
 
 
@@ -334,8 +334,8 @@ Let's have a look again:
               u'today': {u'_py_type': u'datetime.datetime',
                          u'value': u'2014-05-14T12:30:00'},
               u'visited': [u'Germany', u'USA']},
-     'id': ...L,
      'pid': ...L,
+     'sid': ...L,
      'tid': ...L}
 
 Much better!
@@ -394,8 +394,8 @@ of another document:
               u'today': {u'_py_type': u'datetime.datetime',
                          u'value': u'2014-05-14T12:30:00'},
               u'visited': [u'Germany', u'USA']},
-     'id': ...L,
      'pid': ...L,
+     'sid': ...L,
      'tid': ...L}
 
 The reason we want objects to be persistent is so that they pick up changes

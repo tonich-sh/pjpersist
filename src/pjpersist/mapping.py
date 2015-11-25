@@ -111,7 +111,7 @@ class PJTableMapping(DictMixin, object):
             )
             return [
                 res['data'][self.mapping_key]
-                for res in cur.fetchall()]
+                for res in cur]
 
 
 # TODO: deleting of items from PJMapping

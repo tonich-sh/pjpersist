@@ -409,7 +409,7 @@ class PJDataManager(object):
                     )''' % (table, ))
                 cur.execute('''
                     CREATE TABLE %s_state (
-                        id BIGSERIAL PRIMARY KEY,
+                        sid BIGSERIAL PRIMARY KEY,
                         pid BIGINT NOT NULL,
                         tid BIGINT NOT NULL,
                         %s
