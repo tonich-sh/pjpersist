@@ -70,7 +70,10 @@ def compile_json_array(compile, expr, state):
     state.sql.append(expr._sql)
     if isinstance(expr._right, basestring):
         state.sql.append("'")
-    state.sql.append(expr._right)
+    if isinstance(expr._right, basestring):
+        state.sql.append(expr._right)
+    else:
+        state.sql.append(str(expr._right))
     if isinstance(expr._right, basestring):
         state.sql.append("'")
 
@@ -78,9 +81,11 @@ def compile_json_array(compile, expr, state):
 @compile.when(JsonArray)
 def compile_json_array(compile, expr, state):
     state.sql.append("array[")
+    placeholders = []
     for item in expr._value:
-        state.sql.append(PLACEHOLDER)
+        placeholders.append(PLACEHOLDER)
         state.params.append(item)
+    state.sql.append(', '.join(placeholders))
     state.sql.append("]")
 
 
