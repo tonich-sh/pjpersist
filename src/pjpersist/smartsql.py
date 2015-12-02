@@ -14,7 +14,9 @@
 """Postgresql's jsonb support for sqlbuilder"""
 from __future__ import absolute_import
 
-from sqlbuilder.smartsql import Q, T, compile as parent_comile, Expr, NamedCondition, PLACEHOLDER, Name, Result
+from sqlbuilder.smartsql import Q, T, compile as parent_comile, Expr, NamedCondition, \
+    PLACEHOLDER, Name, Result, MetaTable, MetaField, FieldProxy, cr, same, \
+    LOOKUP_SEP, Field
 
 compile = parent_comile.create_child()
 
@@ -132,3 +134,70 @@ class PJResult(Result):
             return 0
         else:
             return self._cur.rowcount
+
+
+class JsonbDataField(MetaField("NewBase", (Expr,), {})):
+
+    __slots__ = ('_name', '_prefix', '__cached__')
+
+    def __init__(self, name, prefix=None):
+        self._name = name
+        self._prefix = prefix
+        self.__cached__ = {}
+
+
+@cr
+class PJMappedVirtualTable(MetaTable("NewBase", (object, ), {})):
+
+    __slots__ = ('_mapping', 'fields', '__cached__')
+
+    def __init__(self, mapping):
+        self._mapping = mapping
+        self.fields = FieldProxy(self)
+        self.__cached__ = {}
+
+    def __getattr__(self, key):
+        if key[0] == '_':
+            raise AttributeError
+
+        if key in self.fields.__dict__:
+            return self.fields.__dict__[key]
+
+        parts = key.split(LOOKUP_SEP, 1)
+        name, alias = parts + [None] * (2 - len(parts))
+
+        if name in self.fields.__dict__:
+            f = self.fields.__dict__[name]
+        else:
+            f = JsonbDataField(name, self)
+            setattr(self.fields, name, f)
+        if alias:
+            f = f.as_(alias)
+        setattr(self.fields, key, f)
+        return f
+
+    # TODO: ? join ...
+    get_field = same('__getattr__')
+
+
+@compile.when(PJMappedVirtualTable)
+def compile_mapped_table(compile, expr, state):
+    mt, st = expr._mapping.get_tables_objects()
+    compile(expr._cr.TableJoin(mt).inner_join(st).on((mt.id == st.pid) & (mt.tid == st.tid)), state)
+
+
+@compile.when(JsonbDataField)
+def compile_jsonb_datafield(compile, expr, state):
+    # import sqlbuilder.smartsql as ss
+    # if len(state._stack) > 1:
+    #     op = state._stack[1]
+    # else:
+    #     op = None
+    # if isinstance(op, ss.Eq):
+    #     pass
+    # default
+    if expr._prefix is not None:
+        _, st = expr._prefix._mapping.get_tables_objects()
+        compile(st.data.jsonb_item_text(expr._name), state)
+    else:
+        compile(Field('data').jsonb_item_text(expr._name), state)

@@ -16,8 +16,14 @@
 import doctest
 import unittest
 
+from pjpersist.mapping import PJTableMapping
 from pjpersist import testing, smartsql
 from pjpersist.smartsql import T, compile
+
+
+class TestMapping(PJTableMapping):
+    table = 'mapping'
+
 
 def doctest_smartsql():
     r"""
@@ -34,6 +40,16 @@ def doctest_smartsql():
         >>> compile(smartsql.JsonArray(['x', 'y', 'z']))
         ('array[%s, %s, %s]', ['x', 'y', 'z'])
 
+        >>> compile(smartsql.JsonbDataField('test'))
+        ("data->>'test'", [])
+
+        >>> vt = smartsql.PJMappedVirtualTable(TestMapping(None))
+
+        >>> compile(vt)
+        ('mapping INNER JOIN mapping_state ON (mapping.id = mapping_state.pid AND mapping.tid = mapping_state.tid)', [])
+
+        >>> compile(vt.test == 5)
+        ("mapping_state.data->>'test' = %s", [5])
 
     """
 
