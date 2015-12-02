@@ -40,16 +40,24 @@ def doctest_smartsql():
         >>> compile(smartsql.JsonArray(['x', 'y', 'z']))
         ('array[%s, %s, %s]', ['x', 'y', 'z'])
 
-        >>> compile(smartsql.JsonbDataField('test'))
-        ("data->>'test'", [])
-
         >>> vt = smartsql.PJMappedVirtualTable(TestMapping(None))
+
+        >>> compile(smartsql.JsonbDataField('test', vt))
+        ("mapping_state.data->>'test'", [])
 
         >>> compile(vt)
         ('mapping INNER JOIN mapping_state ON (mapping.id = mapping_state.pid AND mapping.tid = mapping_state.tid)', [])
 
         >>> compile(vt.test == 5)
         ("mapping_state.data->>'test' = %s", [5])
+
+        Field name will be ignored in this case
+
+        >>> compile(smartsql.JsonbSuperset(vt.test, None))
+        ('mapping_state.data @> NULL', [])
+
+        >>> compile(smartsql.JsonbContainsAll(vt.test, None))
+        ('mapping_state.data ?& NULL', [])
 
     """
 

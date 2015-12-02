@@ -21,11 +21,15 @@ from sqlbuilder.smartsql import Q, T, compile as parent_comile, Expr, NamedCondi
 compile = parent_comile.create_child()
 
 
-class JsonbSuperset(NamedCondition):
+class JsonbOp(NamedCondition):
+    pass
+
+
+class JsonbSuperset(JsonbOp):
     _sql = '@>'
 
 
-class JsonbContainsAll(NamedCondition):
+class JsonbContainsAll(JsonbOp):
     _sql = '?&'
 
 
@@ -140,7 +144,7 @@ class JsonbDataField(MetaField("NewBase", (Expr,), {})):
 
     __slots__ = ('_name', '_prefix', '__cached__')
 
-    def __init__(self, name, prefix=None):
+    def __init__(self, name, prefix):
         self._name = name
         self._prefix = prefix
         self.__cached__ = {}
@@ -189,15 +193,16 @@ def compile_mapped_table(compile, expr, state):
 @compile.when(JsonbDataField)
 def compile_jsonb_datafield(compile, expr, state):
     # import sqlbuilder.smartsql as ss
-    # if len(state._stack) > 1:
-    #     op = state._stack[1]
-    # else:
-    #     op = None
-    # if isinstance(op, ss.Eq):
-    #     pass
-    # default
-    if expr._prefix is not None:
-        _, st = expr._prefix._mapping.get_tables_objects()
-        compile(st.data.jsonb_item_text(expr._name), state)
+    if len(state.callers) > 1:
+        op = state.callers[1]
     else:
-        compile(Field('data').jsonb_item_text(expr._name), state)
+        op = None
+
+    if op and issubclass(op, JsonbOp):
+        _, st = expr._prefix._mapping.get_tables_objects()
+        compile(st.data, state)
+        return
+
+    # default
+    _, st = expr._prefix._mapping.get_tables_objects()
+    compile(st.data.jsonb_item_text(expr._name), state)
