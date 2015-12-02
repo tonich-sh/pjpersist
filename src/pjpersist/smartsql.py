@@ -186,7 +186,8 @@ class PJMappedVirtualTable(MetaTable("NewBase", (object, ), {})):
 
 @compile.when(PJMappedVirtualTable)
 def compile_mapped_table(compile, expr, state):
-    mt, st = expr._mapping.get_tables_objects()
+    mt = expr._mapping.get_table_object(ttype='mt')
+    st = expr._mapping.get_table_object(ttype='st')
     compile(expr._cr.TableJoin(mt).inner_join(st).on((mt.id == st.pid) & (mt.tid == st.tid)), state)
 
 
@@ -198,11 +199,11 @@ def compile_jsonb_datafield(compile, expr, state):
     else:
         op = None
 
+    st = expr._prefix._mapping.get_table_object(ttype='st')
+
     if op and issubclass(op, JsonbOp):
-        _, st = expr._prefix._mapping.get_tables_objects()
         compile(st.data, state)
         return
 
     # default
-    _, st = expr._prefix._mapping.get_tables_objects()
     compile(st.data.jsonb_item_text(expr._name), state)

@@ -20,16 +20,17 @@ from UserDict import DictMixin, IterableUserDict
 from persistent.mapping import PersistentMapping
 
 from . import serialize, interfaces, datamanager
-from . smartsql import compile, PJResult, T, Q, Expr, JsonArray
+from . smartsql import compile, PJResult, T, Q, Expr, JsonArray, PJMappedVirtualTable
 
 
 class PMetaData(object):
-    __slots__ = ('_mapping', '_mt', '_st', '_q')
+    __slots__ = ('_mapping', '_mt', '_st', '_vt', '_q')
 
     def __init__(self, mapping):
         self._mapping = mapping
         self._mt = None
         self._st = None
+        self._vt = None
         self._q = None
 
     @property
@@ -45,11 +46,15 @@ class PMetaData(object):
         return self._st
 
     @property
+    def vt(self):
+        if self._vt is None:
+            self._vt = PJMappedVirtualTable(self._mapping)
+        return self._vt
+
+    @property
     def q(self):
-        mt = self.mt
-        st = self.st
         if self._q is None:
-            self._q = Q(result=PJResult(self._mapping, compile=compile)).tables(mt & st).on((mt.id == st.pid)).where(mt.tid == st.tid)
+            self._q = Q(result=PJResult(self._mapping, compile=compile)).tables(self.vt)
         return self._q
 
 
@@ -64,11 +69,12 @@ class PJTableMapping(DictMixin, object):
     def __pj_filter__(self):
         return Expr('true')
 
-    def get_tables_objects(self):
-        return self._p_meta.mt, self._p_meta.st
+    def get_table_object(self, ttype='vt'):
+        return getattr(self._p_meta, ttype, self._p_meta.vt)
 
     def get_fields(self):
-        mt, st = self.get_tables_objects()
+        mt = self.get_table_object(ttype='mt')
+        st = self.get_table_object(ttype='st')
         return mt.id, mt.package, mt.class_name, st.data
 
     def query(self):
@@ -77,8 +83,8 @@ class PJTableMapping(DictMixin, object):
     def __getitem__(self, key):
         q = self.query()
         q = q.where(self.__pj_filter__())
-        mt, st = self.get_tables_objects()
-        q = q.where(st.data.jsonb_superset(datamanager.Json({self.mapping_key: key}))).fields(*list(self.get_fields()))
+        vt = self.get_table_object()
+        q = q.where(vt.f.jsonb_superset(datamanager.Json({self.mapping_key: key}))).fields('*')
         objects = q.result(q).__iter__()
         obj = objects.next()
         if not obj:
@@ -102,7 +108,7 @@ class PJTableMapping(DictMixin, object):
     def keys(self):
         q = self.query()
         q = q.where(self.__pj_filter__())
-        _, st = self.get_tables_objects()
+        st = self.get_table_object(ttype='st')
         q = q.where(~(st.data.jsonb_superset(datamanager.Json({self.mapping_key: None})) | ~st.data.jsonb_contains_all(JsonArray([self.mapping_key]))))
         q = q.fields(st.data)
         with self._p_jar.getCursor() as cur:
@@ -146,14 +152,14 @@ class PJMapping(PersistentMapping):
     def by_raw_id(self, _id):
         return self._p_jar.load(serialize.DBRef(self.table, _id, self._p_jar.database))
 
-    def get_tables_objects(self):
-        # ? or implement __init__ instead ?
+    def get_table_object(self, ttype='vt'):
         if not hasattr(self, '_p_meta'):
             setattr(self, '_p_meta', PMetaData(self))
-        return self._p_meta.mt, self._p_meta.st
+        return getattr(self._p_meta, ttype, self._p_meta.vt)
 
     def get_fields(self):
-        mt, st = self.get_tables_objects()
+        mt = self.get_table_object(ttype='mt')
+        st = self.get_table_object(ttype='st')
         return mt.id, mt.package, mt.class_name, st.data
 
     def query(self):
@@ -168,8 +174,8 @@ class PJMapping(PersistentMapping):
         if key not in self.data:
             q = self.query()
             q = q.where(self.__pj_filter__())
-            mt, st = self.get_tables_objects()
-            q = q.where(st.data.jsonb_superset(datamanager.Json({self.mapping_key: key}))).fields(*list(self.get_fields()))
+            vt = self.get_table_object()
+            q = q.where(vt.f.jsonb_superset(datamanager.Json({self.mapping_key: key}))).fields('*')
             objects = q.result(q).__iter__()
             obj = objects.next()
             if not obj:
@@ -219,8 +225,8 @@ class PJMapping(PersistentMapping):
 
         q = self.query()
         q = q.where(self.__pj_filter__())
-        mt, st = self.get_tables_objects()
-        q = q.where(st.data.jsonb_superset(datamanager.Json({self.mapping_key: item}))).fields(mt.id)
+        st = self.get_table_object(ttype='st')
+        q = q.where(st.data.jsonb_superset(datamanager.Json({self.mapping_key: item}))).fields(st.sid)
 
         with self._p_jar.getCursor() as cur:
             cur.execute(

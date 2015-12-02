@@ -84,7 +84,7 @@ def doctest_PJTableMapping_filter():
         ...         super(SiteContainer, self).__init__(jar)
         ...         self.site = site
         ...     def __pj_filter__(self):
-        ...         mt, st = self.get_tables_objects()
+        ...         st = self.get_table_object('st')
         ...         return smartsql.JsonbSuperset(st.data, '{"site": "%s"}' % self.site)
 
         >>> container1 = SiteContainer(dm, 'site1')
