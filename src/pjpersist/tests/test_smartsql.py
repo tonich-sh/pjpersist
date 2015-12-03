@@ -54,8 +54,23 @@ def doctest_smartsql():
         >>> compile(vt.test == 5)
         ("mapping_state.data->>'test' = %s", [5])
 
+    to use index scan on datetime field we must define IMMUTABLE cast function:
+
+    CREATE FUNCTION to_timestamp_cast(TEXT) RETURNS TIMESTAMP
+        AS 'select cast($1 as TIMESTAMP)'
+        LANGUAGE SQL
+        IMMUTABLE
+        RETURNS NULL ON NULL INPUT;
+
+    and create functional index:
+
+    CREATE INDEX mapping_state_test_idx
+      ON mapping_state
+      USING btree
+      (to_timestamp_cast(cast(data#>>'{test,value}' as text)));
+
         >>> compile(vt.test.as_datetime() == 5)
-        ("cast(mapping_state.data#>>'{test, value}' as timestamp) = %s", [5])
+        ("to_timestamp_cast(mapping_state.data#>>'{test, value}' as timestamp) = %s", [5])
 
         Field name will be ignored in this case
 

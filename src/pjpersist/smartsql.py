@@ -168,7 +168,8 @@ class PJDateTime(Comparable):
 
 @compile.when(PJDateTime)
 def compile_pj_datetime(compile, expr, state):
-    state.sql.append('cast(')
+    # TODO: possibility of change function name (constant, configuration)
+    state.sql.append('to_timestamp_cast(')
     compile(JsonPathText(expr._value, expr._value._name + '__value'), state)
     state.sql.append(' as timestamp)')
 
