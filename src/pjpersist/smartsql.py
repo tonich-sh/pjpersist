@@ -16,7 +16,7 @@ from __future__ import absolute_import
 
 from sqlbuilder.smartsql import Q, T, compile as parent_comile, Expr, NamedCondition, \
     PLACEHOLDER, Name, Result, MetaTable, MetaField, FieldProxy, cr, same, \
-    LOOKUP_SEP, Field
+    LOOKUP_SEP, Field, string_types
 
 compile = parent_comile.create_child()
 
@@ -45,6 +45,10 @@ class JsonItemText(JsonOperator):
     _sql = '->>'
 
 
+class JsonPathText(JsonOperator):
+    _sql = '#>>'
+
+
 def jsonb_superset(inst, other):
     return JsonbSuperset(inst, other)
 
@@ -57,9 +61,14 @@ def jsonb_item_text(inst, other):
     return JsonItemText(inst, other)
 
 
+def jsonb_path_text(inst, other):
+    return JsonPathText(inst, other)
+
+
 setattr(Expr, 'jsonb_superset', jsonb_superset)
 setattr(Expr, 'jsonb_contains_all', jsonb_contains_all)
 setattr(Expr, 'jsonb_item_text', jsonb_item_text)
+setattr(Expr, 'jsonb_path_text', jsonb_path_text)
 
 
 class JsonArray(object):
@@ -74,14 +83,23 @@ class JsonArray(object):
 def compile_json_array(compile, expr, state):
     compile(expr._left, state)
     state.sql.append(expr._sql)
-    if isinstance(expr._right, basestring):
+    if isinstance(expr._right, string_types):
         state.sql.append("'")
-    if isinstance(expr._right, basestring):
+    if isinstance(expr._right, string_types):
         state.sql.append(expr._right)
     else:
         state.sql.append(str(expr._right))
-    if isinstance(expr._right, basestring):
+    if isinstance(expr._right, string_types):
         state.sql.append("'")
+
+
+@compile.when(JsonPathText)
+def compile_json_path_text(compile, expr, state):
+    compile(expr._left, state)
+    state.sql.append(expr._sql)
+    state.sql.append("'{")
+    state.sql.append(', '.join(expr._right.split(LOOKUP_SEP)))
+    state.sql.append("}'")
 
 
 @compile.when(JsonArray)
@@ -140,6 +158,13 @@ class PJResult(Result):
             return self._cur.rowcount
 
 
+class PJDateTime(object):
+    __slots__ = ('_value', )
+
+    def __init__(self, value):
+        self._value = value
+
+
 class JsonbDataField(MetaField("NewBase", (Expr,), {})):
 
     __slots__ = ('_name', '_prefix', '__cached__')
@@ -148,6 +173,9 @@ class JsonbDataField(MetaField("NewBase", (Expr,), {})):
         self._name = name
         self._prefix = prefix
         self.__cached__ = {}
+
+    def as_date_time(self):
+        return PJDateTime(self)
 
 
 @cr

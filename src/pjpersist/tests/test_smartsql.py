@@ -37,8 +37,11 @@ def doctest_smartsql():
         >>> compile(table.field.jsonb_item_text(5))
         ('tbl.field->>5', [])
 
-        >>> compile(smartsql.JsonArray(['x', 'y', 'z']))
-        ('array[%s, %s, %s]', ['x', 'y', 'z'])
+        >>> compile(table.field.jsonb_path_text('a__b__2'))
+        ("tbl.field#>>'{a, b, 2}'", [])
+
+        >>> compile(smartsql.JsonArray(['x', 'y', 5]))
+        ('array[%s, %s, %s]', ['x', 'y', 5])
 
         >>> vt = smartsql.PJMappedVirtualTable(TestMapping(None))
 
