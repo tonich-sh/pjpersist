@@ -70,7 +70,7 @@ def doctest_smartsql():
       (to_timestamp_cast(cast(data#>>'{test,value}' as text)));
 
         >>> compile(vt.test.as_datetime() == 5)
-        ("to_timestamp_cast(mapping_state.data#>>'{test, value}' as timestamp) = %s", [5])
+        ("to_timestamp_cast(mapping_state.data#>>'{test, value}') = %s", [5])
 
         Field name will be ignored in this case
 

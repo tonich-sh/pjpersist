@@ -171,7 +171,7 @@ def compile_pj_datetime(compile, expr, state):
     # TODO: possibility of change function name (constant, configuration)
     state.sql.append('to_timestamp_cast(')
     compile(JsonPathText(expr._value, expr._value._name + '__value'), state)
-    state.sql.append(' as timestamp)')
+    state.sql.append(')')
 
 
 class JsonbDataField(MetaField("NewBase", (Expr,), {})):
