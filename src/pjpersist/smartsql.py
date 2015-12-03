@@ -16,7 +16,7 @@ from __future__ import absolute_import
 
 from sqlbuilder.smartsql import Q, T, compile as parent_comile, Expr, NamedCondition, \
     PLACEHOLDER, Name, Result, MetaTable, MetaField, FieldProxy, cr, same, \
-    LOOKUP_SEP, Field, string_types
+    LOOKUP_SEP, Field, string_types, Comparable
 
 compile = parent_comile.create_child()
 
@@ -71,7 +71,7 @@ setattr(Expr, 'jsonb_item_text', jsonb_item_text)
 setattr(Expr, 'jsonb_path_text', jsonb_path_text)
 
 
-class JsonArray(object):
+class JsonArray(Comparable):
 
     __slots__ = ('_value', )
 
@@ -158,11 +158,19 @@ class PJResult(Result):
             return self._cur.rowcount
 
 
-class PJDateTime(object):
+class PJDateTime(Comparable):
     __slots__ = ('_value', )
 
     def __init__(self, value):
         self._value = value
+
+
+
+@compile.when(PJDateTime)
+def compile_pj_datetime(compile, expr, state):
+    state.sql.append('cast(')
+    compile(JsonPathText(expr._value, expr._value._name + '__value'), state)
+    state.sql.append(' as timestamp)')
 
 
 class JsonbDataField(MetaField("NewBase", (Expr,), {})):
@@ -174,7 +182,7 @@ class JsonbDataField(MetaField("NewBase", (Expr,), {})):
         self._prefix = prefix
         self.__cached__ = {}
 
-    def as_date_time(self):
+    def as_datetime(self):
         return PJDateTime(self)
 
 
@@ -228,6 +236,10 @@ def compile_jsonb_datafield(compile, expr, state):
         op = None
 
     st = expr._prefix._mapping.get_table_object(ttype='st')
+
+    if op and issubclass(op, JsonPathText):
+        compile(st.data, state)
+        return
 
     if op and issubclass(op, JsonbOp):
         compile(st.data, state)

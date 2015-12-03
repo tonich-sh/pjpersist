@@ -54,6 +54,9 @@ def doctest_smartsql():
         >>> compile(vt.test == 5)
         ("mapping_state.data->>'test' = %s", [5])
 
+        >>> compile(vt.test.as_datetime() == 5)
+        ("cast(mapping_state.data#>>'{test, value}' as timestamp) = %s", [5])
+
         Field name will be ignored in this case
 
         >>> compile(smartsql.JsonbSuperset(vt.test, None))
