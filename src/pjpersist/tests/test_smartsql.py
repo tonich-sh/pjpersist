@@ -65,12 +65,23 @@ def doctest_smartsql():
     and create functional index:
 
     CREATE INDEX mapping_state_test_idx
-      ON mapping_state
-      USING btree
-      (to_timestamp_cast(cast(data#>>'{test,value}' as text)));
+        ON mapping_state
+        USING btree
+        (to_timestamp_cast(cast(data#>>'{test,value}' as text)));
 
         >>> compile(vt.test.as_datetime() == 5)
         ("to_timestamp_cast(mapping_state.data#>>'{test, value}') = %s", [5])
+
+    .as_bool() treats null as false (e.g. if json field not exists)
+
+    CREATE FUNCTION to_bool_cast(TEXT) RETURNS BOOLEAN
+        AS 'select case when ($1) is null then false else cast($1 as BOOLEAN) end'
+        LANGUAGE SQL
+        IMMUTABLE
+    ;
+
+        >>> compile(vt.test.as_bool() == False)
+        ("to_bool_cast(mapping_state.data->>'test') = %s", [False])
 
         Field name will be ignored in this case
 

@@ -165,12 +165,26 @@ class PJDateTime(Comparable):
         self._value = value
 
 
-
 @compile.when(PJDateTime)
 def compile_pj_datetime(compile, expr, state):
     # TODO: possibility of change function name (constant, configuration)
     state.sql.append('to_timestamp_cast(')
     compile(JsonPathText(expr._value, expr._value._name + '__value'), state)
+    state.sql.append(')')
+
+
+class PJBool(Comparable):
+    __slots__ = ('_value', )
+
+    def __init__(self, value):
+        self._value = value
+
+
+@compile.when(PJBool)
+def compile_pj_datetime(compile, expr, state):
+    # TODO: possibility of change function name (constant, configuration)
+    state.sql.append('to_bool_cast(')
+    compile(expr._value, state)
     state.sql.append(')')
 
 
@@ -185,6 +199,9 @@ class JsonbDataField(MetaField("NewBase", (Expr,), {})):
 
     def as_datetime(self):
         return PJDateTime(self)
+
+    def as_bool(self):
+        return PJBool(self)
 
 
 @cr
