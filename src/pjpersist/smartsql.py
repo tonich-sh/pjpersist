@@ -148,8 +148,8 @@ class PJResult(Result):
     def __iter__(self):
         if self._cur is None:
             self.execute()
-        data = self.unserialize(self._cur.fetchone())
-        yield data
+        for row in self._cur:
+            yield self.unserialize(row)
 
     def __len__(self):
         if self._cur is None:
