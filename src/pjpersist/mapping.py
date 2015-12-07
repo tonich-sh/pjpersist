@@ -86,7 +86,10 @@ class PJTableMapping(DictMixin, object):
         vt = self.get_table_object()
         q = q.where(vt.f.jsonb_superset(datamanager.Json({self.mapping_key: key}))).fields('*')
         objects = q.result(q).__iter__()
-        obj = objects.next()
+        try:
+            obj = objects.next()
+        except StopIteration:
+            raise KeyError(key)
         if not obj:
             raise KeyError(key)
         return obj
@@ -177,7 +180,10 @@ class PJMapping(PersistentMapping):
             vt = self.get_table_object()
             q = q.where(vt.f.jsonb_superset(datamanager.Json({self.mapping_key: key}))).fields('*')
             objects = q.result(q).__iter__()
-            obj = objects.next()
+            try:
+                obj = objects.next()
+            except StopIteration:
+                raise KeyError(key)
             if not obj:
                 raise KeyError(key)
         else:

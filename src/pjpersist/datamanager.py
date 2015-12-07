@@ -109,7 +109,7 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
         if PJ_AUTO_CREATE_TABLES:
             # XXX: need to set a savepoint, just in case the real execute
             #      fails, it would take down all further commands
-            super(PJPersistCursor, self).execute("SAVEPOINT before_execute;")
+            super(PJPersistCursor, self).execute("SAVEPOINT before_execute")
 
             try:
                 return self._execute_and_log(sql, args)
@@ -123,8 +123,7 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
                     # need to rollback to the above savepoint, otherwise
                     # PG would just ignore any further command
                     super(PJPersistCursor, self).execute(
-                        "ROLLBACK TO SAVEPOINT before_execute;")
-
+                        "ROLLBACK TO SAVEPOINT before_execute")
                     # we extract the tableName from the exception message
                     tableName = m.group(1)
                     self.datamanager._create_doc_table(
@@ -345,13 +344,18 @@ class PJDataManager(object):
         if self._transaction_id is None:
             with self.getCursor(False) as cur:
                 psycopg2.extras.DictCursor.execute(cur, "SAVEPOINT before_get_tid")
+                rolled_back = False
                 try:
                     psycopg2.extras.DictCursor.execute(cur, "SELECT NEXTVAL('transaction_id_seq')")
                 except psycopg2.ProgrammingError:
                     psycopg2.extras.DictCursor.execute(cur, "ROLLBACK TO SAVEPOINT before_get_tid")
+                    rolled_back = True
                     psycopg2.extras.DictCursor.execute(cur, "CREATE SEQUENCE transaction_id_seq")
                     psycopg2.extras.DictCursor.execute(cur, "SELECT NEXTVAL('transaction_id_seq')")
                 self._transaction_id = cur.fetchone()[0]
+                if not rolled_back:
+                    psycopg2.extras.DictCursor.execute(cur, "RELEASE SAVEPOINT before_get_tid")
+
         return self._transaction_id
 
     def getCursor(self, flush=True):
@@ -366,14 +370,18 @@ class PJDataManager(object):
 
     def create_id(self):
         with self.getCursor(False) as cur:
-            cur.execute("SAVEPOINT before_get_id")
+            psycopg2.extras.DictCursor.execute(cur, "SAVEPOINT before_get_id")
+            rolled_back = False
             try:
                 cur.execute("SELECT NEXTVAL('main_id_seq')")
             except psycopg2.ProgrammingError:
                 psycopg2.extras.DictCursor.execute(cur, "ROLLBACK TO SAVEPOINT before_get_id")
-                cur.execute("CREATE SEQUENCE main_id_seq")
-                cur.execute("SELECT NEXTVAL('main_id_seq')")
+                rolled_back = True
+                psycopg2.extras.DictCursor.execute(cur, "CREATE SEQUENCE main_id_seq")
+                psycopg2.extras.DictCursor.execute(cur, "SELECT NEXTVAL('main_id_seq')")
             _id = cur.fetchone()[0]
+            if not rolled_back:
+                psycopg2.extras.DictCursor.execute(cur, "RELEASE SAVEPOINT before_get_id")
         return _id
 
     def create_tables(self, tables):
@@ -500,11 +508,13 @@ class PJDataManager(object):
             sql = "INSERT INTO %s_state (tid, pid, %s) VALUES (%d, %d, %s)" % (
                 table, columns, self.get_transaction_id(), _id, placeholders)
 
-            psycopg2.extras.DictCursor.execute(cur, "SAVEPOINT before_insert;")
+            psycopg2.extras.DictCursor.execute(cur, "SAVEPOINT before_insert")
+            rolled_back = False
             try:
                 cur.execute(sql, tuple(values))
             except psycopg2.IntegrityError:
-                psycopg2.extras.DictCursor.execute(cur, "ROLLBACK TO SAVEPOINT before_insert;")
+                psycopg2.extras.DictCursor.execute(cur, "ROLLBACK TO SAVEPOINT before_insert")
+                rolled_back = True
                 columns = []
                 values = []
                 for colname, value in column_data.items():
@@ -513,6 +523,10 @@ class PJDataManager(object):
                 columns = ', '.join(columns)
                 sql = "UPDATE %s_state SET %s WHERE tid=%%s AND pid=%%s" % (table, columns)
                 cur.execute(sql, tuple(values) + (self.get_transaction_id(), _id))
+
+            if not rolled_back:
+                pass
+                psycopg2.extras.DictCursor.execute(cur, "RELEASE SAVEPOINT before_insert")
 
             sql = "UPDATE %s SET tid=%d WHERE id = %d" % (table, self.get_transaction_id(), _id)
 
@@ -736,12 +750,14 @@ WHERE
         Stores transaction id and commit datetime then performs commit
         """
         with self.getCursor(False) as cur:
-            cur.execute("SAVEPOINT before_insert_transaction")
+            psycopg2.extras.DictCursor.execute(cur, "SAVEPOINT before_insert_transaction")
+            rolled_back = False
             isql = "INSERT INTO transactions(tid) VALUES(%s)"
             try:
                 psycopg2.extras.DictCursor.execute(cur, isql, (self.get_transaction_id(), ))
             except psycopg2.IntegrityError:
                 psycopg2.extras.DictCursor.execute(cur, "ROLLBACK TO SAVEPOINT before_insert_transaction")
+                rolled_back = True
                 usql = "UPDATE transactions SET created_at = NOW() WHERE tid=%s"
                 psycopg2.extras.DictCursor.execute(cur, usql, (self.get_transaction_id(), ))
             except psycopg2.Error, e:
@@ -750,6 +766,7 @@ WHERE
                 m = re.search('relation "(.*?)" does not exist', msg)
                 if m:
                     psycopg2.extras.DictCursor.execute(cur, "ROLLBACK TO SAVEPOINT before_insert_transaction")
+                    rolled_back = True
                     sql = """
 CREATE TABLE transactions (
     tid bigint PRIMARY KEY,
@@ -758,6 +775,8 @@ CREATE TABLE transactions (
 """
                     psycopg2.extras.DictCursor.execute(cur, sql)
                     psycopg2.extras.DictCursor.execute(cur, isql, (self.get_transaction_id(), ))
+            if not rolled_back:
+                psycopg2.extras.DictCursor.execute(cur, "RELEASE SAVEPOINT before_insert_transaction")
         try:
             self._conn.commit()
         except psycopg2.Error, e:
