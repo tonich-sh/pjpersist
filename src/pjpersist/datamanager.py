@@ -62,9 +62,17 @@ TABLE_LOG = logging.getLogger('pjpersist.table')
 
 LOG = logging.getLogger(__name__)
 
-psycopg2.extensions.register_type(psycopg2.extensions.UNICODE)
-psycopg2.extensions.register_type(psycopg2.extensions.UNICODEARRAY)
 psycopg2.extras.register_uuid()
+
+
+notify = None
+
+
+class StoredEvent(object):
+    __slots__ = ('obj', )
+
+    def __init__(self, obj):
+        self.obj = obj
 
 
 class Json(psycopg2.extras.Json):
@@ -251,6 +259,8 @@ class PJDataManager(object):
     _root = None
 
     def __init__(self, conn, root_table=None):
+        psycopg2.extensions.register_type(psycopg2.extensions.UNICODE, conn)
+        psycopg2.extensions.register_type(psycopg2.extensions.UNICODEARRAY, conn)
         self._conn = conn
         self.database = get_database_name_from_dsn(conn.dsn)
         self._reader = serialize.ObjectReader(self)
@@ -271,6 +281,7 @@ class PJDataManager(object):
         self._inserted_objects = {}
         self._modified_objects = {}
         self._removed_objects = {}
+        self._stored_objects = {}
         self.annotations = {}
 
         # transaction related
@@ -645,7 +656,7 @@ WHERE
                 _id = oid
         else:
             _id = None
-        res = self._writer.store(obj, id=_id)
+        res = self._writer.store(obj, _id=_id)
         obj._p_changed = False
         self._inserted_objects[id(obj)] = obj
         return res
@@ -779,6 +790,10 @@ CREATE TABLE transactions (
                 psycopg2.extras.DictCursor.execute(cur, "RELEASE SAVEPOINT before_insert_transaction")
         try:
             self._conn.commit()
+            if callable(notify):
+                for obj in self._stored_objects.values():
+                    # notify a store object
+                    notify(StoredEvent(obj))
         except psycopg2.Error, e:
             check_for_conflict(e, "DataManager.commit")
 

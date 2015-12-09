@@ -204,6 +204,10 @@ class ObjectWriter(object):
     zope.interface.implements(interfaces.IObjectWriter)
 
     def __init__(self, jar):
+        """
+        :param jar: pjpersist.datamanager.PJDatamanager
+        :return:
+        """
         self._jar = jar
 
     def get_table_name(self, obj):
@@ -379,7 +383,7 @@ class ObjectWriter(object):
         # Return the full state document
         return doc
 
-    def store(self, obj, ref_only=False, id=None):
+    def store(self, obj, ref_only=False, _id=None):
         # If it is the first time that this type of object is stored, getting
         # the table name has the side affect of telling the class whether it
         # has to store its Python type as well. So, do not remove, even if the
@@ -414,7 +418,7 @@ class ObjectWriter(object):
             column_data = None
         if obj._p_oid is None:
             doc_id = self._jar._insert_doc(
-                db_name, table_name, doc, id, column_data)
+                db_name, table_name, doc, _id, column_data)
             stored = True
             obj._p_jar = self._jar
             obj._p_oid = DBRef(table_name, doc_id, db_name)
@@ -426,8 +430,9 @@ class ObjectWriter(object):
         if interfaces.IPersistentSerializationHooks.providedBy(obj):
             obj._pj_after_store_hook(self._jar._conn)
 
-        if stored:
-            doc[interfaces.PY_TYPE_ATTR_NAME] = py_type_attr_name
+        self._jar._stored_objects[id(obj)] = obj
+
+        doc[interfaces.PY_TYPE_ATTR_NAME] = py_type_attr_name
         DBREF_RESOLVE_CACHE.put(obj._p_oid.as_key(), obj.__class__)
         return obj._p_oid
 
