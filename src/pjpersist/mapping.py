@@ -174,7 +174,7 @@ class PJMapping(PersistentMapping):
         raise NotImplementedError
 
     def __getitem__(self, key):
-        if key not in self.data:
+        if key not in self.data and self._p_jar is not None:
             q = self.query()
             q = q.where(self.__pj_filter__())
             vt = self.get_table_object()
