@@ -229,6 +229,9 @@ class PJMapping(PersistentMapping):
         if k:
             return k
 
+        if self._p_jar is None:
+            return False
+
         q = self.query()
         q = q.where(self.__pj_filter__())
         st = self.get_table_object(ttype='st')
