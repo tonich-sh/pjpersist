@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 ##############################################################################
 #
 # Copyright (c) 2011 Zope Foundation and Contributors.
@@ -82,6 +83,9 @@ def doctest_smartsql():
 
         >>> compile(vt.test.as_bool() == False)
         ("to_bool_cast(mapping_state.data->>'test') = %s", [False])
+
+        >>> compile(vt.test.like(u'Test русский'))
+        ("mapping_state.data->>'test' LIKE %s", [u'Test \xd1\x80\xd1\x83\xd1\x81\xd1\x81\xd0\xba\xd0\xb8\xd0\xb9'])
 
         Field name will be ignored in this case
 
