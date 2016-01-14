@@ -133,6 +133,11 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
                     # PG would just ignore any further command
                     super(PJPersistCursor, self).execute(
                         "ROLLBACK TO SAVEPOINT before_execute")
+
+                    if query_type == 'select':
+                        # just select for an empty result
+                        return self._execute_and_log('select * from unnest(array[1]) where false', None)
+
                     # we extract the tableName from the exception message
                     tableName = m.group(1)
                     self.datamanager._create_doc_table(
