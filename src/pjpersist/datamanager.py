@@ -103,18 +103,19 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
             "%s,\n args:%r,\n TXN:%s,\n time:%sms",
             sql, args, txn, duration*1000)
 
-    def execute(self, sql, args=None):
+    def execute(self, sql, args=None, autocreate=PJ_AUTO_CREATE_TABLES):
         # Convert SQLBuilder object to string
         if not isinstance(sql, basestring):
             sql = sql.__sqlrepr__('postgres')
         # Flush the data manager before any select.
-        if self.flush and sql.strip().split()[0].lower() == 'select':
+        query_type = sql.strip().split()[0].lower()
+        if self.flush and query_type == 'select':
             self.datamanager.flush()
 
         # XXX: Optimization opportunity to store returned JSONB docs in the
         # cache of the data manager. (SR)
 
-        if PJ_AUTO_CREATE_TABLES:
+        if autocreate:
             # XXX: need to set a savepoint, just in case the real execute
             #      fails, it would take down all further commands
             super(PJPersistCursor, self).execute("SAVEPOINT before_execute")
@@ -348,8 +349,8 @@ class PJDataManager(object):
             return
 
         stmt = "SET TRANSACTION %s" % (", ".join(modes))
-        cur.execute("BEGIN")
-        cur.execute(stmt)
+        psycopg2.extras.DictCursor.execute(cur, "BEGIN")
+        psycopg2.extras.DictCursor.execute(cur, stmt)
 
     def get_transaction_id(self):
         if self._transaction_id is None:
@@ -416,7 +417,7 @@ class PJDataManager(object):
                 "SELECT * FROM information_schema.tables WHERE table_name=%s",
                 (table,))
             if not cur.rowcount:
-                LOG.info("Creating data table %s" % table)
+                LOG.info("Creating data table %s with extra columns: '%s'" % (table, extra_columns))
                 if extra_columns:
                     extra_columns += ', '
                 cur.execute('''
