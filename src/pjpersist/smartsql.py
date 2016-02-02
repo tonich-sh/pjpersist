@@ -49,6 +49,14 @@ class JsonPathText(JsonOperator):
     _sql = '#>>'
 
 
+class PGCast(Expr):
+    __slots__ = ('_left', '_right')
+
+    def __init__(self, left, right):
+        self._left = left
+        self._right = right
+
+
 def jsonb_superset(inst, other):
     return JsonbSuperset(inst, other)
 
@@ -65,10 +73,22 @@ def jsonb_path_text(inst, other):
     return JsonPathText(inst, other)
 
 
+def pg_cast(inst, cast_to):
+    return PGCast(inst, cast_to)
+
+
+@compile.when(PGCast)
+def compile_pg_cast(compile, expr, state):
+    state.sql.append("cast(")
+    compile(expr._left, state)
+    state.sql.append(" as %s)" % expr._right)
+
+
 setattr(Expr, 'jsonb_superset', jsonb_superset)
 setattr(Expr, 'jsonb_contains_all', jsonb_contains_all)
 setattr(Expr, 'jsonb_item_text', jsonb_item_text)
 setattr(Expr, 'jsonb_path_text', jsonb_path_text)
+setattr(Expr, 'cast', pg_cast)
 
 
 class JsonArray(Comparable):
