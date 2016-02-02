@@ -49,6 +49,22 @@ class JsonPathText(JsonOperator):
     _sql = '#>>'
 
 
+class PGRegexp(NamedCondition):
+    _sql = '~'
+
+
+class PGRegexpCI(NamedCondition):
+    _sql = '~*'
+
+
+class PGRegexpNot(NamedCondition):
+    _sql = '!~'
+
+
+class PGRegexpNotCI(NamedCondition):
+    _sql = '!~*'
+
+
 class PGCast(Expr):
     __slots__ = ('_left', '_right')
 
@@ -77,6 +93,22 @@ def pg_cast(inst, cast_to):
     return PGCast(inst, cast_to)
 
 
+def pg_regexp(inst, other):
+    return PGRegexp(inst, other)
+
+
+def pg_regexp_ci(inst, other):
+    return PGRegexpCI(inst, other)
+
+
+def pg_not_regexp(inst, other):
+    return PGRegexpNot(inst, other)
+
+
+def pg_not_regexp_ci(inst, other):
+    return PGRegexpNotCI(inst, other)
+
+
 @compile.when(PGCast)
 def compile_pg_cast(compile, expr, state):
     state.sql.append("cast(")
@@ -89,6 +121,10 @@ setattr(Expr, 'jsonb_contains_all', jsonb_contains_all)
 setattr(Expr, 'jsonb_item_text', jsonb_item_text)
 setattr(Expr, 'jsonb_path_text', jsonb_path_text)
 setattr(Expr, 'cast', pg_cast)
+setattr(Expr, 'regexp', pg_regexp)
+setattr(Expr, 'not_regexp', pg_not_regexp)
+setattr(Expr, 'regexp_ci', pg_regexp_ci)
+setattr(Expr, 'not_regexp_ci', pg_not_regexp_ci)
 
 
 class JsonArray(Comparable):
