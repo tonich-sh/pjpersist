@@ -14,7 +14,7 @@
 """Postgresql's jsonb support for sqlbuilder"""
 from __future__ import absolute_import
 
-from sqlbuilder.smartsql import Q, T, compile as parent_comile, Expr, NamedCondition, \
+from sqlbuilder.smartsql import Q, T, compile as parent_comile, Expr, NamedCondition, NamedCallable, \
     PLACEHOLDER, Name, Result, MetaTable, MetaField, FieldProxy, cr, same, \
     LOOKUP_SEP, Field, string_types, Comparable
 
@@ -22,14 +22,16 @@ compile = parent_comile.create_child()
 
 
 class JsonbOp(NamedCondition):
-    pass
+    __slots__ = ()
 
 
 class JsonbSuperset(JsonbOp):
+    __slots__ = ()
     _sql = '@>'
 
 
 class JsonbContainsAll(JsonbOp):
+    __slots__ = ()
     _sql = '?&'
 
 
@@ -42,26 +44,32 @@ class JsonOperator(Expr):
 
 
 class JsonItemText(JsonOperator):
+    __slots__ = ()
     _sql = '->>'
 
 
 class JsonPathText(JsonOperator):
+    __slots__ = ()
     _sql = '#>>'
 
 
 class PGRegexp(NamedCondition):
+    __slots__ = ()
     _sql = '~'
 
 
 class PGRegexpCI(NamedCondition):
+    __slots__ = ()
     _sql = '~*'
 
 
 class PGRegexpNot(NamedCondition):
+    __slots__ = ()
     _sql = '!~'
 
 
 class PGRegexpNotCI(NamedCondition):
+    __slots__ = ()
     _sql = '!~*'
 
 
@@ -71,6 +79,11 @@ class PGCast(Expr):
     def __init__(self, left, right):
         self._left = left
         self._right = right
+
+
+class Random(NamedCallable):
+    __slots__ = ()
+    _sql = 'random'
 
 
 def jsonb_superset(inst, other):
