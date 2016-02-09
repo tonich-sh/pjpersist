@@ -171,7 +171,16 @@ class PJMapping(PersistentMapping):
         return self._p_meta.q.clone()
 
     def keys(self):
-        raise NotImplementedError
+        if self._p_jar is not None:
+            q = self.query()
+            q = q.where(self.__pj_filter__())
+            q = q.fields('data')
+            with self._p_jar.getCursor() as cur:
+                cur.execute(
+                    *compile(q)
+                )
+                for row in cur:
+                    yield row['data'][self.mapping_key]
 
     def __getitem__(self, key):
         if key not in self.data and self._p_jar is not None:
