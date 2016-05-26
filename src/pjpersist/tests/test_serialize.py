@@ -1160,9 +1160,9 @@ def doctest_table_decorator():
       ... class Foo(object):
       ...     pass
 
-    Check that TABLE_ATTR_NAME gets set
+    Check that ATTR_NAME_TABLE gets set
 
-      >>> getattr(Foo, interfaces.TABLE_ATTR_NAME)
+      >>> getattr(Foo, interfaces.ATTR_NAME_TABLE)
       'foobar_table'
 
     Check that TABLE_KLASS_MAP gets updated

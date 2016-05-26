@@ -209,7 +209,7 @@ class PJResult(Result):
 
     def unserialize(self, data):
         if data and (('pid' in data) or ('id' in data)) and 'data' in data and \
-           'package' in data and 'class_name' in data:
+           'package' in data and 'class_name' in data and 'tid' in data:
             id = data.get('pid', data.get('id'))
             return self._mapping._p_jar._reader.load(data, self._mapping.table, id)
         return data

@@ -507,6 +507,28 @@ def doctest_PJDataManager_setstate_twice():
     """
 
 
+def doctest_PJDataManager_tid():
+    r"""PJDataManager: keep transaction id (tid) within an object
+
+        >>> foo = Foo(u'foo')
+        >>> getattr(foo, interfaces.ATTR_NAME_TX_ID, None)
+
+        >>> foo_ref = dm.insert(foo)
+        >>> tid = dm.get_transaction_id()
+
+        >>> transaction.commit()
+
+        >>> foo = dm.load(foo_ref)
+
+        the transaction id are available only after the object activated
+        >>> foo._p_activate()
+
+        >>> getattr(foo, interfaces.ATTR_NAME_TX_ID, None) == tid
+        True
+
+    """
+
+
 def doctest_PJDataManager_oldstate():
     r"""PJDataManager: oldstate()
 

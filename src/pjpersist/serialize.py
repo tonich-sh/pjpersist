@@ -212,13 +212,13 @@ class ObjectWriter(object):
 
     def get_table_name(self, obj):
         db_name = getattr(
-            obj, interfaces.DATABASE_ATTR_NAME,
+            obj, interfaces.ATTR_NAME_DATABASE,
             None)
 
         if db_name is None:
             db_name = self._jar.database if self._jar else None
         try:
-            table_name = getattr(obj, interfaces.TABLE_ATTR_NAME)
+            table_name = getattr(obj, interfaces.ATTR_NAME_TABLE)
         except AttributeError:
             table_name = None
 
@@ -269,7 +269,7 @@ class ObjectWriter(object):
         elif factory == copy_reg.__newobj__ and args == (obj.__class__,):
             # Another simple case for persistent objects that do not want
             # their own document.
-            state = {interfaces.PY_TYPE_ATTR_NAME: get_dotted_name(args[0])}
+            state = {interfaces.ATTR_NAME_PY_TYPE: get_dotted_name(args[0])}
         else:
             state = {'_py_factory': get_dotted_name(factory),
                      '_py_factory_args': self.get_state(args, obj, seen)}
@@ -334,12 +334,12 @@ class ObjectWriter(object):
         # We need to make sure that the object's jar and doc-object are
         # set. This is important for the case when a sub-object was just
         # added.
-        if getattr(obj, interfaces.SUB_OBJECT_ATTR_NAME, False):
+        if getattr(obj, interfaces.ATTR_NAME_SUB_OBJECT, False):
             if obj._p_jar is None:
                 if pobj is not None and \
                         getattr(pobj, '_p_jar', None) is not None:
                     obj._p_jar = pobj._p_jar
-                setattr(obj, interfaces.DOC_OBJECT_ATTR_NAME, pobj)
+                setattr(obj, interfaces.ATTR_NAME_DOC_OBJECT, pobj)
 
         if isinstance(obj, (tuple, list, PersistentList)):
             # Make sure that all values within a list are serialized
@@ -369,7 +369,7 @@ class ObjectWriter(object):
         if isinstance(obj, persistent.Persistent):
             # Only create a persistent reference, if the object does not want
             # to be a sub-document.
-            if not getattr(obj, interfaces.SUB_OBJECT_ATTR_NAME, False):
+            if not getattr(obj, interfaces.ATTR_NAME_SUB_OBJECT, False):
                 return self.get_persistent_state(obj, seen)
             # This persistent object is a sub-document, so it is treated like
             # a non-persistent object.
@@ -379,7 +379,7 @@ class ObjectWriter(object):
     def get_full_state(self, obj):
         doc = self.get_state(obj.__getstate__(), obj)
         # Always add a persistent type info
-        doc[interfaces.PY_TYPE_ATTR_NAME] = get_dotted_name(obj.__class__)
+        doc[interfaces.ATTR_NAME_PY_TYPE] = get_dotted_name(obj.__class__)
         # Return the full state document
         return doc
 
@@ -408,7 +408,7 @@ class ObjectWriter(object):
 
         # Always add a persistent type info
         py_type_attr_name = get_dotted_name(obj.__class__)
-        doc[interfaces.PY_TYPE_ATTR_NAME] = py_type_attr_name
+        doc[interfaces.ATTR_NAME_PY_TYPE] = py_type_attr_name
 
         stored = False
         if interfaces.IColumnSerialization.providedBy(obj):
@@ -432,7 +432,7 @@ class ObjectWriter(object):
 
         self._jar._stored_objects[id(obj)] = obj
 
-        doc[interfaces.PY_TYPE_ATTR_NAME] = py_type_attr_name
+        doc[interfaces.ATTR_NAME_PY_TYPE] = py_type_attr_name
         DBREF_RESOLVE_CACHE.put(obj._p_oid.as_key(), obj.__class__)
         return obj._p_oid
 
@@ -466,7 +466,6 @@ class ObjectReader(object):
 
     def _prepare_class(self, klass):
         # add attributes to the class
-        # setattr(klass, interfaces.DATABASE_ATTR_NAME, None)
 
         class TableNameDescriptor(object):
             def __init__(self):
@@ -482,8 +481,8 @@ class ObjectReader(object):
                 path = get_dotted_name(instance.__class__)
                 self.name[path] = str(value)
 
-        if not hasattr(klass, interfaces.TABLE_ATTR_NAME):
-            setattr(klass, interfaces.TABLE_ATTR_NAME, TableNameDescriptor())
+        if not hasattr(klass, interfaces.ATTR_NAME_TABLE):
+            setattr(klass, interfaces.ATTR_NAME_TABLE, TableNameDescriptor())
         return klass
 
     def resolve(self, dbref, no_cache=False):
@@ -519,13 +518,13 @@ class ObjectReader(object):
             # Just read the type from the database, still requires one query
             pytype = self._jar._get_doc_py_type(
                 dbref.database, dbref.table, dbref.id)
-            obj_doc = {interfaces.PY_TYPE_ATTR_NAME: pytype}
+            obj_doc = {interfaces.ATTR_NAME_PY_TYPE: pytype}
         if obj_doc is None:
             # There is no document for this reference in the database.
             raise ImportError(dbref)
-        if interfaces.PY_TYPE_ATTR_NAME in obj_doc:
+        if interfaces.ATTR_NAME_PY_TYPE in obj_doc:
             # We have always the path to the class in JSONB
-            klass = self.simple_resolve(obj_doc[interfaces.PY_TYPE_ATTR_NAME])
+            klass = self.simple_resolve(obj_doc[interfaces.ATTR_NAME_PY_TYPE])
         else:
             raise ImportError(dbref)
         DBREF_RESOLVE_CACHE.put(dbref.as_key(), klass)
@@ -541,10 +540,10 @@ class ObjectReader(object):
             # Handle the simplified case.
             klass = self.simple_resolve(state.pop('_py_type'))
             sub_obj = copy_reg._reconstructor(klass, object, None)
-        elif interfaces.PY_TYPE_ATTR_NAME in state:
+        elif interfaces.ATTR_NAME_PY_TYPE in state:
             # Another simple case for persistent objects that do not want
             # their own document.
-            klass = self.simple_resolve(state.pop(interfaces.PY_TYPE_ATTR_NAME))
+            klass = self.simple_resolve(state.pop(interfaces.ATTR_NAME_PY_TYPE))
             sub_obj = copy_reg.__newobj__(klass)
         else:
             factory = self.simple_resolve(state.pop('_py_factory'))
@@ -559,9 +558,9 @@ class ObjectReader(object):
             if isinstance(sub_obj, persistent.Persistent):
                 # This is a persistent sub-object -- mark it as such. Otherwise
                 # we risk to store this object in its own table next time.
-                setattr(sub_obj, interfaces.SUB_OBJECT_ATTR_NAME, True)
-        if getattr(sub_obj, interfaces.SUB_OBJECT_ATTR_NAME, False):
-            setattr(sub_obj, interfaces.DOC_OBJECT_ATTR_NAME, obj)
+                setattr(sub_obj, interfaces.ATTR_NAME_SUB_OBJECT, True)
+        if getattr(sub_obj, interfaces.ATTR_NAME_SUB_OBJECT, False):
+            setattr(sub_obj, interfaces.ATTR_NAME_DOC_OBJECT, obj)
             sub_obj._p_jar = self._jar
         return sub_obj
 
@@ -605,7 +604,7 @@ class ObjectReader(object):
             '_py_factory' in state
             or '_py_constant' in state
             or '_py_type' in state
-            or interfaces.PY_TYPE_ATTR_NAME in state):
+            or interfaces.ATTR_NAME_PY_TYPE in state):
             # Load a non-persistent object.
             return self.get_non_persistent_object(state, obj)
         if isinstance(state, (tuple, list)):
@@ -615,7 +614,7 @@ class ObjectReader(object):
             sub_obj = [self.get_object(value, obj) for value in state]
             if self.preferPersistent:
                 sub_obj = PersistentList(sub_obj)
-                setattr(sub_obj, interfaces.DOC_OBJECT_ATTR_NAME, obj)
+                setattr(sub_obj, interfaces.ATTR_NAME_DOC_OBJECT, obj)
                 sub_obj._p_jar = self._jar
             return sub_obj
         if stateIsDict:
@@ -638,7 +637,7 @@ class ObjectReader(object):
                  for name, value in items])
             if self.preferPersistent:
                 sub_obj = PersistentDict(sub_obj)
-                setattr(sub_obj, interfaces.DOC_OBJECT_ATTR_NAME, obj)
+                setattr(sub_obj, interfaces.ATTR_NAME_DOC_OBJECT, obj)
                 sub_obj._p_jar = self._jar
             return sub_obj
         return state
@@ -646,7 +645,7 @@ class ObjectReader(object):
     def set_ghost_state(self, obj, doc=None):
         # Check whether the object state was stored on the object itself.
         if doc is None:
-            doc = getattr(obj, interfaces.STATE_ATTR_NAME, None)
+            doc = getattr(obj, interfaces.ATTR_NAME_STATE, None)
         # Look up the object state by table_name and oid.
         if doc is None:
             doc = self._jar._get_doc_by_dbref(obj._p_oid)
@@ -654,15 +653,14 @@ class ObjectReader(object):
         if doc is None:
             raise ImportError(obj._p_oid)
         # Remove unwanted attributes.
-        pytype = doc.pop(interfaces.PY_TYPE_ATTR_NAME)
+        pytype = doc.pop(interfaces.ATTR_NAME_PY_TYPE)
 
         # Now convert the document to a proper Python state dict.
         state = dict(self.get_object(doc, obj))
 
         # Sometimes this method is called to update the object state
         # before storage.
-        doc[interfaces.PY_TYPE_ATTR_NAME] = pytype
-
+        doc[interfaces.ATTR_NAME_PY_TYPE] = pytype
         # Set the state.
         obj.__setstate__(state)
         # Run the custom load functions.
@@ -678,15 +676,16 @@ class ObjectReader(object):
         del obj._p_changed
         # Assign the table after deleting _p_changed, since the attribute
         # is otherwise deleted.
-        setattr(obj, interfaces.DATABASE_ATTR_NAME, dbref.database)
-        setattr(obj, interfaces.TABLE_ATTR_NAME, dbref.table)
+        setattr(obj, interfaces.ATTR_NAME_DATABASE, dbref.database)
+        setattr(obj, interfaces.ATTR_NAME_TABLE, dbref.table)
+        setattr(obj, interfaces.ATTR_NAME_TX_ID, None)
         return obj
 
     def load(self, data, table, _id, database=None):
-        pytype = data['data'].get(interfaces.PY_TYPE_ATTR_NAME, None)
+        pytype = data['data'].get(interfaces.ATTR_NAME_PY_TYPE, None)
         if pytype is None:
             pytype = data['package'] + '.' + data['class_name']
-            data['data'][interfaces.PY_TYPE_ATTR_NAME] = pytype
+            data['data'][interfaces.ATTR_NAME_PY_TYPE] = pytype
         klass = self._prepare_class(self.simple_resolve(pytype))
         obj = klass.__new__(klass)
         obj._p_jar = self._jar
@@ -697,8 +696,9 @@ class ObjectReader(object):
         del obj._p_changed
         # Assign the table after deleting _p_changed, since the attribute
         # is otherwise deleted.
-        setattr(obj, interfaces.DATABASE_ATTR_NAME, dbref.database)
-        setattr(obj, interfaces.TABLE_ATTR_NAME, dbref.table)
+        setattr(obj, interfaces.ATTR_NAME_DATABASE, dbref.database)
+        setattr(obj, interfaces.ATTR_NAME_TABLE, dbref.table)
+        setattr(obj, interfaces.ATTR_NAME_TX_ID, data['tid'])
         self.set_ghost_state(obj, data['data'])
         return obj
 
@@ -706,7 +706,7 @@ class ObjectReader(object):
 class table:
     """Declare the table used by the class.
 
-    sets also the atrtibute interfaces.TABLE_ATTR_NAME
+    sets also the atrtibute interfaces.ATTR_NAME_TABLE
     but register the fact also in TABLE_KLASS_MAP, this will allow pjpersist
     to optimize class lookup when just one class is stored in one table
     otherwise class lookup always needs the JSONB data from PG
@@ -717,9 +717,9 @@ class table:
 
     def __call__(self, ob):
         try:
-            setattr(ob, interfaces.TABLE_ATTR_NAME, self.table_name)
+            setattr(ob, interfaces.ATTR_NAME_TABLE, self.table_name)
             TABLE_KLASS_MAP.setdefault(self.table_name, set()).add(ob)
         except AttributeError:
             raise TypeError(
-                "Can't declare %s" % interfaces.TABLE_ATTR_NAME, ob)
+                "Can't declare %s" % interfaces.ATTR_NAME_TABLE, ob)
         return ob

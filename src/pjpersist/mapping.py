@@ -75,7 +75,7 @@ class PJTableMapping(DictMixin, object):
     def get_fields(self):
         mt = self.get_table_object(ttype='mt')
         st = self.get_table_object(ttype='st')
-        return mt.id, mt.package, mt.class_name, st.data
+        return mt.id, mt.tid, mt.package, mt.class_name, st.data
 
     def query(self):
         return self._p_meta.q.clone()
@@ -99,7 +99,7 @@ class PJTableMapping(DictMixin, object):
         # the data manager, the value might not be in the DB at all at this
         # point, so registering it manually ensures that new objects get added.
         self._p_jar.register(value)
-        setattr(value, interfaces.TABLE_ATTR_NAME, self.table)
+        setattr(value, interfaces.ATTR_NAME_TABLE, self.table)
         setattr(value, self.mapping_key, key)
 
     def __delitem__(self, key):
@@ -163,7 +163,7 @@ class PJMapping(PersistentMapping):
     def get_fields(self):
         mt = self.get_table_object(ttype='mt')
         st = self.get_table_object(ttype='st')
-        return mt.id, mt.package, mt.class_name, st.data
+        return mt.id, mt.tid, mt.package, mt.class_name, st.data
 
     def query(self):
         if not hasattr(self, '_p_meta'):
@@ -201,7 +201,7 @@ class PJMapping(PersistentMapping):
 
     def __setitem__(self, key, value):
         super(PJMapping, self).__setitem__(key, value)
-        setattr(value, interfaces.TABLE_ATTR_NAME, self.table)
+        setattr(value, interfaces.ATTR_NAME_TABLE, self.table)
         setattr(value, self.mapping_key, key)
 
     def __getstate__(self):

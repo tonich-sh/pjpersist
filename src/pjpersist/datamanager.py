@@ -468,7 +468,7 @@ class PJDataManager(object):
 
         # Insert the document into the table.
         with self.getCursor() as cur:
-            persistent_type = doc[interfaces.PY_TYPE_ATTR_NAME]
+            persistent_type = doc[interfaces.ATTR_NAME_PY_TYPE]
             # package = '.'.join(persistent_type[0:-1])
             # class_name = persistent_type[-1]
             i = persistent_type.rfind('.')
@@ -483,7 +483,7 @@ class PJDataManager(object):
             cur.execute(sql, data)
             _id = cur.fetchone()[0]
 
-            del doc[interfaces.PY_TYPE_ATTR_NAME]
+            del doc[interfaces.ATTR_NAME_PY_TYPE]
             builtins = dict(data=Json(doc))
 
             if column_data is None:
@@ -507,7 +507,7 @@ class PJDataManager(object):
     def _update_doc(self, database, table, doc, _id, column_data=None):
         # Insert the document into the table.
         with self.getCursor() as cur:
-            del doc[interfaces.PY_TYPE_ATTR_NAME]
+            del doc[interfaces.ATTR_NAME_PY_TYPE]
             builtins = dict(data=Json(doc))
 
             if column_data is None:
@@ -554,6 +554,7 @@ class PJDataManager(object):
         with self.getCursor() as cur:
             sql = """
 SELECT
+    m.tid,
     m.package,
     m.class_name,
     s.data
@@ -565,7 +566,8 @@ WHERE
             cur.execute(sql, (_id, ))
             res = cur.fetchone()
             if res:
-                res['data'][interfaces.PY_TYPE_ATTR_NAME] = '%(package)s.%(class_name)s' % res
+                res['data'][interfaces.ATTR_NAME_PY_TYPE] = '%(package)s.%(class_name)s' % res
+                res['data'][interfaces.ATTR_NAME_TX_ID] = res.get('tid', None)
                 return res['data']
             return None
 

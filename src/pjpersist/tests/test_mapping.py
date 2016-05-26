@@ -145,10 +145,8 @@ def doctest_PJMapping_simple():
     After the transaction is committed, we can access the item:
 
         >>> container = dm.root.container
-        >>> container.keys()
-        Traceback (most recent call last):
-        ...
-        NotImplementedError
+        >>> list(container.keys())
+        [u'one']
 
         >>> 'one' in container
         True
@@ -169,10 +167,8 @@ def doctest_PJMapping_simple():
         ...
         NotImplementedError
         >>> transaction.commit()
-        >>> container.keys()
-        Traceback (most recent call last):
-        ...
-        NotImplementedError
+        >>> list(container.keys())
+        [u'one']
     """
 
 

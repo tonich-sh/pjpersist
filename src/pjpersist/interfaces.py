@@ -27,12 +27,13 @@ PJ_NATIVE_TYPES = (
 REFERENCE_SAFE_TYPES = (
     datetime.datetime, datetime.date, datetime.time, decimal.Decimal)
 
-DATABASE_ATTR_NAME = '_p_pj_database'
-TABLE_ATTR_NAME = '_p_pj_table'
-SUB_OBJECT_ATTR_NAME = '_p_pj_sub_object'
-DOC_OBJECT_ATTR_NAME = '_p_pj_doc_object'
-STATE_ATTR_NAME = '_p_pj_state'
-PY_TYPE_ATTR_NAME = '_py_persistent_type'
+ATTR_NAME_DATABASE = '_p_pj_database'
+ATTR_NAME_TABLE = '_p_pj_table'
+ATTR_NAME_SUB_OBJECT = '_p_pj_sub_object'
+ATTR_NAME_DOC_OBJECT = '_p_pj_doc_object'
+ATTR_NAME_STATE = '_p_pj_state'
+ATTR_NAME_TX_ID = '_p_pj_tid'
+ATTR_NAME_PY_TYPE = '_py_persistent_type'
 
 
 class CircularReferenceError(Exception):
