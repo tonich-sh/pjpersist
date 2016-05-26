@@ -463,6 +463,8 @@ class PJDataManager(object):
                 columns = ', '.join(columns)
 
                 self._create_doc_table(self.database, table, columns)
+                return True
+        return False
 
     def _insert_doc(self, database, table, doc, _id=None, column_data=None):
 
