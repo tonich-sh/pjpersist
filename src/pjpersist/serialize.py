@@ -205,7 +205,7 @@ class ObjectWriter(object):
 
     def __init__(self, jar):
         """
-        :param jar: pjpersist.datamanager.PJDatamanager
+        :type jar: pjpersist.datamanager.PJDatamanager
         :return:
         """
         self._jar = jar
@@ -411,6 +411,7 @@ class ObjectWriter(object):
         doc[interfaces.ATTR_NAME_PY_TYPE] = py_type_attr_name
 
         stored = False
+        txn_id = self._jar.get_transaction_id()
         if interfaces.IColumnSerialization.providedBy(obj):
             self._jar._ensure_sql_columns(obj, table_name)
             column_data = obj._pj_get_column_fields()
@@ -433,6 +434,8 @@ class ObjectWriter(object):
         self._jar._stored_objects[id(obj)] = obj
 
         doc[interfaces.ATTR_NAME_PY_TYPE] = py_type_attr_name
+        if stored:
+            setattr(obj, interfaces.ATTR_NAME_TX_ID, txn_id)
         DBREF_RESOLVE_CACHE.put(obj._p_oid.as_key(), obj.__class__)
         return obj._p_oid
 

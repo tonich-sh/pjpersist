@@ -517,6 +517,8 @@ def doctest_PJDataManager_tid():
         >>> tid = dm.get_transaction_id()
 
         >>> transaction.commit()
+        >>> getattr(foo, interfaces.ATTR_NAME_TX_ID, None) == tid
+        True
 
         >>> foo = dm.load(foo_ref)
 
