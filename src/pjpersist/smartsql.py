@@ -196,14 +196,20 @@ class PJResult(Result):
         self._cur = None
         self._query = None
 
-    def execute(self):
+    def _execute(self):
         query, params = super(PJResult, self).execute()
+
         cur = self._mapping._p_jar.getCursor()
         cur.execute(
             query, params
         )
         self._cur = cur
         return self._cur
+
+    def execute(self):
+        if self._cur is None:
+            self._execute()
+        return self
 
     select = count = insert = update = delete = execute
 
@@ -216,7 +222,7 @@ class PJResult(Result):
 
     def __iter__(self):
         if self._cur is None:
-            self.execute()
+            self._execute()
         for row in self._cur:
             yield self.unserialize(row)
 

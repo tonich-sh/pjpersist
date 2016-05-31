@@ -85,7 +85,7 @@ class PJTableMapping(DictMixin, object):
         q = q.where(self.__pj_filter__())
         vt = self.get_table_object()
         q = q.where(vt.f.jsonb_superset(datamanager.Json({self.mapping_key: key}))).fields('*')
-        objects = q.result(q).__iter__()
+        objects = q.select().__iter__()
         try:
             obj = objects.next()
         except StopIteration:
@@ -192,7 +192,7 @@ class PJMapping(PersistentMapping):
             q = self.query()
             q = q.where(self.__pj_filter__())
             q = q.fields('data')
-            for row in q.result(q):
+            for row in q.select():
                     yield row['data'][self.mapping_key]
 
     def keys(self):
@@ -200,7 +200,7 @@ class PJMapping(PersistentMapping):
             q = self.query()
             q = q.where(self.__pj_filter__())
             q = q.fields('data')
-            return PJMappingKeysProxy(q.result(q))
+            return PJMappingKeysProxy(q.select())
         return list()
 
     def itervalues(self):
@@ -208,7 +208,7 @@ class PJMapping(PersistentMapping):
             q = self.query()
             q = q.where(self.__pj_filter__())
             q = q.fields('*')
-            for obj in q.result(q):
+            for obj in q.select():
                 yield obj
 
     def values(self):
@@ -216,7 +216,7 @@ class PJMapping(PersistentMapping):
             q = self.query()
             q = q.where(self.__pj_filter__())
             q = q.fields('*')
-            return q.result(q)
+            return q.select()
         return list()
 
     def __getitem__(self, key):
@@ -225,7 +225,7 @@ class PJMapping(PersistentMapping):
             q = q.where(self.__pj_filter__())
             vt = self.get_table_object()
             q = q.where(vt.f.jsonb_superset(datamanager.Json({self.mapping_key: key}))).fields('*')
-            objects = q.result(q).__iter__()
+            objects = q.select().__iter__()
             try:
                 obj = objects.next()
             except StopIteration:
