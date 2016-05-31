@@ -123,6 +123,23 @@ class PJTableMapping(DictMixin, object):
                 for res in cur]
 
 
+class PJMappingKeysProxy(list):
+
+    def __init__(self, iterable):
+        self._iterable = iterable
+        super(PJMappingKeysProxy, self).__init__()
+
+    def __iter__(self):
+        mapping = getattr(self._iterable, '_mapping', None)
+        if mapping is None:
+            return
+        for i in self._iterable:
+            try:
+                yield i['data'][mapping.mapping_key]
+            except:
+                return
+
+
 # TODO: deleting of items from PJMapping
 class PJMapping(PersistentMapping):
     """A persistent wrapper for mapping objects.
@@ -170,17 +187,37 @@ class PJMapping(PersistentMapping):
             setattr(self, '_p_meta', PMetaData(self))
         return self._p_meta.q.clone()
 
+    def iterkeys(self):
+        if self._p_jar is not None:
+            q = self.query()
+            q = q.where(self.__pj_filter__())
+            q = q.fields('data')
+            for row in q.result(q):
+                    yield row['data'][self.mapping_key]
+
     def keys(self):
         if self._p_jar is not None:
             q = self.query()
             q = q.where(self.__pj_filter__())
             q = q.fields('data')
-            with self._p_jar.getCursor() as cur:
-                cur.execute(
-                    *compile(q)
-                )
-                for row in cur:
-                    yield row['data'][self.mapping_key]
+            return PJMappingKeysProxy(q.result(q))
+        return list()
+
+    def itervalues(self):
+        if self._p_jar is not None:
+            q = self.query()
+            q = q.where(self.__pj_filter__())
+            q = q.fields('*')
+            for obj in q.result(q):
+                yield obj
+
+    def values(self):
+        if self._p_jar is not None:
+            q = self.query()
+            q = q.where(self.__pj_filter__())
+            q = q.fields('*')
+            return q.result(q)
+        return list()
 
     def __getitem__(self, key):
         if key not in self.data and self._p_jar is not None:
