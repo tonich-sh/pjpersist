@@ -315,7 +315,7 @@ class PJDataManager(object):
         _root_oid = serialize.DBRef('pjpersist_dot_datamanager_dot_DBRoot', 0, self.database)
 
         try:
-            root = self.load(_root_oid, self._reader.resolve(_root_oid, no_cache=True))
+            root = self.load(_root_oid, self._reader.resolve(_root_oid, no_cache=True, use_broken=False))
             LOG.debug('DBRoot loaded successfully!')
         except ImportError:
             root = None

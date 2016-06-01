@@ -617,7 +617,7 @@ def doctest_ObjectReader_simple_resolve():
 
     Note that even lookup failures are cached.
 
-      >>> reader.simple_resolve('path.to.bad')
+      >>> reader.simple_resolve('path.to.bad', use_broken=False)
       Traceback (most recent call last):
       ...
       ImportError: path.to.bad
@@ -631,7 +631,7 @@ def doctest_ObjectReader_simple_resolve():
       >>> reader.simple_resolve('pjpersist.tests.test_serialize.Top')
       <class 'pjpersist.tests.test_serialize.Top'>
 
-      >>> reader.simple_resolve('path.to.bad')
+      >>> reader.simple_resolve('path.to.bad', use_broken=False)
       Traceback (most recent call last):
       ...
       ImportError: path.to.bad
@@ -648,7 +648,7 @@ def doctest_ObjectReader_resolve_simple_dblookup():
 
     Now we need the doc to exist in the DB to be able to tell it's class.
 
-      >>> reader.resolve(ref)
+      >>> reader.resolve(ref, use_broken=False)
       Traceback (most recent call last):
       ...
       ImportError: DBRef('Top', 10000L, None)
@@ -699,7 +699,7 @@ def doctest_ObjectReader_resolve_simple_decorator_more():
     As we have now more classes declared for the same table, we have to
     lookup the JSONB from the DB
 
-      >>> result = reader.resolve(ref)
+      >>> result = reader.resolve(ref, use_broken=False)
       Traceback (most recent call last):
       ...
       ImportError: DBRef('foobar_table', 10000L, None)
@@ -784,7 +784,7 @@ def doctest_ObjectReader_resolve_lookup_with_multiple_maps():
 
     If the DBRef does not have an object id, then an import error is raised:
 
-        >>> reader.resolve(serialize.DBRef('Top', None, 'pjpersist_test'))
+        >>> reader.resolve(serialize.DBRef('Top', None, 'pjpersist_test'), use_broken=False)
         Traceback (most recent call last):
         ...
         ImportError: DBRef('Top', None, 'pjpersist_test')

@@ -28,7 +28,8 @@ from repoze.lru import LRUCache
 from zope.dottedname.resolve import resolve
 from decimal import Decimal
 
-from pjpersist import interfaces
+from . import interfaces
+from . import broken
 
 ALWAYS_READ_FULL_DOC = True
 
@@ -447,7 +448,7 @@ class ObjectReader(object):
         self._jar = jar
         self.preferPersistent = True
 
-    def simple_resolve(self, path):
+    def simple_resolve(self, path, use_broken=True):
         path = path.replace('_dot_', '.')
         path = path[1:] if path.startswith('u_') else path
         # We try to look up the klass from a cache. The important part here is
@@ -464,7 +465,11 @@ class ObjectReader(object):
             else:
                 PATH_RESOLVE_CACHE[path] = klass
         if klass is None:
-            raise ImportError(path)
+            # raise ImportError(path)
+            if use_broken:
+                return broken.Broken
+            else:
+                raise ImportError(path)
         return klass
 
     def _prepare_class(self, klass):
@@ -488,7 +493,7 @@ class ObjectReader(object):
             setattr(klass, interfaces.ATTR_NAME_TABLE, TableNameDescriptor())
         return klass
 
-    def resolve(self, dbref, no_cache=False):
+    def resolve(self, dbref, no_cache=False, use_broken=True):
 
         # 0. Use DBREF_RESOLVE_CACHE
         if not no_cache:
@@ -508,7 +513,10 @@ class ObjectReader(object):
 
         # from this point on we need the dbref.id
         if dbref.id is None:
-            raise ImportError(dbref)
+            if use_broken:
+                return broken.Broken
+            else:
+                raise ImportError(dbref)
         # 2. Get the class from the object state
         #    Multiple object types are stored in the table. We have to
         #    look at the object (JSONB) to find out the type.
@@ -524,12 +532,18 @@ class ObjectReader(object):
             obj_doc = {interfaces.ATTR_NAME_PY_TYPE: pytype}
         if obj_doc is None:
             # There is no document for this reference in the database.
-            raise ImportError(dbref)
+            if use_broken:
+                return broken.Broken
+            else:
+                raise ImportError(dbref)
         if interfaces.ATTR_NAME_PY_TYPE in obj_doc:
             # We have always the path to the class in JSONB
-            klass = self.simple_resolve(obj_doc[interfaces.ATTR_NAME_PY_TYPE])
+            klass = self.simple_resolve(obj_doc[interfaces.ATTR_NAME_PY_TYPE], use_broken=use_broken)
         else:
-            raise ImportError(dbref)
+            if use_broken:
+                return broken.Broken
+            else:
+                raise ImportError(dbref)
         DBREF_RESOLVE_CACHE.put(dbref.as_key(), klass)
         return self._prepare_class(klass)
 
@@ -674,6 +688,9 @@ class ObjectReader(object):
         if klass is None:
             klass = self.resolve(dbref)
         obj = klass.__new__(klass)
+        # TODO: convert to Persistent
+        if issubclass(klass, broken.Broken):
+            return obj
         obj._p_jar = self._jar
         obj._p_oid = dbref
         del obj._p_changed
