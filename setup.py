@@ -54,7 +54,7 @@ setup(
         'simplejson',
         'setuptools',
         'sqlobject',
-        'sqlbuilder',
+        'sqlbuilder ==0.7.9.43',
         'zope.dottedname',
         'zope.interface',
         'zope.schema',

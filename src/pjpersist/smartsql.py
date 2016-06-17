@@ -15,8 +15,8 @@
 from __future__ import absolute_import
 
 from sqlbuilder.smartsql import Q, T, compile as parent_comile, Expr, NamedCondition, NamedCallable, \
-    PLACEHOLDER, Name, Result, MetaTable, MetaField, FieldProxy, cr, same, \
-    LOOKUP_SEP, Field, string_types, Comparable
+    PLACEHOLDER, Name, Result, MetaTable, MetaField, FieldProxy, factory, same, \
+    LOOKUP_SEP, Field, string_types, Comparable, Table, TableJoin
 
 compile = parent_comile.create_child()
 
@@ -279,7 +279,7 @@ class JsonbDataField(MetaField("NewBase", (Expr,), {})):
         return PJBool(self)
 
 
-@cr
+@factory.register
 class PJMappedVirtualTable(MetaTable("NewBase", (object, ), {})):
 
     __slots__ = ('_mapping', 'fields', '__cached__')
@@ -290,7 +290,7 @@ class PJMappedVirtualTable(MetaTable("NewBase", (object, ), {})):
         self.__cached__ = {}
 
     def __getattr__(self, key):
-        if key[0] == '_':
+        if key[:2] == '__' or key in PJMappedVirtualTable.__slots__:
             raise AttributeError
 
         if key in self.fields.__dict__:
@@ -317,7 +317,7 @@ class PJMappedVirtualTable(MetaTable("NewBase", (object, ), {})):
 def compile_mapped_table(compile, expr, state):
     mt = expr._mapping.get_table_object(ttype='mt')
     st = expr._mapping.get_table_object(ttype='st')
-    compile(expr._cr.TableJoin(mt).inner_join(st).on((mt.id == st.pid) & (mt.tid == st.tid)), state)
+    compile(TableJoin(mt).inner_join(st).on((mt.id == st.pid) & (mt.tid == st.tid)), state)
 
 
 @compile.when(JsonbDataField)
