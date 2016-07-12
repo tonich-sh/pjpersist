@@ -424,6 +424,10 @@ class ObjectWriter(object):
             stored = True
             obj._p_jar = self._jar
             obj._p_oid = DBRef(table_name, doc_id, db_name)
+
+            # Make sure that any other code accessing this object in this
+            # session, gets the same instance.
+            self._jar._object_cache[obj._p_oid.as_key()] = obj
         else:
             self._jar._update_doc(
                 db_name, table_name, doc, obj._p_oid.id, column_data)
@@ -685,6 +689,9 @@ class ObjectReader(object):
             obj._pj_after_load_hook(self._jar._conn)
 
     def get_ghost(self, dbref, klass=None):
+        obj = self._jar._object_cache.get(dbref.as_key(), None)
+        if obj is not None:
+            return obj
         if klass is None:
             klass = self.resolve(dbref)
         obj = klass.__new__(klass)
@@ -699,6 +706,7 @@ class ObjectReader(object):
         setattr(obj, interfaces.ATTR_NAME_DATABASE, dbref.database)
         setattr(obj, interfaces.ATTR_NAME_TABLE, dbref.table)
         setattr(obj, interfaces.ATTR_NAME_TX_ID, None)
+        self._jar._object_cache[dbref.as_key()] = obj
         return obj
 
     def load(self, data, table, _id, database=None):

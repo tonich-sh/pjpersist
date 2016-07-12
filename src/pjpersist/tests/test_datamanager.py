@@ -191,9 +191,11 @@ def doctest_PJDataManager_flush():
 
     There are several side effects that should be observed:
 
-    * load always gets objects from db so we got different object with the same oid.
+    * During a given transaction, we guarantee that the user will always receive
+      the same Python object. This requires that flush does not reset the object
+      cache.
 
-        >>> id(dm.load(foo._p_oid)) != id(foo_new)
+        >>> id(dm.load(foo._p_oid)) == id(foo_new)
         True
 
     * The object is removed from the registered objects and the ``_p_changed``

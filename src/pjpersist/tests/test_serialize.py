@@ -989,13 +989,13 @@ def doctest_ObjectReader_get_ghost():
       >>> gobj._p_jar
       <pjpersist.datamanager.PJDataManager object at 0x2720e50>
       >>> gobj._p_state
-      -1
+      0
 
     The second time we look up the object, it comes from cache:
 
       >>> gobj = reader.get_ghost(top._p_oid)
       >>> gobj._p_state
-      -1
+      0
     """
 
 def doctest_ObjectReader_set_ghost_state():
@@ -1013,7 +1013,7 @@ def doctest_ObjectReader_set_ghost_state():
         >>> gobj._p_jar
         <pjpersist.datamanager.PJDataManager object at 0x2720e50>
         >>> gobj._p_state
-        -1
+        0
 
     Now load the state:
 

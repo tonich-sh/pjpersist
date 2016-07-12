@@ -281,6 +281,7 @@ class PJDataManager(object):
         self._modified_objects = {}
         self._removed_objects = {}
         self._stored_objects = {}
+        self._object_cache = {}
         self.annotations = {}
 
         # transaction related
@@ -655,6 +656,7 @@ WHERE
             _id = None
         res = self._writer.store(obj, _id=_id)
         obj._p_changed = False
+        self._object_cache[obj._p_oid.as_key()] = obj
         self._inserted_objects[id(obj)] = obj
         return res
 
@@ -673,7 +675,9 @@ WHERE
                 cur.execute('DELETE FROM %s WHERE id=%%s' % table, (obj._p_oid.id,))
             except:
                 pass
-
+        cache_key = obj._p_oid.as_key()
+        if cache_key in self._object_cache:
+            del self._object_cache[cache_key]
         # Edge case: The object was just added in this transaction.
         if id(obj) in self._inserted_objects:
             # but it still had to be removed from PostGreSQL, because insert
