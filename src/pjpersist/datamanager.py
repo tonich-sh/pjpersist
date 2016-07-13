@@ -267,7 +267,7 @@ class PJDataManager(object):
         self._needs_to_join = True
         self._in_commit = False
         self._commit_failed = False
-
+        self._object_cache = {}
         self._cleanup()
 
     def _cleanup(self):
@@ -281,7 +281,6 @@ class PJDataManager(object):
         self._modified_objects = {}
         self._removed_objects = {}
         self._stored_objects = {}
-        self._object_cache = {}
         self.annotations = {}
 
         # transaction related
@@ -297,6 +296,8 @@ class PJDataManager(object):
         if self._root is not None:
             LOG.debug('invalidate root')
             self._root._p_invalidate()
+        for obj in self._object_cache.itervalues():
+            obj._p_invalidate()
 
     @property
     def root(self):
@@ -632,6 +633,7 @@ WHERE
         # we need to issue rollback on self._conn too, to get the latest
         # DB updates, not just reset PJDataManager state
         self.abort(None)
+        self._object_cache = {}
 
     # TODO: remove (use commit)
     def flush(self):

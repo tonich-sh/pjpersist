@@ -519,8 +519,11 @@ def doctest_PJDataManager_tid():
         >>> tid = dm.get_transaction_id()
 
         >>> transaction.commit()
+
+        Object invalidated
+
         >>> getattr(foo, interfaces.ATTR_NAME_TX_ID, None) == tid
-        True
+        False
 
         >>> foo = dm.load(foo_ref)
 

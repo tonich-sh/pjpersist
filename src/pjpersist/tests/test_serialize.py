@@ -665,7 +665,7 @@ def doctest_ObjectReader_resolve_simple_decorator():
       ...     pass
 
       >>> reader = serialize.ObjectReader(dm)
-      >>> ref = serialize.DBRef('foobar_table', '4eb1b3d337a08e2de7000100')
+      >>> ref = serialize.DBRef('foobar_table', 12345)
 
     Once we declared on the class which table it uses, it's easy to resolve
     even without DB access.
@@ -784,10 +784,10 @@ def doctest_ObjectReader_resolve_lookup_with_multiple_maps():
 
     If the DBRef does not have an object id, then an import error is raised:
 
-        >>> reader.resolve(serialize.DBRef('Top', None, 'pjpersist_test'), use_broken=False)
+        >>> reader.resolve(serialize.DBRef('Top', 123, 'pjpersist_test'), use_broken=False)
         Traceback (most recent call last):
         ...
-        ImportError: DBRef('Top', None, 'pjpersist_test')
+        ImportError: DBRef('Top', 123, 'pjpersist_test')
     """
 
 
@@ -1034,7 +1034,7 @@ def doctest_deserialize_persistent_references():
 
         >>> top = Top()
         >>> top.name = 'top'
-        >>> top.foo = Foo()
+        >>> foo = top.foo = Foo()
         >>> top.foo.name = 'foo'
 
         >>> dm.root.top = top
@@ -1065,13 +1065,14 @@ def doctest_deserialize_persistent_references():
     Now we access the objects objects again to see whether they got properly
     deserialized.
 
+        >>> dm.reset()  # clear cache
         >>> top2 = dm.root.top
         >>> id(top2) == id(top)
         False
         >>> top2.name
         u'top'
 
-        >>> id(top2.foo) == id(top.foo)
+        >>> id(top2.foo) == id(foo)
         False
         >>> top2.foo
         <pjpersist.tests.test_serialize.Foo object at 0x7fb1a0c0b668>

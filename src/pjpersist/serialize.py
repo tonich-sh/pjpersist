@@ -169,7 +169,7 @@ class DBRef(object):
         return 'DBRef(%r, %r, %r)' % (self.table, self.id, self.database)
 
     def as_key(self):
-        return '%r::%r::%r' % (self.database, self.table, self.id)
+        return '%s::%s::%d' % (self.database, self.table, self.id)
 
     def as_tuple(self):
         return self.database, self.table, self.id
