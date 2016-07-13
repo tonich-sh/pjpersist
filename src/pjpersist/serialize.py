@@ -201,6 +201,30 @@ class ObjectSerializer(object):
         raise NotImplementedError
 
 
+def prepare_class(klass):
+    """
+    Adds pjpersist specific attributes to the class
+    """
+
+    class TableNameDescriptor(object):
+        def __init__(self):
+            self.name = {}
+
+        def __get__(self, instance, owner):
+            path = id(instance)
+            if path not in self.name:
+                return None
+            return self.name[path]
+
+        def __set__(self, instance, value):
+            path = id(instance)
+            self.name[path] = str(value)
+
+    if not hasattr(klass, interfaces.ATTR_NAME_TABLE):
+        setattr(klass, interfaces.ATTR_NAME_TABLE, TableNameDescriptor())
+    return klass
+
+
 class ObjectWriter(object):
     zope.interface.implements(interfaces.IObjectWriter)
 
@@ -390,6 +414,8 @@ class ObjectWriter(object):
         # has to store its Python type as well. So, do not remove, even if the
         # data is not used right away,
         db_name, table_name = self.get_table_name(obj)
+        prepare_class(obj.__class__)
+        setattr(obj, interfaces.ATTR_NAME_TABLE, table_name)
 
         if ref_only:
             # We only want to get OID quickly. Trying to reduce the full state
@@ -476,34 +502,13 @@ class ObjectReader(object):
                 raise ImportError(path)
         return klass
 
-    def _prepare_class(self, klass):
-        # add attributes to the class
-
-        class TableNameDescriptor(object):
-            def __init__(self):
-                self.name = {}
-
-            def __get__(self, instance, owner):
-                path = get_dotted_name(instance.__class__)
-                if path not in self.name:
-                    return None
-                return self.name[path]
-
-            def __set__(self, instance, value):
-                path = get_dotted_name(instance.__class__)
-                self.name[path] = str(value)
-
-        if not hasattr(klass, interfaces.ATTR_NAME_TABLE):
-            setattr(klass, interfaces.ATTR_NAME_TABLE, TableNameDescriptor())
-        return klass
-
     def resolve(self, dbref, no_cache=False, use_broken=True):
 
         # 0. Use DBREF_RESOLVE_CACHE
         if not no_cache:
             klass = DBREF_RESOLVE_CACHE.get(dbref.as_key())
             if klass is not None:
-                return self._prepare_class(klass)
+                return prepare_class(klass)
 
         # 1. Try to optimize on whether there's just one class stored in one
         #    table, that can save us one DB query
@@ -513,7 +518,7 @@ class ObjectReader(object):
                 # there must be just ONE, otherwise we need to check the JSONB
                 klass = list(results)[0]
                 DBREF_RESOLVE_CACHE.put(dbref.as_key(), klass)
-                return self._prepare_class(klass)
+                return prepare_class(klass)
 
         # from this point on we need the dbref.id
         if dbref.id is None:
@@ -549,7 +554,7 @@ class ObjectReader(object):
             else:
                 raise ImportError(dbref)
         DBREF_RESOLVE_CACHE.put(dbref.as_key(), klass)
-        return self._prepare_class(klass)
+        return prepare_class(klass)
 
     def get_non_persistent_object(self, state, obj):
         if '_py_constant' in state:
@@ -714,7 +719,7 @@ class ObjectReader(object):
         if pytype is None:
             pytype = data['package'] + '.' + data['class_name']
             data['data'][interfaces.ATTR_NAME_PY_TYPE] = pytype
-        klass = self._prepare_class(self.simple_resolve(pytype))
+        klass = prepare_class(self.simple_resolve(pytype))
         obj = klass.__new__(klass)
         obj._p_jar = self._jar
         if database is None:
