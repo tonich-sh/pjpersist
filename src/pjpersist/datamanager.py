@@ -220,30 +220,32 @@ class DBRoot(PersistentMapping):
 
 
 class RootConvenience(object):
+    __slots__ = '_v_root'
 
     def __init__(self, root):
-        self.__dict__['_root'] = root
+        object.__setattr__(self, '_v_root', root)
 
     def __getattr__(self, name):
         try:
-            return self._root[name]
+            vr = object.__getattribute__(self, '_v_root')
+            return vr[name]
         except KeyError:
             raise AttributeError(name)
 
     def __setattr__(self, name, v):
-        self._root[name] = v
+        self._v_root[name] = v
 
     def __delattr__(self, name):
         try:
-            del self._root[name]
+            del self._v_root[name]
         except KeyError:
             raise AttributeError(name)
 
     def __call__(self):
-        return self._root
+        return self._v_root
 
     def __repr__(self):
-        names = " ".join(sorted(self._root))
+        names = " ".join(sorted(self._v_root))
         if len(names) > 60:
             names = names[:57].rsplit(' ', 1)[0] + ' ...'
         return "<root: %s>" % names
@@ -580,7 +582,6 @@ WHERE
             return res[0] if res is not None else None
 
     def _get_table_from_object(self, obj):
-        # self._join_txn()
         return self._writer.get_table_name(obj)
 
     def _flush_objects(self):
@@ -605,7 +606,7 @@ WHERE
         seen = []
         # Make sure we write the object representing a document in a
         # table and not a sub-object.
-        while getattr(obj, '_p_pj_sub_object', False):
+        while getattr(obj, interfaces.ATTR_NAME_SUB_OBJECT, False):
             if id(obj) in seen:
                 raise interfaces.CircularReferenceError(obj)
             seen.append(id(obj))
@@ -646,7 +647,6 @@ WHERE
         self._registered_objects = {}
 
     def insert(self, obj, oid=None):
-        # self._join_txn()
         if obj._p_oid is not None:
             raise ValueError('Object._p_oid is already set.', obj)
         if oid is not None:

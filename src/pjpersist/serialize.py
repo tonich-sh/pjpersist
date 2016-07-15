@@ -69,7 +69,7 @@ def get_dotted_name(obj, escape=False, state=False):
     # Make the name safe.
     name = name.replace('.', '_dot_')
     # start with _.
-    name = 'u'+name if name.startswith('_') else name
+    name = 'u' + name if name.startswith('_') else name
     if state:
         name += '_state'
     return name
@@ -109,7 +109,6 @@ class PersistentList(persistent.list.PersistentList):
 
 
 class DBRef(object):
-
     def __init__(self, table, id, database=None):
         self._table = table
         self._id = id
@@ -117,7 +116,7 @@ class DBRef(object):
         self.__calculate_hash()
 
     def __calculate_hash(self):
-        self.hash = hash(str(self.database)+str(self.table)+str(self.id))
+        self.hash = hash(str(self.database) + str(self.table) + str(self.id))
 
     @property
     def database(self):
@@ -201,12 +200,25 @@ class ObjectSerializer(object):
         raise NotImplementedError
 
 
+attrs = {
+    interfaces.ATTR_NAME_TABLE,
+    interfaces.ATTR_NAME_SUB_OBJECT,
+    interfaces.ATTR_NAME_DOC_OBJECT,
+}
+
+
 def prepare_class(klass):
     """
     Adds pjpersist specific attributes to the class
     """
+    try:
 
-    class TableNameDescriptor(object):
+        if not issubclass(klass, persistent.Persistent):
+            return klass
+    except TypeError:
+        return klass
+
+    class AttrDescriptor(object):
         def __init__(self):
             self.name = {}
 
@@ -218,11 +230,43 @@ def prepare_class(klass):
 
         def __set__(self, instance, value):
             path = id(instance)
-            self.name[path] = str(value)
+            self.name[path] = value
 
-    if not hasattr(klass, interfaces.ATTR_NAME_TABLE):
-        setattr(klass, interfaces.ATTR_NAME_TABLE, TableNameDescriptor())
+    for attr in attrs:
+        if not hasattr(klass, attr):
+            setattr(klass, attr, AttrDescriptor())
+
     return klass
+
+
+def prepare_obj(obj):
+    """
+    Adds pjpersist specific attributes to the class
+    """
+
+    class AttrDescriptor(object):
+        def __init__(self):
+            self.name = {}
+
+        def __get__(self, instance, owner):
+            path = id(instance)
+            if path not in self.name:
+                return None
+            return self.name[path]
+
+        def __set__(self, instance, value):
+            path = id(instance)
+            self.name[path] = value
+
+    klass = obj.__class__
+    for attr in attrs:
+        attr_value = getattr(obj, attr, None)
+        if not hasattr(klass, attr):
+            setattr(klass, attr, AttrDescriptor())
+        if attr_value is not None:
+            setattr(obj, attr, attr_value)
+
+    return obj
 
 
 class ObjectWriter(object):
@@ -262,7 +306,7 @@ class ObjectWriter(object):
             raise interfaces.CircularReferenceError(obj)
         # Add the current object to the list of seen objects.
         if not (type(obj) in interfaces.REFERENCE_SAFE_TYPES or
-                getattr(obj, '_pj_reference_safe', False)):
+                    getattr(obj, '_pj_reference_safe', False)):
             seen.append(id(obj))
         # Get the state of the object. Only pickable objects can be reduced.
         reduce_fn = copy_reg.dispatch_table.get(type(obj))
@@ -276,7 +320,7 @@ class ObjectWriter(object):
         if isinstance(reduced, str):
             # When the reduced state is just a string it represents a name in
             # a module. The module will be extrated from __module__.
-            return {'_py_constant': obj.__module__+'.'+reduced}
+            return {'_py_constant': obj.__module__ + '.' + reduced}
         if len(reduced) == 2:
             factory, args = reduced
             obj_state = {}
@@ -287,7 +331,7 @@ class ObjectWriter(object):
         # We are trying very hard to create a clean JSONB (sub-)document. But
         # we need a little bit of meta-data to help us out later.
         if factory == copy_reg._reconstructor and \
-               args == (obj.__class__, object, None):
+                        args == (obj.__class__, object, None):
             # This is the simple case, which means we can produce a nicer
             # JSONB output.
             state = {'_py_type': get_dotted_name(args[0])}
@@ -362,7 +406,7 @@ class ObjectWriter(object):
         if getattr(obj, interfaces.ATTR_NAME_SUB_OBJECT, False):
             if obj._p_jar is None:
                 if pobj is not None and \
-                        getattr(pobj, '_p_jar', None) is not None:
+                                getattr(pobj, '_p_jar', None) is not None:
                     obj._p_jar = pobj._p_jar
                 setattr(obj, interfaces.ATTR_NAME_DOC_OBJECT, pobj)
 
@@ -396,8 +440,8 @@ class ObjectWriter(object):
             # to be a sub-document.
             if not getattr(obj, interfaces.ATTR_NAME_SUB_OBJECT, False):
                 return self.get_persistent_state(obj, seen)
-            # This persistent object is a sub-document, so it is treated like
-            # a non-persistent object.
+                # This persistent object is a sub-document, so it is treated like
+                # a non-persistent object.
 
         return self.get_non_persistent_state(obj, seen)
 
@@ -414,8 +458,7 @@ class ObjectWriter(object):
         # has to store its Python type as well. So, do not remove, even if the
         # data is not used right away,
         db_name, table_name = self.get_table_name(obj)
-        prepare_class(obj.__class__)
-        setattr(obj, interfaces.ATTR_NAME_TABLE, table_name)
+        prepare_obj(obj)
 
         if ref_only:
             # We only want to get OID quickly. Trying to reduce the full state
@@ -424,10 +467,6 @@ class ObjectWriter(object):
             doc = {}
             # Make sure that the object gets saved fully later.
             self._jar.register(obj)
-
-            #doc_id = self._jar.createId()
-            #oid = DBRef(table_name, doc_id, db_name)
-            #return oid
         else:
             # XXX: Handle newargs; see ZODB.serialize.ObjectWriter.serialize
             # Go through each attribute and search for persistent references.
@@ -500,7 +539,7 @@ class ObjectReader(object):
                 return broken.Broken
             else:
                 raise ImportError(path)
-        return klass
+        return prepare_class(klass)
 
     def resolve(self, dbref, no_cache=False, use_broken=True):
 
@@ -558,7 +597,8 @@ class ObjectReader(object):
 
     def get_non_persistent_object(self, state, obj):
         if '_py_constant' in state:
-            return self.simple_resolve(state['_py_constant'])
+            klass = self.simple_resolve(state['_py_constant'])
+            return klass
 
         # this method must NOT change the passed in state dict
         state = dict(state)
@@ -588,6 +628,7 @@ class ObjectReader(object):
         if getattr(sub_obj, interfaces.ATTR_NAME_SUB_OBJECT, False):
             setattr(sub_obj, interfaces.ATTR_NAME_DOC_OBJECT, obj)
             sub_obj._p_jar = self._jar
+            sub_obj._p_oid = 1  # set fake oid (needed for update _p_state, _p_changed)
         return sub_obj
 
     def get_object(self, state, obj):
@@ -642,6 +683,7 @@ class ObjectReader(object):
                 sub_obj = PersistentList(sub_obj)
                 setattr(sub_obj, interfaces.ATTR_NAME_DOC_OBJECT, obj)
                 sub_obj._p_jar = self._jar
+                sub_obj._p_oid = 1
             return sub_obj
         if stateIsDict:
             # All dictionaries are converted to persistent dictionaries, so
@@ -652,12 +694,6 @@ class ObjectReader(object):
                 items = state['dict_data']
             else:
                 items = state.items()
-            # sub_obj_list = list()
-            # for name, value in items:
-            #     obj_name = self.get_object(name, obj)
-            #     obj_value = self.get_object(value, obj)
-            #     sub_obj_list.append((obj_name, obj_value))
-            # sub_obj = dict(sub_obj_list)
             sub_obj = dict(
                 [(self.get_object(name, obj), self.get_object(value, obj))
                  for name, value in items])
@@ -665,11 +701,12 @@ class ObjectReader(object):
                 sub_obj = PersistentDict(sub_obj)
                 setattr(sub_obj, interfaces.ATTR_NAME_DOC_OBJECT, obj)
                 sub_obj._p_jar = self._jar
+                sub_obj._p_oid = 1  # set fake oid (needed for update _p_state, _p_changed)
             return sub_obj
         return state
 
     def set_ghost_state(self, obj, doc=None):
-        # Check whether the object state was stored on the object itself.
+        # # Check whether the object state was stored on the object itself.
         if doc is None:
             doc = getattr(obj, interfaces.ATTR_NAME_STATE, None)
         # Look up the object state by table_name and oid.
@@ -715,16 +752,19 @@ class ObjectReader(object):
         return obj
 
     def load(self, data, table, _id, database=None):
+        if database is None:
+            database = self._jar.database
+        dbref = DBRef(table, _id, database)
+        obj = self._jar._object_cache.get(dbref.as_key(), None)
+        if obj is not None:
+            return obj
         pytype = data['data'].get(interfaces.ATTR_NAME_PY_TYPE, None)
         if pytype is None:
             pytype = data['package'] + '.' + data['class_name']
             data['data'][interfaces.ATTR_NAME_PY_TYPE] = pytype
-        klass = prepare_class(self.simple_resolve(pytype))
+        klass = self.simple_resolve(pytype)
         obj = klass.__new__(klass)
         obj._p_jar = self._jar
-        if database is None:
-            database = self._jar.database
-        dbref = DBRef(table, _id, database)
         obj._p_oid = dbref
         del obj._p_changed
         # Assign the table after deleting _p_changed, since the attribute
@@ -733,6 +773,7 @@ class ObjectReader(object):
         setattr(obj, interfaces.ATTR_NAME_TABLE, dbref.table)
         setattr(obj, interfaces.ATTR_NAME_TX_ID, data['tid'])
         self.set_ghost_state(obj, data['data'])
+        self._jar._object_cache[dbref.as_key()] = obj
         return obj
 
 

@@ -47,9 +47,9 @@ Let's now define a simple persistent object:
 We will fill out the other objects later. But for now, let's create a new
 person and store it in PJ:
 
-  >>> stephan = Person(u'Stephan')
-  >>> stephan
-  <Person Stephan>
+    >>> stephan = Person(u'Stephan')
+    >>> stephan
+    <Person Stephan>
 
 The datamanager provides a ``root`` attribute in which the object tree roots
 can be stored. It is special in the sense that it immediately writes the data

@@ -1014,48 +1014,48 @@ def doctest_PJDataManager_table_sharing():
     the same table should be used. However, during de-serialization, it
     is important that we select the correct class to use.
 
-      >>> dm.root.app = Root()
-      >>> dm.root.app.one = Super('one')
-      >>> dm.root.app.one
-      <Super one>
+        >>> dm.root.app = Root()
+        >>> dm.root.app.one = Super('one')
+        >>> dm.root.app.one
+        <Super one>
 
-      >>> dm.root.app.two = Sub('two')
-      >>> dm.root.app.two
-      <Sub two>
+        >>> dm.root.app.two = Sub('two')
+        >>> dm.root.app.two
+        <Sub two>
 
-      >>> dm.root.app.three = Sub('three')
-      >>> dm.root.app.three
-      <Sub three>
+        >>> dm.root.app.three = Sub('three')
+        >>> dm.root.app.three
+        <Sub three>
 
-      >>> dm.commit(None)
+        >>> dm.commit(None)
 
     Let's now load everything again:
 
-      >>> dm.root.app.one
-      <Super one>
-      >>> dm.root.app.two
-      <Sub two>
-      >>> dm.root.app.three
-      <Sub three>
+        >>> dm.root.app.one
+        <Super one>
+        >>> dm.root.app.two
+        <Sub two>
+        >>> dm.root.app.three
+        <Sub three>
 
-      >>> dm.commit(None)
+        >>> dm.commit(None)
 
     Make sure that after a restart, the objects can still be stored.
 
-      >>> serialize.AVAILABLE_NAME_MAPPINGS = set()
-      >>> serialize.PATH_RESOLVE_CACHE = {}
+        >>> serialize.AVAILABLE_NAME_MAPPINGS = set()
+        >>> serialize.PATH_RESOLVE_CACHE = {}
 
-      >>> dm2 = datamanager.PJDataManager(conn)
+        >>> dm2 = datamanager.PJDataManager(conn)
 
-      >>> dm2.root.app.four = Sub('four')
+        >>> dm2.root.app.four = Sub('four')
 
-      >>> dm2.commit(None)
+        >>> dm2.commit(None)
 
-      >>> serialize.AVAILABLE_NAME_MAPPINGS = set()
-      >>> serialize.PATH_RESOLVE_CACHE = {}
+        >>> serialize.AVAILABLE_NAME_MAPPINGS = set()
+        >>> serialize.PATH_RESOLVE_CACHE = {}
 
-      >>> dm2.root.app.four
-      <Sub four>
+        >>> dm2.root.app.four
+        <Sub four>
     """
 
 
@@ -1177,22 +1177,71 @@ def doctest_PJDataManager_sub_doc_multi_flush():
     they are flushed inbetween. (Note that flushing happens often due to
     querying.)
 
-      >>> foo = Foo('foo')
-      >>> dm.root.foo = foo
-      >>> foo.bar = Bar('bar')
+        >>> foo = Foo('foo')
+        >>> _i = id(foo)
+        >>> dm.root.foo = foo
+        >>> foo.bar = Bar('bar')
 
-      >>> dm.commit(None)
+        >>> transaction.commit()
 
     Let's now modify bar a few times with intermittend flushes.
 
-      >>> foo = dm.root.foo
-      >>> foo.bar.name = 'bar-new'
-      >>> dm.commit(None)
-      >>> foo.bar.name = 'bar-newer'
+        >>> foo = dm.root.foo
 
-      >>> transaction.commit()
-      >>> dm.root.foo.bar.name
-      u'bar-newer'
+        >>> foo.bar.name = 'bar-new'
+
+        >>> transaction.commit()
+        >>> foo.bar.name = 'bar-newer'
+
+        >>> transaction.commit()
+        >>> dm.root.foo.bar.name
+        u'bar-newer'
+
+    """
+
+
+class Foo2(persistent.Persistent):
+    """Persistent
+    """
+
+
+def doctest_cache():
+    """
+        >>> foo = Foo2()
+        >>> foo2 = Foo2()
+        >>> foo.foo = foo2
+        >>> dm.root.foo = foo
+        >>> foo.foo.name = 'test'
+        >>> foo.foo.test = {}
+        >>> transaction.commit()
+
+        >>> foo = dm.root.foo
+
+        >>> foo.foo.name
+        u'test'
+
+        >>> foo.foo._p_state
+        0
+
+        >>> foo.foo._p_changed
+        False
+
+        >>> transaction.commit()
+
+        >>> foo.foo._p_state
+        -1
+
+        >>> foo.foo._p_changed
+
+        >>> vars(foo.foo)
+        {}
+
+        >>> test = {'name': 1, 'eman': 2}
+        >>> foo.foo.test = test
+
+        >>> foo.foo.name
+        u'test'
+
     """
 
 
@@ -1253,7 +1302,7 @@ def doctest_conflict_mod_1():
       >>> dm1.commit(None)  # doctest: +ELLIPSIS
       Traceback (most recent call last):
         ...
-      ConflictError: ('could not serialize access due to read/write dependencies among transactions\nDETAIL:  Reason code: Canceled on identification as a pivot, during write.\nHINT:  The transaction might succeed if retried.\n', 'INSERT INTO pjpersist_dot_tests_dot_test_datamanager_dot_Foo_state (tid, pid, data) VALUES (..., 1, %s)')
+      ConflictError: ('could not serialize access due to read/write dependencies among transactions\nDETAIL:  Reason code: Canceled on identification as a pivot, during write.\nHINT:  The transaction might succeed if retried.\n', u'INSERT INTO pjpersist_dot_tests_dot_test_datamanager_dot_Foo_state (tid, pid, data) VALUES (..., 1, %s)')
 
       >>> dm1.tpc_abort(None)
 
@@ -1295,7 +1344,7 @@ def doctest_conflict_mod_2():
       >>> dm2.commit(None)  # doctest: +ELLIPSIS
       Traceback (most recent call last):
       ...
-      ConflictError: ('could not serialize access due to read/write dependencies among transactions\nDETAIL:  Reason code: Canceled on identification as a pivot, during write.\nHINT:  The transaction might succeed if retried.\n', 'INSERT INTO pjpersist_dot_tests_dot_test_datamanager_dot_Foo_state (tid, pid, data) VALUES (..., 1, %s)')
+      ConflictError: ('could not serialize access due to read/write dependencies among transactions\nDETAIL:  Reason code: Canceled on identification as a pivot, during write.\nHINT:  The transaction might succeed if retried.\n', u'INSERT INTO pjpersist_dot_tests_dot_test_datamanager_dot_Foo_state (tid, pid, data) VALUES (..., 1, %s)')
 
       >>> dm2.tpc_abort(None)
 

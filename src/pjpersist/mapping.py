@@ -238,6 +238,7 @@ class PJMapping(PersistentMapping):
 
     def __setitem__(self, key, value):
         super(PJMapping, self).__setitem__(key, value)
+        serialize.prepare_class(value.__class__)
         setattr(value, interfaces.ATTR_NAME_TABLE, self.table)
         setattr(value, self.mapping_key, key)
 
