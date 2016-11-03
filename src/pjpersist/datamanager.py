@@ -26,6 +26,7 @@ import time
 import transaction
 import zope.interface
 
+from persistent.interfaces import GHOST
 from persistent.mapping import PersistentMapping
 
 from pjpersist import interfaces, serialize
@@ -597,7 +598,7 @@ WHERE
             obj_id = todo.pop()
             obj = self._registered_objects[obj_id]
             # __traceback_info__ = obj
-            obj = self._get_doc_object(obj)
+            obj = self._get_doc_object(obj)  # make sure that obj is not a subobject
             self._writer.store(obj)
             written.add(obj_id)
             todo = set(self._registered_objects.keys()) - written
@@ -611,6 +612,8 @@ WHERE
                 raise interfaces.CircularReferenceError(obj)
             seen.append(id(obj))
             obj = obj._p_pj_doc_object
+        if obj._p_state == GHOST:
+            obj._p_activate()
         return obj
 
     def _join_txn(self):
