@@ -256,7 +256,7 @@ class PJBool(Comparable):
 
 
 @compile.when(PJBool)
-def compile_pj_datetime(compile, expr, state):
+def compile_pj_bool(compile, expr, state):
     # TODO: possibility of change function name (constant, configuration)
     state.sql.append('to_bool_cast(')
     compile(expr._value, state)

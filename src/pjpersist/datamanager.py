@@ -784,7 +784,7 @@ WHERE
                     sql = """
 CREATE TABLE transactions (
     tid bigint PRIMARY KEY,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT current_timestamp
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT clock_timestamp()
 )
 """
                     psycopg2.extras.DictCursor.execute(cur, sql)
