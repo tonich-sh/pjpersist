@@ -12,6 +12,7 @@
 #
 ##############################################################################
 """PJ Data Manager Tests"""
+import six
 import doctest
 import persistent
 import unittest
@@ -1101,15 +1102,24 @@ class LFoo(persistent.Persistent):
         self.x = 0
 
 
+if six.PY3:
+    long = int
+
+
 def doctest_PJDataManager_long():
     r"""PJDataManager: Test behavior of long integers.
 
       >>> foo = LFoo()
-      >>> foo.x = 1L
+      >>> foo.x = long(1)
       >>> dm.root.app = foo
-      >>> dm.root.app.x
-      1L
       >>> transaction.commit()
+      >>> cur = dm.getCursor()
+      >>> cur.execute(
+      ... '''SELECT s.data FROM pjpersist_dot_tests_dot_test_datamanager_dot_LFoo m
+      ...    JOIN pjpersist_dot_tests_dot_test_datamanager_dot_LFoo_state s
+      ...    ON m.id = s.pid and m.tid = s.tid''')
+      >>> cur.fetchone()[0]['x']
+      1
 
     Let's see how it is deserialzied?
 
