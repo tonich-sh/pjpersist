@@ -28,10 +28,10 @@ class PMetaData(object):
 
     def __init__(self, mapping):
         self._mapping = mapping
-        self._mt = None
-        self._st = None
-        self._vt = None
-        self._q = None
+        self._mt = None  # main table
+        self._st = None  # state table
+        self._vt = None  # virtual table (main table joined with state table)
+        self._q = None  # SmartSql's query object
 
     @property
     def mt(self):
