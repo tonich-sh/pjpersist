@@ -12,6 +12,7 @@
 #
 ##############################################################################
 """PJ Data Manager Tests"""
+from __future__ import absolute_import
 import six
 import doctest
 import persistent

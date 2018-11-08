@@ -18,12 +18,15 @@ import datetime
 import decimal
 import persistent.interfaces
 import transaction.interfaces
-import types
+
 import zope.interface
 import zope.schema
+import six
 
 PJ_NATIVE_TYPES = (
-    bool, int, long, float, unicode, types.NoneType)
+    bool, float, six.text_type, type(None)
+) + six.integer_types
+
 REFERENCE_SAFE_TYPES = (
     datetime.datetime, datetime.date, datetime.time, decimal.Decimal)
 

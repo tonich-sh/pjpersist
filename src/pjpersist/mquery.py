@@ -13,6 +13,7 @@
 ##############################################################################
 """Mongo-like queries for PJ"""
 
+from __future__ import absolute_import
 import json
 from pjpersist import sqlbuilder as sb
 from pjpersist import serialize

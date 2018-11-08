@@ -31,6 +31,7 @@ from persistent.mapping import PersistentMapping
 
 from pjpersist import interfaces, serialize
 from pjpersist.querystats import QueryReport
+import six
 
 
 PJ_ACCESS_LOGGING = False
@@ -106,7 +107,7 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
 
     def execute(self, sql, args=None, autocreate=PJ_AUTO_CREATE_TABLES):
         # Convert SQLBuilder object to string
-        if not isinstance(sql, basestring):
+        if not isinstance(sql, six.string_types):
             sql = sql.__sqlrepr__('postgres')
         # Flush the data manager before any select.
         query_type = sql.strip().split()[0].lower()
@@ -122,7 +123,7 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
 
             try:
                 return self._execute_and_log(sql, args)
-            except psycopg2.Error, e:
+            except psycopg2.Error as e:
                 # XXX: ugly: we're creating here missing tables on the fly
                 msg = e.message
                 TABLE_LOG.debug("%s %r failed with %s", sql, args, msg)
@@ -145,7 +146,7 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
 
                     try:
                         return self._execute_and_log(sql, args)
-                    except psycopg2.Error, e:
+                    except psycopg2.Error as e:
                         pass
                 check_for_conflict(e, sql)
                 # otherwise let it fly away
@@ -154,7 +155,7 @@ class PJPersistCursor(psycopg2.extras.DictCursor):
             try:
                 # otherwise just execute the given sql
                 return self._execute_and_log(sql, args)
-            except psycopg2.Error, e:
+            except psycopg2.Error as e:
                 # Join the transaction, because failed queries require
                 # aborting the transaction.
                 # self.datamanager._join_txn()
@@ -299,7 +300,7 @@ class PJDataManager(object):
         if self._root is not None:
             LOG.debug('invalidate root')
             self._root._p_invalidate()
-        for obj in self._object_cache.itervalues():
+        for obj in six.itervalues(self._object_cache):
             obj._p_invalidate()
 
     @property
@@ -398,7 +399,7 @@ class PJDataManager(object):
         return _id
 
     def create_tables(self, tables):
-        if isinstance(tables, basestring):
+        if isinstance(tables, six.string_types):
             tables = [tables]
 
         for tbl in tables:
@@ -775,7 +776,7 @@ WHERE
                 psycopg2.extras.DictCursor.execute(cur, "ROLLBACK TO SAVEPOINT before_insert_transaction")
                 usql = "UPDATE transactions SET created_at = NOW() WHERE tid=%s"
                 psycopg2.extras.DictCursor.execute(cur, usql, (self.get_transaction_id(), ))
-            except psycopg2.Error, e:
+            except psycopg2.Error as e:
                 msg = e.message
                 # if the exception message matches
                 m = re.search('relation "(.*?)" does not exist', msg)
@@ -799,7 +800,7 @@ CREATE TABLE transactions (
                 for obj in self._stored_objects.values():
                     # notify a store object
                     notify(StoredEvent(obj))
-        except psycopg2.Error, e:
+        except psycopg2.Error as e:
             check_for_conflict(e, "DataManager.commit")
 
     def tpc_finish(self, transaction):
@@ -832,8 +833,8 @@ def get_database_name_from_dsn(dsn):
         return m.groups()[0]
 
     # process connection string like postgresql://[user[:password]@][netloc][:port][/dbname][?param1=value1&...]
-    import urlparse
-    u = urlparse.urlparse(dsn)
+    import six.moves.urllib.parse
+    u = six.moves.urllib.parse.urlparse(dsn)
     if u.path:
         return u.path.strip('/')
 

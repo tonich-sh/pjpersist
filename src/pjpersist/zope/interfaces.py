@@ -13,6 +13,7 @@
 #
 ##############################################################################
 """PostGreSQL/JSONB Persistence Zope Container Interfaces"""
+from __future__ import absolute_import
 import zope.interface
 import zope.schema
 

@@ -13,6 +13,7 @@
 #
 ##############################################################################
 """PostGreSQL/JSONB Persistence Zope Containers"""
+from __future__ import absolute_import
 import os
 import UserDict
 import persistent
@@ -35,6 +36,7 @@ import pjpersist.sqlbuilder as sb
 from pjpersist import interfaces, serialize
 from pjpersist.zope import interfaces as zinterfaces
 from pjpersist.mquery import Converter
+import six
 
 USE_CONTAINER_CACHE = True
 
@@ -120,7 +122,7 @@ class SimplePJContainer(sample.SampleContainer, persistent.Persistent):
         return obj
 
     def items(self):
-        items = super(SimplePJContainer, self).items()
+        items = list(super(SimplePJContainer, self).items())
         for key, obj in items:
             obj._v_name = key
             obj._v_parent = self
@@ -391,7 +393,7 @@ class PJContainer(contained.Contained,
     def iteritems(self):
         # If the cache contains all objects, we can just return the cache keys.
         if self._cache_complete:
-            return self._cache.iteritems()
+            return six.iteritems(self._cache)
         result = self.raw_find(self._pj_get_items_filter())
         items = [(row['data'][self._pj_mapping_key],
                   self._load_one(row['id'], row['data']))
@@ -562,12 +564,12 @@ class IdNamesPJContainer(PJContainer):
             return iter(self._cache)
         # Look up all ids in PostGreSQL.
         result = self.raw_find(None)
-        return iter(unicode(row['id']) for row in result)
+        return iter(six.text_type(row['id']) for row in result)
 
     def iteritems(self):
         # If the cache contains all objects, we can just return the cache keys.
         if self._cache_complete:
-            return self._cache.iteritems()
+            return six.iteritems(self._cache)
         # Load all objects from the database.
         result = self.raw_find(self._pj_get_items_filter())
         items = [(row['id'],

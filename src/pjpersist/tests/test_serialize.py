@@ -12,12 +12,13 @@
 #
 ##############################################################################
 """PostGreSQL/JSONB Persistence Serialization Tests"""
+from __future__ import absolute_import
 import datetime
 import doctest
 import persistent
 import pprint
 import copy
-import copy_reg
+import six.moves.copyreg
 import pickle
 
 from pjpersist import interfaces, serialize, testing
@@ -63,7 +64,7 @@ Constant = Constant()
 class CopyReggedConstant(object):
     def custom_reduce_fn(self):
         return 'CopyReggedConstant'
-copy_reg.pickle(CopyReggedConstant, CopyReggedConstant.custom_reduce_fn)
+six.moves.copyreg.pickle(CopyReggedConstant, CopyReggedConstant.custom_reduce_fn)
 CopyReggedConstant = CopyReggedConstant()
 
 

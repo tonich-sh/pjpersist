@@ -15,7 +15,7 @@
 """Object Serialization for PostGreSQL's JSONB"""
 from __future__ import absolute_import
 import uuid
-import copy_reg
+import six.moves.copyreg
 import datetime
 
 import persistent.interfaces
@@ -30,6 +30,7 @@ from decimal import Decimal
 
 from . import interfaces
 from . import broken
+import six
 
 ALWAYS_READ_FULL_DOC = True
 
@@ -45,13 +46,11 @@ FMT_DATETIME = "%Y-%m-%dT%H:%M:%S"
 
 # actually we should extract this somehow from psycopg2
 PYTHON_TO_PG_TYPES = {
-    unicode: "text",
+    six.text_type: "text",
     str: "text",
     bool: "bool",
     float: "double",
     int: "integer",
-    long: "bigint",
-    (int, long): "bigint",
     Decimal: "numeric",
     datetime.date: "date",
     datetime.time: "time",
@@ -60,6 +59,9 @@ PYTHON_TO_PG_TYPES = {
     list: "array",
     uuid.UUID: "UUID",
 }
+
+if six.PY2:
+    PYTHON_TO_PG_TYPES[long] = "bigint"
 
 
 def get_dotted_name(obj, escape=False, state=False):
@@ -309,7 +311,7 @@ class ObjectWriter(object):
                     getattr(obj, '_pj_reference_safe', False)):
             seen.append(id(obj))
         # Get the state of the object. Only pickable objects can be reduced.
-        reduce_fn = copy_reg.dispatch_table.get(type(obj))
+        reduce_fn = six.moves.copyreg.dispatch_table.get(type(obj))
         if reduce_fn is not None:
             reduced = reduce_fn(obj)
         else:
@@ -330,12 +332,12 @@ class ObjectWriter(object):
                 obj_state = {}
         # We are trying very hard to create a clean JSONB (sub-)document. But
         # we need a little bit of meta-data to help us out later.
-        if factory == copy_reg._reconstructor and \
+        if factory == six.moves.copyreg._reconstructor and \
                         args == (obj.__class__, object, None):
             # This is the simple case, which means we can produce a nicer
             # JSONB output.
             state = {'_py_type': get_dotted_name(args[0])}
-        elif factory == copy_reg.__newobj__ and args == (obj.__class__,):
+        elif factory == six.moves.copyreg.__newobj__ and args == (obj.__class__,):
             # Another simple case for persistent objects that do not want
             # their own document.
             state = {interfaces.ATTR_NAME_PY_TYPE: get_dotted_name(args[0])}
@@ -394,7 +396,7 @@ class ObjectWriter(object):
             return {'_py_type': 'datetime.datetime',
                     'value': obj.strftime(FMT_DATETIME)}
 
-        if isinstance(obj, (type, types.ClassType)):
+        if isinstance(obj, (type, type)):
             # We frequently store class and function paths as meta-data, so we
             # need to be able to properly encode those.
             return {'_py_type': 'type',
@@ -422,8 +424,8 @@ class ObjectWriter(object):
             data = []
             for key, value in obj.items():
                 data.append((key, self.get_state(value, pobj, seen)))
-                has_non_string_key |= not isinstance(key, basestring)
-                if (not isinstance(key, basestring) or '\0' in key):
+                has_non_string_key |= not isinstance(key, six.string_types)
+                if (not isinstance(key, six.string_types) or '\0' in key):
                     has_non_string_key = True
             if not has_non_string_key:
                 # The easy case: all keys are strings:
@@ -605,12 +607,12 @@ class ObjectReader(object):
         if '_py_type' in state:
             # Handle the simplified case.
             klass = self.simple_resolve(state.pop('_py_type'))
-            sub_obj = copy_reg._reconstructor(klass, object, None)
+            sub_obj = six.moves.copyreg._reconstructor(klass, object, None)
         elif interfaces.ATTR_NAME_PY_TYPE in state:
             # Another simple case for persistent objects that do not want
             # their own document.
             klass = self.simple_resolve(state.pop(interfaces.ATTR_NAME_PY_TYPE))
-            sub_obj = copy_reg.__newobj__(klass)
+            sub_obj = six.moves.copyreg.__newobj__(klass)
         else:
             factory = self.simple_resolve(state.pop('_py_factory'))
             factory_args = self.get_object(state.pop('_py_factory_args'), obj)
@@ -693,7 +695,7 @@ class ObjectReader(object):
             if 'dict_data' in state:
                 items = state['dict_data']
             else:
-                items = state.items()
+                items = list(state.items())
             sub_obj = dict(
                 [(self.get_object(name, obj), self.get_object(value, obj))
                  for name, value in items])

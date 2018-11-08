@@ -12,6 +12,7 @@
 #
 ##############################################################################
 """PostGreSQL/JSONB Persistence Schema Fields"""
+from __future__ import absolute_import
 import zope.interface
 import zope.schema._field
 import zope.schema.interfaces

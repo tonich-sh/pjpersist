@@ -13,6 +13,8 @@
 #
 ##############################################################################
 """PostGreSQL/JSONB Persistence Zope Containers Tests"""
+from __future__ import absolute_import
+from __future__ import print_function
 import atexit
 import doctest
 import unittest
@@ -1907,7 +1909,7 @@ checker = renormalizing.RENormalizing([
     zope.lifecycleevent.interfaces.IObjectModifiedEvent
     )
 def handleObjectModifiedEvent(object, event):
-    print event.__class__.__name__+':', repr(object)
+    print(event.__class__.__name__+':', repr(object))
 
 
 def setUp(test):

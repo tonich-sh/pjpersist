@@ -13,6 +13,7 @@
 #
 ##############################################################################
 """PostGreSQL/JSONB Mapping Tests"""
+from __future__ import absolute_import
 import doctest
 import persistent
 import transaction

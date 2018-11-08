@@ -12,6 +12,7 @@
 #
 ##############################################################################
 """Mongo Persistence Doc Tests"""
+from __future__ import absolute_import
 import datetime
 import doctest
 import unittest

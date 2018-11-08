@@ -13,6 +13,7 @@
 ##############################################################################
 """PJ Persistence Performance Test"""
 from __future__ import absolute_import
+from __future__ import print_function
 import logging
 import optparse
 import os
@@ -23,7 +24,7 @@ import sys
 import tempfile
 import time
 import transaction
-import cPickle
+import six.moves.cPickle
 import cProfile
 
 from pjpersist import datamanager
@@ -37,6 +38,7 @@ import zope.container
 import zope.container.btree
 import ZODB
 import ZODB.FileStorage
+from six.moves import range
 
 PJLOGGER = logging.getLogger('pjpersist.table')
 
@@ -100,7 +102,7 @@ class PerformanceBase(object):
         if count:
             ops = "%d ops/second" % (count / dur)
 
-        print '%-25s %.4f secs %s' % (text, dur, ops)
+        print('%-25s %.4f secs %s' % (text, dur, ops))
 
         PJLOGGER.debug('=========== done: %s', text)
 
@@ -336,7 +338,7 @@ class PerformancePJ(PerformanceBase):
             transaction.commit()
 
             def insert():
-                for idx in xrange(options.size):
+                for idx in range(options.size):
                     klass = (self.personKlass if (MULTIPLE_CLASSES and idx % 2)
                              else self.person2Klass)
                     people[None] = klass('Mr Number %.5i' % idx,
@@ -417,7 +419,7 @@ class PerformanceZODB(PerformanceBase):
             # Profile inserts
             transaction.begin()
             t1 = time.time()
-            for idx in xrange(options.size):
+            for idx in range(options.size):
                 klass = (self.personKlass if (MULTIPLE_CLASSES and idx % 2)
                          else self.person2Klass)
                 name = 'Mr Number %.5i' % idx
@@ -474,7 +476,7 @@ def main(args=None):
 
     testing.setUpSerializers(None)
 
-    print 'PJ ---------------'
+    print('PJ ---------------')
     PerformancePJ().run_basic_crud(options)
-    print 'ZODB  ---------------'
+    print('ZODB  ---------------')
     PerformanceZODB().run_basic_crud(options)

@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 import datetime
 BIGDICT = {'Alcestis': 'mantilla',
  'arraignments': True,

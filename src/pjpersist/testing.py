@@ -13,6 +13,7 @@
 ##############################################################################
 """Mongo Persistence Testing Support"""
 from __future__ import absolute_import
+from __future__ import print_function
 import atexit
 import doctest
 import logging
@@ -139,8 +140,8 @@ def setUp(test):
         with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
             try:
                 cur.execute('SELECT * FROM %s m join %s_state s on m.id = s.pid and m.tid = s.tid' % (table, table))
-            except psycopg2.ProgrammingError, err:
-                print err
+            except psycopg2.ProgrammingError as err:
+                print(err)
             else:
                 pprint([dict(e) for e in cur.fetchall()])
         if isolate:

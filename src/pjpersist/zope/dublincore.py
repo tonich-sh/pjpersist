@@ -13,6 +13,7 @@
 #
 ##############################################################################
 """Zope Dublin Core PJ Backend Storage"""
+from __future__ import absolute_import
 from UserDict import DictMixin
 
 import zope.interface

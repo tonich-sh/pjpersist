@@ -12,6 +12,7 @@
 #
 ##############################################################################
 """SQLBuilder extensions"""
+from __future__ import absolute_import
 import json, re
 
 from sqlobject.sqlbuilder import *

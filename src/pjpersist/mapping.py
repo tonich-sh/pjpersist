@@ -87,7 +87,7 @@ class PJTableMapping(DictMixin, object):
         q = q.where(vt.f.jsonb_superset(datamanager.Json({self.mapping_key: key}))).fields('*')
         objects = q.select().__iter__()
         try:
-            obj = objects.next()
+            obj = next(objects)
         except StopIteration:
             raise KeyError(key)
         if not obj:
@@ -227,7 +227,7 @@ class PJMapping(PersistentMapping):
             q = q.where(vt.f.jsonb_superset(datamanager.Json({self.mapping_key: key}))).fields('*')
             objects = q.select().__iter__()
             try:
-                obj = objects.next()
+                obj = next(objects)
             except StopIteration:
                 raise KeyError(key)
             if not obj:

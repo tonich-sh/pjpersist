@@ -1,6 +1,8 @@
+from __future__ import absolute_import
 import datetime
 import pprint
 import random
+from six.moves import range
 
 
 DTIMES = [
@@ -58,7 +60,7 @@ def get_d(size=5):
     DEPTH += 1
     rv = {}
     if DEPTH <= MAXDEPTH:
-        for i in xrange(size):
+        for i in range(size):
             key = get_c()
             rv[key] = get_random_type()
     DEPTH -= 1
@@ -70,7 +72,7 @@ def get_l():
     DEPTH += 1
     if DEPTH <= MAXDEPTH:
         ln = random.randint(0, 5)
-        rv = [get_random_type() for i in xrange(ln)]
+        rv = [get_random_type() for i in range(ln)]
     else:
         rv = []
     DEPTH -= 1

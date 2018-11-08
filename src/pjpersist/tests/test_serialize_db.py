@@ -12,6 +12,8 @@
 # FOR A PARTICULAR PURPOSE.
 #
 ##############################################################################
+from __future__ import absolute_import
+from __future__ import print_function
 import datetime
 import doctest
 import json
@@ -75,7 +77,7 @@ def select(conn, query, print_sql=False, **kwargs):
                 'postgres'
             )
             if print_sql:
-                print 'SQL> ', sql
+                print('SQL> ', sql)
             cur.execute(sql)
             for e in cur.fetchall():
                 pprint(e[0])

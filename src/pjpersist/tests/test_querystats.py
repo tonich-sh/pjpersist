@@ -13,6 +13,7 @@
 ##############################################################################
 """Query statistics reporter tests"""
 
+from __future__ import absolute_import
 import doctest
 
 from pjpersist import testing

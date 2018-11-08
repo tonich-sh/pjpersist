@@ -2,6 +2,8 @@
 taken from: http://justinfx.com/2012/07/25/python-2-7-3-serializer-speed-comparisons/
 """
 
+from __future__ import absolute_import
+from __future__ import print_function
 import json
 import pprint
 from timeit import timeit
@@ -9,6 +11,7 @@ from timeit import timeit
 from pjpersist.tests import random_data
 from pjpersist import testing
 from pjpersist import serialize
+from six.moves import range
 
 
 DATA_ORIG = {
@@ -18,8 +21,8 @@ DATA_ORIG = {
         Vestibulum augue augue,
         pellentesque quis sollicitudin id, adipiscing.
         """,
-    'list': range(100),
-    'dict': dict((str(i), 'a') for i in xrange(100)),
+    'list': list(range(100)),
+    'dict': dict((str(i), 'a') for i in range(100)),
     'int': 100,
     'float': 100.123456
 }
@@ -57,17 +60,17 @@ def main():
     enc_table = []
     dec_table = []
 
-    print "Running tests (%d LOOPS each)" % LOOPS
-    print "Data repr length: %d" % len(setup)
+    print("Running tests (%d LOOPS each)" % LOOPS)
+    print("Data repr length: %d" % len(setup))
 
     for title, mod, enc, dec in tests:
-        print title
+        print(title)
 
-        print "  [Encode]", enc
+        print("  [Encode]", enc)
         result = timeit(enc, mod, number=LOOPS)
         enc_table.append([title, result])
 
-        print "  [Decode]", dec
+        print("  [Decode]", dec)
         result = timeit(dec, mod, number=LOOPS)
         dec_table.append([title, result])
 
@@ -83,11 +86,11 @@ def main():
     for x in dec_table:
         x[0] = x[0].ljust(20)
 
-    print "\nData repr length: %d" % len(setup)
-    print "\nEncoding Test (%d LOOPS)" % LOOPS
+    print("\nData repr length: %d" % len(setup))
+    print("\nEncoding Test (%d LOOPS)" % LOOPS)
     pprint.pprint(enc_table)
 
-    print "\nDecoding Test (%d LOOPS)" % LOOPS
+    print("\nDecoding Test (%d LOOPS)" % LOOPS)
     pprint.pprint(dec_table)
 
 

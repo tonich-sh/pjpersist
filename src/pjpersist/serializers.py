@@ -12,6 +12,7 @@
 #
 ##############################################################################
 """Python Serializers for common objects with weird reduce output."""
+from __future__ import absolute_import
 import datetime
 from pjpersist import serialize
 

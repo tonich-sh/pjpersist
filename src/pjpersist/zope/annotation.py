@@ -13,6 +13,7 @@
 #
 ##############################################################################
 """PostGreSQL/JSONB Annotations Implementation."""
+from __future__ import absolute_import
 from persistent.dict import PersistentDict
 from zope import component, interface
 from zope.annotation import interfaces
@@ -67,7 +68,7 @@ class AttributeAnnotations(DictMixin):
         if annotations is None:
             return []
 
-        return annotations.keys()
+        return list(annotations.keys())
 
     def __iter__(self):
         annotations = getattr(self.obj, self.ATTR_NAME, None)
