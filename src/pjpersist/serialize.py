@@ -50,7 +50,7 @@ PYTHON_TO_PG_TYPES = {
     str: "text",
     bool: "bool",
     float: "double",
-    int: "integer",
+    int: "bigint",
     Decimal: "numeric",
     datetime.date: "date",
     datetime.time: "time",
@@ -62,6 +62,8 @@ PYTHON_TO_PG_TYPES = {
 
 if six.PY2:
     PYTHON_TO_PG_TYPES[long] = "bigint"
+    PYTHON_TO_PG_TYPES[int] = "integer"
+    PYTHON_TO_PG_TYPES[(int, long)] = "bigint"
 
 
 def get_dotted_name(obj, escape=False, state=False):
