@@ -19,7 +19,7 @@ from __future__ import absolute_import
 from UserDict import DictMixin, IterableUserDict
 from persistent.mapping import PersistentMapping
 
-from . import serialize, interfaces, datamanager
+from . import serialize, interfaces, datamanager, broken
 from . smartsql import compile, PJResult, T, Q, Expr, JsonArray, PJMappedVirtualTable
 
 
@@ -170,7 +170,11 @@ class PJMapping(PersistentMapping):
         return Expr('true')
 
     def by_raw_id(self, _id):
-        return self._p_jar.load(serialize.DBRef(self.table, _id, self._p_jar.database))
+        dbref = serialize.DBRef(self.table, _id, self._p_jar.database)
+        obj = self._p_jar.load(dbref)
+        if isinstance(obj, broken.Broken):
+            raise KeyError(dbref.as_key())
+        return obj
 
     def get_table_object(self, ttype='vt'):
         if not hasattr(self, '_p_meta'):
